@@ -292,6 +292,7 @@ def generate_from_state(
     temperature: float,
     top_p: float,
     seed: int,
+    min_tokens_before_eos: int = 0,
     print_stream: bool = False,
 ) -> List[int]:
     eos_id = tokenizer.eos_token_id
@@ -301,7 +302,13 @@ def generate_from_state(
 
     generated_ids: List[int] = []
     for _ in range(max_new_tokens):
-        next_token = top_p_sample(logits, temperature, top_p, gen)
+        sample_logits = logits
+        if len(generated_ids) < min_tokens_before_eos and eos_id is not None:
+            # Prevent immediate termination right after branch injection.
+            sample_logits = logits.clone()
+            sample_logits[:, eos_id] = float("-inf")
+
+        next_token = top_p_sample(sample_logits, temperature, top_p, gen)
         tid = int(next_token.item())
         if tid == eos_id:
             break

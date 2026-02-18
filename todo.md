@@ -38,8 +38,12 @@ bash run_longproc_32b.sh \
   --task tom_tracking_0.5k \
   --n-samples 1 \
   --branch-mode b \
+  --checkpoint-regex '(?i)step\\s*3:' \
+  --corrupt-anchor-regex '(?i)step\\s*3:' \
   --max-prefix-tokens 1600 \
   --max-new-after 600 \
+  --min-b-tokens-before-eos 64 \
+  --b-retry-times 2 \
   --out-suffix one_b_stdout \
   --print-full-output
 ```

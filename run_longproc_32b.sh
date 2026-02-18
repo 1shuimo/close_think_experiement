@@ -10,8 +10,12 @@ LONGPROC_DATA_PATH="${LONGPROC_DATA_PATH:-../LongProc/data}"
 LONGPROC_CODE_PATH="${LONGPROC_CODE_PATH:-../LongProc}"
 N_SAMPLES="${N_SAMPLES:-6}"
 CHECKPOINT_DELAY="${CHECKPOINT_DELAY:-120}"
+CHECKPOINT_REGEX="${CHECKPOINT_REGEX:-__auto__}"
+CORRUPT_ANCHOR_REGEX="${CORRUPT_ANCHOR_REGEX:-__auto__}"
 MAX_PREFIX_TOKENS="${MAX_PREFIX_TOKENS:-1200}"
 MAX_NEW_AFTER="${MAX_NEW_AFTER:-400}"
+MIN_B_TOKENS_BEFORE_EOS="${MIN_B_TOKENS_BEFORE_EOS:-64}"
+B_RETRY_TIMES="${B_RETRY_TIMES:-2}"
 OUT_ROOT="${OUT_ROOT:-suite_longproc_32b}"
 OUT_SUFFIX="${OUT_SUFFIX:-}"
 BRANCH_MODE="${BRANCH_MODE:-ab}"
@@ -32,6 +36,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --checkpoint-delay)
       CHECKPOINT_DELAY="$2"
+      shift 2
+      ;;
+    --checkpoint-regex)
+      CHECKPOINT_REGEX="$2"
+      shift 2
+      ;;
+    --corrupt-anchor-regex)
+      CORRUPT_ANCHOR_REGEX="$2"
       shift 2
       ;;
     --n-samples)
@@ -58,6 +70,14 @@ while [[ $# -gt 0 ]]; do
       BRANCH_MODE="$2"
       shift 2
       ;;
+    --min-b-tokens-before-eos)
+      MIN_B_TOKENS_BEFORE_EOS="$2"
+      shift 2
+      ;;
+    --b-retry-times)
+      B_RETRY_TIMES="$2"
+      shift 2
+      ;;
     --print-full-output)
       PRINT_FULL_OUTPUT=1
       shift 1
@@ -68,12 +88,16 @@ Usage: bash run_longproc_32b.sh [options]
   --max-prefix-tokens N
   --max-new-after N
   --checkpoint-delay N
+  --checkpoint-regex REGEX
+  --corrupt-anchor-regex REGEX
   --n-samples N
   --task NAME
   --out-root DIR
   --out-suffix TAG
   --model-path PATH
   --branch-mode ab|b
+  --min-b-tokens-before-eos N
+  --b-retry-times N
   --print-full-output
 USAGE
       exit 0
@@ -108,13 +132,15 @@ python test_close_suite.py \
   --prompt-mode baseline \
   --system-prompt-file "${PROMPT_BASE_FILE}" \
   --checkpoint-mode regex \
-  --checkpoint-regex '__auto__' \
+  --checkpoint-regex "${CHECKPOINT_REGEX}" \
   --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '__auto__' \
+  --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
   --max-new-after "${MAX_NEW_AFTER}" \
   --branch-mode "${BRANCH_MODE}" \
+  --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
+  --b-retry-times "${B_RETRY_TIMES}" \
   --output-dir "${OUT_ROOT}/baseline" \
   --save-task-texts \
   "${EXTRA_ARGS[@]}"
@@ -130,13 +156,15 @@ python test_close_suite.py \
   --system-prompt-file "${PROMPT_ENH_FILE}" \
   --inject-text "${INJECT_TEXT}" \
   --checkpoint-mode regex \
-  --checkpoint-regex '__auto__' \
+  --checkpoint-regex "${CHECKPOINT_REGEX}" \
   --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '__auto__' \
+  --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
   --max-new-after "${MAX_NEW_AFTER}" \
   --branch-mode "${BRANCH_MODE}" \
+  --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
+  --b-retry-times "${B_RETRY_TIMES}" \
   --output-dir "${OUT_ROOT}/enhanced" \
   --save-task-texts \
   "${EXTRA_ARGS[@]}"
@@ -153,13 +181,15 @@ python test_close_suite.py \
   --inject-text "${INJECT_TEXT}" \
   --apply-match-cover \
   --checkpoint-mode regex \
-  --checkpoint-regex '__auto__' \
+  --checkpoint-regex "${CHECKPOINT_REGEX}" \
   --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '__auto__' \
+  --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
   --max-new-after "${MAX_NEW_AFTER}" \
   --branch-mode "${BRANCH_MODE}" \
+  --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
+  --b-retry-times "${B_RETRY_TIMES}" \
   --output-dir "${OUT_ROOT}/enhanced_cover" \
   --save-task-texts \
   "${EXTRA_ARGS[@]}"

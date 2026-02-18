@@ -122,9 +122,13 @@ bash run_longproc_32b.sh \
 - `--out-suffix`（防止和旧目录重名）
 - `--model-path`
 - `--branch-mode ab|b`
+- `--checkpoint-regex` / `--corrupt-anchor-regex`
+- `--min-b-tokens-before-eos`
+- `--b-retry-times`
 - `--print-full-output`
 
 说明：默认不会把每题全文打印到终端，只会保存到文件。要终端直接看全文和改错信息，请加 `--print-full-output`。
+说明：`tom_tracking` 默认锚点是 `- Step 3:`（带短横线），因此注入点通常在后半段结构化列表中；如果你想更早插入，可显式传 `--checkpoint-regex '(?i)step\\s*3:'`。
 
 只跑 1 题、只跑 Branch B、三种模式都跑，并且终端打印：
 ```bash
@@ -132,8 +136,12 @@ bash run_longproc_32b.sh \
   --task tom_tracking_0.5k \
   --n-samples 1 \
   --branch-mode b \
+  --checkpoint-regex '(?i)step\\s*3:' \
+  --corrupt-anchor-regex '(?i)step\\s*3:' \
   --max-prefix-tokens 1600 \
   --max-new-after 600 \
+  --min-b-tokens-before-eos 64 \
+  --b-retry-times 2 \
   --out-suffix one_b_stdout \
   --print-full-output
 ```

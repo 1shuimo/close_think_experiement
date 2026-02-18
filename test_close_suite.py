@@ -170,6 +170,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
     p.add_argument("--max-new-after", type=int, default=1000)
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
+    p.add_argument("--min-b-tokens-before-eos", type=int, default=64)
+    p.add_argument("--b-retry-times", type=int, default=2, help="Retry branch B if empty or unclosed think.")
     p.add_argument("--inject-text", default=DEFAULT_INJECT_TEXT)
     p.add_argument("--apply-match-cover", action="store_true")
     p.add_argument("--cover-min-exact-overlap", type=int, default=40)
@@ -232,6 +234,8 @@ def run_task_ab(
     max_prefix_tokens: int,
     max_new_after: int,
     branch_mode: str,
+    min_b_tokens_before_eos: int,
+    b_retry_times: int,
     chunk_size: int,
     inject_text: str,
     corrupt_mode: str,
@@ -354,17 +358,36 @@ def run_task_ab(
     past_b = out_inj.past_key_values
     logits_b = out_inj.logits[:, -1, :]
 
-    gen_b = generate_from_state(
-        model=model,
-        tokenizer=tokenizer,
-        past_key_values=past_b,
-        logits=logits_b,
-        max_new_tokens=max_new_after,
-        temperature=temperature,
-        top_p=top_p,
-        seed=seed + 2,
-        print_stream=False,
-    )
+    inject_opens_think = ("<think>" in inject_text) and ("</think>" not in inject_text)
+    effective_min_b = max(0, int(min_b_tokens_before_eos)) if inject_opens_think else 0
+    gen_b: List[int] = []
+    retry_reasons: List[str] = []
+    past_b_seed = past_b
+    logits_b_seed = logits_b
+    for attempt in range(max(0, int(b_retry_times)) + 1):
+        past_b_try = clone_past_key_values(past_b_seed)
+        logits_b_try = logits_b_seed.clone()
+        gen_b = generate_from_state(
+            model=model,
+            tokenizer=tokenizer,
+            past_key_values=past_b_try,
+            logits=logits_b_try,
+            max_new_tokens=max_new_after,
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed + 2 + 97 * attempt,
+            min_tokens_before_eos=effective_min_b,
+            print_stream=False,
+        )
+        cont_try = tokenizer.decode(gen_b, skip_special_tokens=False)
+        if len(gen_b) == 0:
+            retry_reasons.append(f"attempt_{attempt}:empty_generation")
+            continue
+        if inject_opens_think and ("</think>" not in cont_try):
+            retry_reasons.append(f"attempt_{attempt}:unclosed_think")
+            continue
+        break
+
     cont_b_raw = tokenizer.decode(gen_b, skip_special_tokens=False)
     if apply_match_cover_flag:
         cont_b, cover_meta_b = apply_match_cover(
@@ -426,6 +449,11 @@ def run_task_ab(
             "continuation_text": cont_b,
             "full_text": full_b,
             "new_tokens": len(gen_b),
+            "retry_info": {
+                "retry_times": max(0, int(b_retry_times)),
+                "min_tokens_before_eos": effective_min_b,
+                "retry_reasons": retry_reasons,
+            },
             "match_cover": cover_meta_b,
             "metrics": eval_b,
             "longproc_eval": longproc_eval_b,
@@ -602,6 +630,8 @@ def main() -> None:
                 max_prefix_tokens=args.max_prefix_tokens,
                 max_new_after=args.max_new_after,
                 branch_mode=args.branch_mode,
+                min_b_tokens_before_eos=args.min_b_tokens_before_eos,
+                b_retry_times=args.b_retry_times,
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
                 corrupt_mode=args.corrupt_mode,
@@ -623,6 +653,7 @@ def main() -> None:
                 print(f"task={rec.get('task_id')}")
                 print(f"branch_mode={rec.get('branch_mode')}")
                 print(f"corrupt_meta={json.dumps(rec.get('corrupt_meta', {}), ensure_ascii=False)}")
+                print(f"branch_B_retry={json.dumps(rec['branch_B'].get('retry_info', {}), ensure_ascii=False)}")
                 if rec["branch_A"].get("full_text") is not None:
                     print("\n[Branch A Full Text]\n")
                     print(rec["branch_A"]["full_text"])
@@ -653,6 +684,7 @@ def main() -> None:
                             "branch_mode": rec.get("branch_mode"),
                             "branch_A_metrics": rec["branch_A"].get("metrics"),
                             "branch_B_metrics": rec["branch_B"]["metrics"],
+                            "branch_B_retry": rec["branch_B"].get("retry_info", {}),
                             "branch_A_match_cover": rec["branch_A"].get("match_cover", {}),
                             "branch_B_match_cover": rec["branch_B"].get("match_cover", {}),
                         },
@@ -684,6 +716,8 @@ def main() -> None:
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
             "branch_mode": args.branch_mode,
+            "min_b_tokens_before_eos": args.min_b_tokens_before_eos,
+            "b_retry_times": args.b_retry_times,
             "checkpoint_mode": args.checkpoint_mode,
             "checkpoint_regex": resolved_checkpoint_regex,
             "corrupt_mode": args.corrupt_mode,
