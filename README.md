@@ -190,3 +190,34 @@ git clone https://github.com/1shuimo/close_think_experiement.git
 - `--max-new-after`
 - `--chunk-size`
 
+---
+
+## 8. LongProc 题目怎么跑
+
+你现在可以不走 `tasks_math*.jsonl`，直接用 LongProc 官方加载器：
+
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --longproc-task tom_tracking_0.5k \
+  --longproc-data-path ../bench/LongProc/data \
+  --longproc-code-path ../bench/LongProc \
+  --n-samples 6 \
+  --prompt-mode enhanced \
+  --checkpoint-mode regex \
+  --checkpoint-regex '(?i)step\s*3' \
+  --corrupt-mode anchor_number_shift \
+  --corrupt-anchor-regex '(?i)step\s*3' \
+  --checkpoint-delay 120 \
+  --max-prefix-tokens 1200 \
+  --max-new-after 400 \
+  --output-dir suite_longproc_32b \
+  --save-task-texts \
+  --print-full-output
+```
+
+LongProc 模式下 summary 会多出：
+- `branch_A.longproc_avg_metrics`
+- `branch_B.longproc_avg_metrics`
+
+这些就是 LongProc evaluator 的平均分（如 `accuracy`、`partial_accuracy`、`extraction_rate`）。

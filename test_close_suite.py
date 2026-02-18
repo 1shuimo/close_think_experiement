@@ -1,8 +1,10 @@
 import argparse
 import json
 import re
+import random
+import sys
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Callable, Dict, List, Optional, Tuple
 
 import torch
 
@@ -42,11 +44,29 @@ def _safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", s or "task")
 
 
+def _load_longproc_data(
+    dataset_name: str,
+    data_path: str,
+    code_path: str,
+) -> Tuple[List[Dict[str, object]], Callable]:
+    cp = str(Path(code_path).resolve())
+    if cp not in sys.path:
+        sys.path.insert(0, cp)
+    from longproc.longproc_data import load_longproc_data  # type: ignore
+
+    return load_longproc_data(dataset_name, data_path)
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Batch A/B suite for close-think experiments.")
     p.add_argument("--model-paths", required=True, help="Comma-separated model paths.")
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
-    p.add_argument("--tasks-file", default="close/tasks_math.jsonl")
+    p.add_argument("--tasks-file", default="tasks_math.jsonl")
+    p.add_argument("--longproc-task", default=None, help="e.g. tom_tracking_0.5k / path_traversal_0.5k")
+    p.add_argument("--longproc-data-path", default="../bench/LongProc/data")
+    p.add_argument("--longproc-code-path", default="../bench/LongProc")
+    p.add_argument("--n-samples", type=int, default=None, help="Sample count limit (for longproc mode).")
+    p.add_argument("--shuffle", action="store_true", help="Shuffle longproc samples before slicing.")
     p.add_argument("--output-dir", default="close/suite_outputs")
 
     p.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
@@ -111,7 +131,8 @@ def run_task_ab(
     system_prompt: str,
     prompt_mode: str,
     think_word_limit: int,
-    task: Dict[str, str],
+    task: Dict[str, object],
+    eval_fn: Optional[Callable],
     temperature: float,
     top_p: float,
     seed: int,
@@ -135,6 +156,8 @@ def run_task_ab(
     task_id = task.get("id", "")
     user_prompt = task["user_prompt"]
     expected_regex = task.get("expected_regex")
+    eval_item = task.get("eval_item")
+    reference_output = task.get("reference_output")
 
     used_system_prompt = compose_system_prompt(
         system_prompt,
@@ -249,10 +272,25 @@ def run_task_ab(
     eval_a = evaluate_branch(edited_text, cont_a, full_a, expected_regex)
     eval_b = evaluate_branch(edited_text, cont_b, full_b, expected_regex)
 
+    longproc_eval_a = None
+    longproc_eval_b = None
+    if eval_fn is not None and eval_item is not None:
+        try:
+            m_a, info_a = eval_fn(full_a, eval_item)
+            longproc_eval_a = {"metrics": m_a, "info": info_a}
+        except Exception as e:
+            longproc_eval_a = {"metrics": None, "info": {"error": str(e)}}
+        try:
+            m_b, info_b = eval_fn(full_b, eval_item)
+            longproc_eval_b = {"metrics": m_b, "info": info_b}
+        except Exception as e:
+            longproc_eval_b = {"metrics": None, "info": {"error": str(e)}}
+
     return {
         "task_id": task_id,
         "user_prompt": user_prompt,
         "expected_regex": expected_regex,
+        "reference_output": reference_output,
         "prompt_mode": prompt_mode,
         "system_prompt_used": used_system_prompt,
         "checkpoint_meta": {
@@ -271,6 +309,7 @@ def run_task_ab(
             "new_tokens": len(gen_a),
             "match_cover": cover_meta_a,
             "metrics": eval_a,
+            "longproc_eval": longproc_eval_a,
         },
         "branch_B": {
             "continuation_text_raw": cont_b_raw,
@@ -279,6 +318,7 @@ def run_task_ab(
             "new_tokens": len(gen_b),
             "match_cover": cover_meta_b,
             "metrics": eval_b,
+            "longproc_eval": longproc_eval_b,
         },
     }
 
@@ -297,6 +337,7 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
         overlaps: List[int] = []
         trimmed_chars: List[int] = []
         cover_modes: Dict[str, int] = {}
+        longproc_metric_values: Dict[str, List[float]] = {}
 
         for r in records:
             m = r[branch_key]["metrics"]
@@ -312,7 +353,15 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             mode = str(cover.get("mode", "unknown"))
             cover_modes[mode] = cover_modes.get(mode, 0) + 1
 
-        s[branch_key] = {
+            lp = r[branch_key].get("longproc_eval")
+            if isinstance(lp, dict):
+                mm = lp.get("metrics")
+                if isinstance(mm, dict):
+                    for k, v in mm.items():
+                        if isinstance(v, (int, float)):
+                            longproc_metric_values.setdefault(str(k), []).append(float(v))
+
+        branch_summary = {
             "think_balanced_rate": _rate(think_ok),
             "repetition_rate": _rate(rep_flags),
             "avg_overlap_prefix_to_continuation": (sum(overlaps) / len(overlaps)) if overlaps else None,
@@ -320,19 +369,55 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             "avg_trimmed_chars_by_match_cover": (sum(trimmed_chars) / len(trimmed_chars)) if trimmed_chars else None,
             "match_cover_mode_counts": cover_modes,
         }
+        if longproc_metric_values:
+            branch_summary["longproc_avg_metrics"] = {
+                k: (sum(vs) / len(vs)) for k, vs in longproc_metric_values.items() if vs
+            }
+        s[branch_key] = branch_summary
     return s
 
 
 def main() -> None:
     args = parse_args()
-    tasks = load_tasks_jsonl(Path(args.tasks_file))
+    eval_fn: Optional[Callable] = None
+    task_source: str
+    if args.longproc_task:
+        longproc_data, eval_fn = _load_longproc_data(
+            dataset_name=args.longproc_task,
+            data_path=args.longproc_data_path,
+            code_path=args.longproc_code_path,
+        )
+        if args.shuffle:
+            random.seed(args.seed)
+            random.shuffle(longproc_data)
+        if args.n_samples is not None:
+            longproc_data = longproc_data[: args.n_samples]
+        tasks: List[Dict[str, object]] = []
+        for i, d in enumerate(longproc_data, start=1):
+            tasks.append(
+                {
+                    "id": f"{args.longproc_task}_{i}",
+                    "user_prompt": d["input_prompt"],
+                    "reference_output": d.get("reference_output"),
+                    "eval_item": d,
+                }
+            )
+        task_source = f"longproc:{args.longproc_task}"
+    else:
+        tasks_path = Path(args.tasks_file)
+        if not tasks_path.exists():
+            alt = Path(tasks_path.name)
+            if alt.exists():
+                tasks_path = alt
+        tasks = load_tasks_jsonl(tasks_path)
+        task_source = f"jsonl:{tasks_path.resolve()}"
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
     model_paths = [x.strip() for x in args.model_paths.split(",") if x.strip()]
     global_summary: Dict[str, object] = {
-        "tasks_file": str(Path(args.tasks_file).resolve()),
+        "task_source": task_source,
         "n_tasks": len(tasks),
         "models": {},
     }
@@ -357,6 +442,7 @@ def main() -> None:
                 prompt_mode=args.prompt_mode,
                 think_word_limit=args.think_word_limit,
                 task=task,
+                eval_fn=eval_fn,
                 temperature=args.temperature,
                 top_p=args.top_p,
                 seed=args.seed + 1000 * i,
@@ -405,6 +491,7 @@ def main() -> None:
                         {
                             "task_id": rec.get("task_id"),
                             "user_prompt": rec.get("user_prompt"),
+                            "reference_output": rec.get("reference_output"),
                             "expected_regex": rec.get("expected_regex"),
                             "checkpoint_meta": rec.get("checkpoint_meta", {}),
                             "corrupt_meta": rec.get("corrupt_meta", {}),
@@ -429,6 +516,11 @@ def main() -> None:
 
         model_summary = summarize(model_records)
         model_summary["config"] = {
+            "longproc_task": args.longproc_task,
+            "longproc_data_path": args.longproc_data_path if args.longproc_task else None,
+            "longproc_code_path": args.longproc_code_path if args.longproc_task else None,
+            "n_samples": args.n_samples if args.longproc_task else None,
+            "shuffle": bool(args.shuffle) if args.longproc_task else None,
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
             "checkpoint_mode": args.checkpoint_mode,
