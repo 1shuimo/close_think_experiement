@@ -35,8 +35,7 @@ If the user requests a final line format, obey it strictly.
 
 DEFAULT_INJECT_TEXT = (
     "<think>\n"
-    "I might be wrong here. Re-check locally and continue from the paused position.\n"
-    "</think>\n"
+    "I am not fully confident. Re-check and decide again.\n"
 )
 
 

@@ -72,6 +72,8 @@
 - `prompts/system_enhanced_v1.txt`
 - `prompts/inject_think_v1.txt`
 
+其中 `inject_think_v1.txt` 现在是“只开 `<think>` 不手动闭合”，由模型自行输出 `</think>`。
+
 运行时通过参数加载：
 - `--system-prompt-file`
 - `--inject-text "$(cat prompts/inject_think_v1.txt)"`
@@ -105,8 +107,19 @@ cd /auto/users/guoeng/guolei/close_think_experiement
 MODEL_32B="/scratch-ssd/guoeng/huggingface/models/Qwen3-32B" \
 TASK="tom_tracking_0.5k" \
 N_SAMPLES=20 \
-bash run_longproc_32b.sh
+bash run_longproc_32b.sh \
+  --max-prefix-tokens 1600 \
+  --max-new-after 600
 ```
+
+`run_longproc_32b.sh` 支持命令行覆盖参数：
+- `--max-prefix-tokens`
+- `--max-new-after`
+- `--checkpoint-delay`
+- `--n-samples`
+- `--task`
+- `--out-root`
+- `--model-path`
 
 ### 8.2 单独跑一组（方便迭代 prompt）
 ```bash
@@ -142,4 +155,3 @@ python test_close_suite.py \
 ## 10. 配套计划文档
 
 - `todo.md`：你下一步实验清单（要跑什么命令、看什么指标、什么结果对应什么结论）。
-

@@ -20,6 +20,18 @@ python -c "import torch, transformers; print(torch.__version__, transformers.__v
 
 ## 2. 小样本冒烟（先确保流程通）
 
+也可以直接用脚本并在命令行传长度参数：
+```bash
+bash run_longproc_32b.sh \
+  --task tom_tracking_0.5k \
+  --n-samples 6 \
+  --max-prefix-tokens 1200 \
+  --max-new-after 400
+```
+
+说明：`prompts/inject_think_v1.txt` 默认只注入开标签 `<think>` 和引导句，不带 `</think>`，闭合由模型自己完成。
+
+等价的单组 Python 命令如下（用于精细控制）：
 ```bash
 python test_close_suite.py \
   --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
@@ -147,7 +159,7 @@ python export_full_outputs.py \
 ```
 
 抽查要点：
-1. Branch B 是否真的插入了 `<think>` 并闭合 `</think>`。
+1. Branch B 是否真的插入了 `<think>`，并且后续由模型自行闭合 `</think>`。
 2. `</think>` 后是否从中断点继续，而不是重启回答。
 3. 是否出现大段复读。
 4. 任务格式是否满足（如 `- Step X:`、`<Route>`、代码块标签等）。
