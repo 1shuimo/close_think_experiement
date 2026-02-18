@@ -38,6 +38,10 @@ DEFAULT_INJECT_TEXT = (
 )
 
 
+def _safe_name(s: str) -> str:
+    return re.sub(r"[^A-Za-z0-9._-]", "_", s or "task")
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Batch A/B suite for close-think experiments.")
     p.add_argument("--model-paths", required=True, help="Comma-separated model paths.")
@@ -64,6 +68,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cover-fuzzy-min-len", type=int, default=24)
     p.add_argument("--cover-fuzzy-max-len", type=int, default=160)
     p.add_argument("--cover-fuzzy-ratio", type=float, default=0.92)
+    p.add_argument("--save-task-texts", action="store_true", help="Save per-task branch full outputs to txt files.")
+    p.add_argument("--print-full-output", action="store_true", help="Print full A/B outputs for each task to stdout.")
     p.add_argument(
         "--corrupt-mode",
         default="number_shift",
@@ -337,6 +343,10 @@ def main() -> None:
         tokenizer, model, device = loaded.tokenizer, loaded.model, loaded.device
 
         model_records: List[Dict[str, object]] = []
+        task_dump_root = output_dir / f"{_safe_name(model_path)}.task_texts"
+        if args.save_task_texts:
+            task_dump_root.mkdir(parents=True, exist_ok=True)
+
         for i, task in enumerate(tasks, start=1):
             print(f"[{i}/{len(tasks)}] {task.get('id', 'task')}")
             rec = run_task_ab(
@@ -369,6 +379,45 @@ def main() -> None:
             )
             rec["model_path"] = model_path
             model_records.append(rec)
+
+            if args.print_full_output:
+                print("\n---------------- FULL OUTPUT ----------------")
+                print(f"model={model_path}")
+                print(f"task={rec.get('task_id')}")
+                print("\n[Branch A Full Text]\n")
+                print(rec["branch_A"]["full_text"])
+                print("\n[Branch B Full Text]\n")
+                print(rec["branch_B"]["full_text"])
+                print("\n---------------------------------------------\n")
+
+            if args.save_task_texts:
+                task_name = _safe_name(str(rec.get("task_id", f"task_{i}")))
+                task_dir = task_dump_root / task_name
+                task_dir.mkdir(parents=True, exist_ok=True)
+                (task_dir / "branch_A.full.txt").write_text(
+                    rec["branch_A"]["full_text"], encoding="utf-8"
+                )
+                (task_dir / "branch_B.full.txt").write_text(
+                    rec["branch_B"]["full_text"], encoding="utf-8"
+                )
+                (task_dir / "meta.json").write_text(
+                    json.dumps(
+                        {
+                            "task_id": rec.get("task_id"),
+                            "user_prompt": rec.get("user_prompt"),
+                            "expected_regex": rec.get("expected_regex"),
+                            "checkpoint_meta": rec.get("checkpoint_meta", {}),
+                            "corrupt_meta": rec.get("corrupt_meta", {}),
+                            "branch_A_metrics": rec["branch_A"]["metrics"],
+                            "branch_B_metrics": rec["branch_B"]["metrics"],
+                            "branch_A_match_cover": rec["branch_A"].get("match_cover", {}),
+                            "branch_B_match_cover": rec["branch_B"].get("match_cover", {}),
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                    ),
+                    encoding="utf-8",
+                )
 
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", model_path)
         jsonl_path = output_dir / f"{safe_name}.results.jsonl"
