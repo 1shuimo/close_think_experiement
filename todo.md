@@ -30,6 +30,19 @@ bash run_longproc_32b.sh \
 ```
 
 说明：`prompts/inject_think_v1.txt` 默认只注入开标签 `<think>` 和引导句，不带 `</think>`，闭合由模型自己完成。
+默认不打印每题全文到终端，只保存到文件。若要终端直接看输出，加 `--print-full-output`。
+
+你当前要的模式（1 题、只跑 Branch B、三种模式、终端打印、带后缀防覆盖）：
+```bash
+bash run_longproc_32b.sh \
+  --task tom_tracking_0.5k \
+  --n-samples 1 \
+  --branch-mode b \
+  --max-prefix-tokens 1600 \
+  --max-new-after 600 \
+  --out-suffix one_b_stdout \
+  --print-full-output
+```
 
 等价的单组 Python 命令如下（用于精细控制）：
 ```bash

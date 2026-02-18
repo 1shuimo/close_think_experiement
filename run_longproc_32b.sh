@@ -13,6 +13,9 @@ CHECKPOINT_DELAY="${CHECKPOINT_DELAY:-120}"
 MAX_PREFIX_TOKENS="${MAX_PREFIX_TOKENS:-1200}"
 MAX_NEW_AFTER="${MAX_NEW_AFTER:-400}"
 OUT_ROOT="${OUT_ROOT:-suite_longproc_32b}"
+OUT_SUFFIX="${OUT_SUFFIX:-}"
+BRANCH_MODE="${BRANCH_MODE:-ab}"
+PRINT_FULL_OUTPUT="${PRINT_FULL_OUTPUT:-0}"
 PROMPT_BASE_FILE="${PROMPT_BASE_FILE:-prompts/system_base_v1.txt}"
 PROMPT_ENH_FILE="${PROMPT_ENH_FILE:-prompts/system_enhanced_v1.txt}"
 INJECT_TEXT_FILE="${INJECT_TEXT_FILE:-prompts/inject_think_v1.txt}"
@@ -47,6 +50,18 @@ while [[ $# -gt 0 ]]; do
       MODEL_32B="$2"
       shift 2
       ;;
+    --out-suffix)
+      OUT_SUFFIX="$2"
+      shift 2
+      ;;
+    --branch-mode)
+      BRANCH_MODE="$2"
+      shift 2
+      ;;
+    --print-full-output)
+      PRINT_FULL_OUTPUT=1
+      shift 1
+      ;;
     -h|--help)
       cat <<'USAGE'
 Usage: bash run_longproc_32b.sh [options]
@@ -56,7 +71,10 @@ Usage: bash run_longproc_32b.sh [options]
   --n-samples N
   --task NAME
   --out-root DIR
+  --out-suffix TAG
   --model-path PATH
+  --branch-mode ab|b
+  --print-full-output
 USAGE
       exit 0
       ;;
@@ -66,6 +84,15 @@ USAGE
       ;;
   esac
 done
+
+if [[ -n "${OUT_SUFFIX}" ]]; then
+  OUT_ROOT="${OUT_ROOT}_${OUT_SUFFIX}"
+fi
+
+EXTRA_ARGS=()
+if [[ "${PRINT_FULL_OUTPUT}" == "1" ]]; then
+  EXTRA_ARGS+=(--print-full-output)
+fi
 
 INJECT_TEXT="$(cat "${INJECT_TEXT_FILE}")"
 
@@ -87,8 +114,10 @@ python test_close_suite.py \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
   --max-new-after "${MAX_NEW_AFTER}" \
+  --branch-mode "${BRANCH_MODE}" \
   --output-dir "${OUT_ROOT}/baseline" \
-  --save-task-texts
+  --save-task-texts \
+  "${EXTRA_ARGS[@]}"
 
 echo "[LongProc B] enhanced"
 python test_close_suite.py \
@@ -107,8 +136,10 @@ python test_close_suite.py \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
   --max-new-after "${MAX_NEW_AFTER}" \
+  --branch-mode "${BRANCH_MODE}" \
   --output-dir "${OUT_ROOT}/enhanced" \
-  --save-task-texts
+  --save-task-texts \
+  "${EXTRA_ARGS[@]}"
 
 echo "[LongProc C] enhanced + match-cover"
 python test_close_suite.py \
@@ -128,7 +159,9 @@ python test_close_suite.py \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
   --max-new-after "${MAX_NEW_AFTER}" \
+  --branch-mode "${BRANCH_MODE}" \
   --output-dir "${OUT_ROOT}/enhanced_cover" \
-  --save-task-texts
+  --save-task-texts \
+  "${EXTRA_ARGS[@]}"
 
 echo "Done. Outputs in ${OUT_ROOT}"

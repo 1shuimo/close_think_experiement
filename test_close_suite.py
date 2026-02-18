@@ -169,6 +169,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
     p.add_argument("--max-new-after", type=int, default=1000)
+    p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
     p.add_argument("--inject-text", default=DEFAULT_INJECT_TEXT)
     p.add_argument("--apply-match-cover", action="store_true")
     p.add_argument("--cover-min-exact-overlap", type=int, default=40)
@@ -230,6 +231,7 @@ def run_task_ab(
     checkpoint_regex: Optional[str],
     max_prefix_tokens: int,
     max_new_after: int,
+    branch_mode: str,
     chunk_size: int,
     inject_text: str,
     corrupt_mode: str,
@@ -300,36 +302,49 @@ def run_task_ab(
     edited_ids = tokenizer.encode(edited_text, add_special_tokens=False)
     edited_ids_t = torch.tensor([edited_ids], dtype=torch.long, device=device)
 
-    # 同一次上下文分叉：先 prefill 一次，再复制 KV 给 A/B 两支
+    # 同一次上下文分叉：先 prefill 一次，再复制 KV 给分支
     full_ids_base = torch.cat([prompt_ids, edited_ids_t], dim=1)
     past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
 
-    past_a = clone_past_key_values(past_base)
-    logits_a = logits_base.clone()
-    gen_a = generate_from_state(
-        model=model,
-        tokenizer=tokenizer,
-        past_key_values=past_a,
-        logits=logits_a,
-        max_new_tokens=max_new_after,
-        temperature=temperature,
-        top_p=top_p,
-        seed=seed + 1,
-        print_stream=False,
-    )
-    cont_a_raw = tokenizer.decode(gen_a, skip_special_tokens=False)
-    if apply_match_cover_flag:
-        cont_a, cover_meta_a = apply_match_cover(
-            edited_text,
-            cont_a_raw,
-            min_exact_overlap=cover_min_exact_overlap,
-            fuzzy_min_len=cover_fuzzy_min_len,
-            fuzzy_max_len=cover_fuzzy_max_len,
-            fuzzy_ratio=cover_fuzzy_ratio,
+    branch_a_rec: Dict[str, object] = {"skipped": True, "reason": "branch_mode=b"}
+    full_a: Optional[str] = None
+    if branch_mode == "ab":
+        past_a = clone_past_key_values(past_base)
+        logits_a = logits_base.clone()
+        gen_a = generate_from_state(
+            model=model,
+            tokenizer=tokenizer,
+            past_key_values=past_a,
+            logits=logits_a,
+            max_new_tokens=max_new_after,
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed + 1,
+            print_stream=False,
         )
-    else:
-        cont_a, cover_meta_a = cont_a_raw, {"mode": "disabled", "trimmed_chars": 0}
-    full_a = edited_text + cont_a
+        cont_a_raw = tokenizer.decode(gen_a, skip_special_tokens=False)
+        if apply_match_cover_flag:
+            cont_a, cover_meta_a = apply_match_cover(
+                edited_text,
+                cont_a_raw,
+                min_exact_overlap=cover_min_exact_overlap,
+                fuzzy_min_len=cover_fuzzy_min_len,
+                fuzzy_max_len=cover_fuzzy_max_len,
+                fuzzy_ratio=cover_fuzzy_ratio,
+            )
+        else:
+            cont_a, cover_meta_a = cont_a_raw, {"mode": "disabled", "trimmed_chars": 0}
+        full_a = edited_text + cont_a
+        eval_a = evaluate_branch(edited_text, cont_a, full_a, expected_regex)
+        branch_a_rec = {
+            "continuation_text_raw": cont_a_raw,
+            "continuation_text": cont_a,
+            "full_text": full_a,
+            "new_tokens": len(gen_a),
+            "match_cover": cover_meta_a,
+            "metrics": eval_a,
+            "longproc_eval": None,
+        }
 
     past_b = clone_past_key_values(past_base)
     logits_b = logits_base.clone()
@@ -364,21 +379,23 @@ def run_task_ab(
         cont_b, cover_meta_b = cont_b_raw, {"mode": "disabled", "trimmed_chars": 0}
     full_b = edited_text + inject_text + cont_b
 
-    eval_a = evaluate_branch(edited_text, cont_a, full_a, expected_regex)
     eval_b = evaluate_branch(edited_text, cont_b, full_b, expected_regex)
     format_re = format_regex_for_task_family(task_family)
     if format_re:
-        eval_a["format_hit"] = bool(re.search(format_re, full_a, re.IGNORECASE | re.DOTALL))
+        if full_a is not None and "metrics" in branch_a_rec:
+            branch_a_rec["metrics"]["format_hit"] = bool(
+                re.search(format_re, full_a, re.IGNORECASE | re.DOTALL)
+            )
         eval_b["format_hit"] = bool(re.search(format_re, full_b, re.IGNORECASE | re.DOTALL))
 
-    longproc_eval_a = None
     longproc_eval_b = None
     if eval_fn is not None and eval_item is not None:
-        try:
-            m_a, info_a = eval_fn(full_a, eval_item)
-            longproc_eval_a = {"metrics": m_a, "info": info_a}
-        except Exception as e:
-            longproc_eval_a = {"metrics": None, "info": {"error": str(e)}}
+        if full_a is not None and "metrics" in branch_a_rec:
+            try:
+                m_a, info_a = eval_fn(full_a, eval_item)
+                branch_a_rec["longproc_eval"] = {"metrics": m_a, "info": info_a}
+            except Exception as e:
+                branch_a_rec["longproc_eval"] = {"metrics": None, "info": {"error": str(e)}}
         try:
             m_b, info_b = eval_fn(full_b, eval_item)
             longproc_eval_b = {"metrics": m_b, "info": info_b}
@@ -402,15 +419,8 @@ def run_task_ab(
         "prefix_seen_first_think_end": bool(ckpt["seen_first_think_end"]),
         "prefix_tokens": len(prefix_ids),
         "corrupt_meta": corrupt_meta,
-        "branch_A": {
-            "continuation_text_raw": cont_a_raw,
-            "continuation_text": cont_a,
-            "full_text": full_a,
-            "new_tokens": len(gen_a),
-            "match_cover": cover_meta_a,
-            "metrics": eval_a,
-            "longproc_eval": longproc_eval_a,
-        },
+        "branch_mode": branch_mode,
+        "branch_A": branch_a_rec,
         "branch_B": {
             "continuation_text_raw": cont_b_raw,
             "continuation_text": cont_b,
@@ -441,7 +451,12 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
         longproc_metric_values: Dict[str, List[float]] = {}
 
         for r in records:
-            m = r[branch_key]["metrics"]
+            branch_obj = r.get(branch_key)
+            if not isinstance(branch_obj, dict):
+                continue
+            m = branch_obj.get("metrics")
+            if not isinstance(m, dict):
+                continue
             think_ok.append(bool(m["think_balanced"]))
             rep_flags.append(bool(m["repetition_flag"]))
             overlaps.append(int(m["overlap_prefix_to_continuation"]))
@@ -451,13 +466,13 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             fh = m.get("format_hit")
             if fh is not None:
                 format_flags.append(bool(fh))
-            cover = r[branch_key].get("match_cover", {}) or {}
+            cover = branch_obj.get("match_cover", {}) or {}
             trimmed = int(cover.get("trimmed_chars", 0) or 0)
             trimmed_chars.append(trimmed)
             mode = str(cover.get("mode", "unknown"))
             cover_modes[mode] = cover_modes.get(mode, 0) + 1
 
-            lp = r[branch_key].get("longproc_eval")
+            lp = branch_obj.get("longproc_eval")
             if isinstance(lp, dict):
                 mm = lp.get("metrics")
                 if isinstance(mm, dict):
@@ -586,6 +601,7 @@ def main() -> None:
                 checkpoint_regex=resolved_checkpoint_regex,
                 max_prefix_tokens=args.max_prefix_tokens,
                 max_new_after=args.max_new_after,
+                branch_mode=args.branch_mode,
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
                 corrupt_mode=args.corrupt_mode,
@@ -605,8 +621,11 @@ def main() -> None:
                 print("\n---------------- FULL OUTPUT ----------------")
                 print(f"model={model_path}")
                 print(f"task={rec.get('task_id')}")
-                print("\n[Branch A Full Text]\n")
-                print(rec["branch_A"]["full_text"])
+                print(f"branch_mode={rec.get('branch_mode')}")
+                print(f"corrupt_meta={json.dumps(rec.get('corrupt_meta', {}), ensure_ascii=False)}")
+                if rec["branch_A"].get("full_text") is not None:
+                    print("\n[Branch A Full Text]\n")
+                    print(rec["branch_A"]["full_text"])
                 print("\n[Branch B Full Text]\n")
                 print(rec["branch_B"]["full_text"])
                 print("\n---------------------------------------------\n")
@@ -615,9 +634,10 @@ def main() -> None:
                 task_name = _safe_name(str(rec.get("task_id", f"task_{i}")))
                 task_dir = task_dump_root / task_name
                 task_dir.mkdir(parents=True, exist_ok=True)
-                (task_dir / "branch_A.full.txt").write_text(
-                    rec["branch_A"]["full_text"], encoding="utf-8"
-                )
+                if rec["branch_A"].get("full_text") is not None:
+                    (task_dir / "branch_A.full.txt").write_text(
+                        rec["branch_A"]["full_text"], encoding="utf-8"
+                    )
                 (task_dir / "branch_B.full.txt").write_text(
                     rec["branch_B"]["full_text"], encoding="utf-8"
                 )
@@ -630,7 +650,8 @@ def main() -> None:
                             "expected_regex": rec.get("expected_regex"),
                             "checkpoint_meta": rec.get("checkpoint_meta", {}),
                             "corrupt_meta": rec.get("corrupt_meta", {}),
-                            "branch_A_metrics": rec["branch_A"]["metrics"],
+                            "branch_mode": rec.get("branch_mode"),
+                            "branch_A_metrics": rec["branch_A"].get("metrics"),
                             "branch_B_metrics": rec["branch_B"]["metrics"],
                             "branch_A_match_cover": rec["branch_A"].get("match_cover", {}),
                             "branch_B_match_cover": rec["branch_B"].get("match_cover", {}),
@@ -662,6 +683,7 @@ def main() -> None:
             "no_task_format_guidance": bool(args.no_task_format_guidance),
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
+            "branch_mode": args.branch_mode,
             "checkpoint_mode": args.checkpoint_mode,
             "checkpoint_regex": resolved_checkpoint_regex,
             "corrupt_mode": args.corrupt_mode,

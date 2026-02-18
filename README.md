@@ -119,7 +119,24 @@ bash run_longproc_32b.sh \
 - `--n-samples`
 - `--task`
 - `--out-root`
+- `--out-suffix`（防止和旧目录重名）
 - `--model-path`
+- `--branch-mode ab|b`
+- `--print-full-output`
+
+说明：默认不会把每题全文打印到终端，只会保存到文件。要终端直接看全文和改错信息，请加 `--print-full-output`。
+
+只跑 1 题、只跑 Branch B、三种模式都跑，并且终端打印：
+```bash
+bash run_longproc_32b.sh \
+  --task tom_tracking_0.5k \
+  --n-samples 1 \
+  --branch-mode b \
+  --max-prefix-tokens 1600 \
+  --max-new-after 600 \
+  --out-suffix one_b_stdout \
+  --print-full-output
+```
 
 ### 8.2 单独跑一组（方便迭代 prompt）
 ```bash
