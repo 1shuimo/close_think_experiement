@@ -551,7 +551,7 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             c_mode = str(cross.get("mode", "none"))
             cross_trimmed_chars.append(c_trimmed)
             cross_modes[c_mode] = cross_modes.get(c_mode, 0) + 1
-            cross_hits.append(c_mode in {"exact", "fuzzy"})
+            cross_hits.append(c_mode in {"exact", "fuzzy", "anchor_exact"})
 
             lp = branch_obj.get("longproc_eval")
             if isinstance(lp, dict):

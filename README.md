@@ -134,7 +134,7 @@ bash run_longproc_32b.sh \
 说明：`tom_tracking` 默认锚点是 `- Step 3:`（带短横线），因此注入点通常在后半段结构化列表中；如果你想更早插入，可显式传 `--checkpoint-regex '(?i)step\\s*3:'`。
 说明：默认不会自动补齐未闭合 `<think>`，用于保留真实行为观测；如需补齐可加 `--auto-close-unclosed-think`。
 说明：如果你希望“先等第一次 think 闭合，再注入”，用 `--checkpoint-mode think_end_then_regex`。
-说明：`--apply-cross-think-cover` 会匹配“第一次 think 后正文尾”和“第二次 think 后正文头”，命中后裁掉重叠段。
+说明：`--apply-cross-think-cover` 会匹配“第一次 think 后正文”和“第二次 think 后正文头”的重叠（支持 `exact/fuzzy/anchor_exact`），命中后裁掉重复段。
 
 只跑 1 题、只跑 Branch B、三种模式都跑，并且终端打印：
 ```bash

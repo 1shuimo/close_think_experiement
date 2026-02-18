@@ -430,6 +430,13 @@ def apply_cross_think_match_cover(
     if not post_body:
         return continuation_text, {"mode": "none", "trimmed_chars": 0, "reason": "empty_post_think_body"}
 
+    def _common_prefix_len(a: str, b: str) -> int:
+        n = min(len(a), len(b))
+        i = 0
+        while i < n and a[i] == b[i]:
+            i += 1
+        return i
+
     exact_k = longest_suffix_prefix_overlap(prefix_body, post_body, max_k=600)
     if exact_k >= min_exact_overlap:
         return head + post_body[exact_k:], {
@@ -457,6 +464,23 @@ def apply_cross_think_match_cover(
             "fuzzy_ratio": round(best_ratio, 4),
             "fuzzy_len": best_len,
         }
+
+    # Fallback: anchor-start duplicate match (not limited to suffix-prefix).
+    m = re.search(r"\S", post_body)
+    if m:
+        post_core = post_body[m.start() :]
+        line_end = post_core.find("\n")
+        first_line = (post_core if line_end < 0 else post_core[:line_end]).strip()
+        if len(first_line) >= 10:
+            idx = prefix_body.rfind(first_line)
+            if idx >= 0:
+                k = _common_prefix_len(prefix_body[idx:], post_core)
+                if k >= min_exact_overlap:
+                    return head + post_body[: m.start()] + post_core[k:], {
+                        "mode": "anchor_exact",
+                        "trimmed_chars": k,
+                        "anchor": first_line,
+                    }
 
     return continuation_text, {"mode": "none", "trimmed_chars": 0}
 
