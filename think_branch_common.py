@@ -1,0 +1,437 @@
+import json
+import re
+import copy
+from difflib import SequenceMatcher
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+
+import torch
+from transformers import AutoModelForCausalLM, AutoTokenizer
+
+
+@dataclass
+class LoadedModel:
+    tokenizer: AutoTokenizer
+    model: AutoModelForCausalLM
+    device: torch.device
+
+
+def parse_dtype(dtype_name: str) -> torch.dtype:
+    name = (dtype_name or "").strip().lower()
+    if name in {"bf16", "bfloat16"}:
+        return torch.bfloat16
+    if name in {"fp16", "float16"}:
+        return torch.float16
+    if name in {"fp32", "float32"}:
+        return torch.float32
+    raise ValueError(f"Unsupported dtype: {dtype_name}")
+
+
+def load_model(model_path: str, dtype_name: str = "bf16") -> LoadedModel:
+    dtype = parse_dtype(dtype_name)
+    tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
+    model = AutoModelForCausalLM.from_pretrained(
+        model_path,
+        torch_dtype=dtype,
+        device_map="auto",
+        trust_remote_code=True,
+    )
+    model.eval()
+    device = model.get_input_embeddings().weight.device
+    return LoadedModel(tokenizer=tokenizer, model=model, device=device)
+
+
+def compose_system_prompt(
+    base_prompt: str,
+    *,
+    prompt_mode: str = "baseline",
+    think_word_limit: int = 60,
+) -> str:
+    if prompt_mode == "baseline":
+        return base_prompt.strip()
+    if prompt_mode != "enhanced":
+        raise ValueError(f"Unsupported prompt_mode: {prompt_mode}")
+
+    appendix = f"""
+
+Add-on protocol for uncertainty handling:
+1) If uncertainty appears, enter <think> with first-person local reasoning.
+2) Keep <think> concise (about {think_word_limit} words max).
+3) End reasoning with </think> explicitly.
+4) After </think>, continue exactly from the interrupted position.
+5) Do not repeat the immediate previous text; do not restart the answer.
+6) Preserve output format and language style.
+""".strip()
+    return (base_prompt.strip() + "\n\n" + appendix).strip()
+
+
+def top_p_sample(
+    logits: torch.Tensor,
+    temperature: float,
+    top_p: float,
+    generator: torch.Generator,
+) -> torch.Tensor:
+    if temperature <= 0:
+        return torch.argmax(logits, dim=-1, keepdim=True)
+
+    probs = torch.softmax(logits / temperature, dim=-1)
+    sorted_probs, sorted_idx = torch.sort(probs, descending=True)
+    cum = torch.cumsum(sorted_probs, dim=-1)
+
+    mask = cum > top_p
+    mask[..., 0] = False
+    sorted_probs = sorted_probs.masked_fill(mask, 0.0)
+    sorted_probs = sorted_probs / sorted_probs.sum(dim=-1, keepdim=True)
+
+    sampled = torch.multinomial(sorted_probs, 1, generator=generator)
+    return sorted_idx.gather(-1, sampled)
+
+
+@torch.inference_mode()
+def prefill_kv(
+    model: AutoModelForCausalLM,
+    input_ids: torch.Tensor,
+    chunk_size: int = 2048,
+) -> Tuple[object, torch.Tensor]:
+    past_key_values = None
+    logits = None
+    _, seqlen = input_ids.shape
+
+    for start in range(0, seqlen, chunk_size):
+        end = min(start + chunk_size, seqlen)
+        chunk = input_ids[:, start:end]
+        out = model(chunk, past_key_values=past_key_values, use_cache=True)
+        past_key_values = out.past_key_values
+        logits = out.logits[:, -1, :]
+
+    if logits is None:
+        raise RuntimeError("Prefill failed: no logits returned.")
+    return past_key_values, logits
+
+
+def clone_past_key_values(past_key_values: object) -> object:
+    """
+    为分叉续写复制 KV 缓存，尽量避免不同分支互相污染。
+    """
+    try:
+        return copy.deepcopy(past_key_values)
+    except Exception:
+        pass
+
+    if isinstance(past_key_values, tuple):
+        layers = []
+        for layer in past_key_values:
+            if isinstance(layer, tuple):
+                layers.append(
+                    tuple(x.clone() if torch.is_tensor(x) else x for x in layer)
+                )
+            else:
+                layers.append(layer.clone() if torch.is_tensor(layer) else layer)
+        return tuple(layers)
+
+    if isinstance(past_key_values, list):
+        layers = []
+        for layer in past_key_values:
+            if isinstance(layer, tuple):
+                layers.append(
+                    tuple(x.clone() if torch.is_tensor(x) else x for x in layer)
+                )
+            else:
+                layers.append(layer.clone() if torch.is_tensor(layer) else layer)
+        return layers
+
+    return past_key_values
+
+
+def build_prompt_ids(
+    tokenizer: AutoTokenizer,
+    system_prompt: str,
+    user_prompt: str,
+    device: torch.device,
+    enable_thinking: bool = True,
+) -> torch.Tensor:
+    return tokenizer.apply_chat_template(
+        [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        add_generation_prompt=True,
+        return_tensors="pt",
+        enable_thinking=enable_thinking,
+    ).to(device)
+
+
+def _ends_with_subseq(tokens: List[int], subseq: List[int]) -> bool:
+    if not subseq:
+        return False
+    if len(tokens) < len(subseq):
+        return False
+    return tokens[-len(subseq):] == subseq
+
+
+@torch.inference_mode()
+def generate_until_checkpoint(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    prompt_ids: torch.Tensor,
+    *,
+    delay_tokens_after_first_think_end: int,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float,
+    seed: int,
+    checkpoint_mode: str = "think_end",
+    checkpoint_regex: Optional[str] = None,
+    chunk_size: int = 2048,
+    print_stream: bool = False,
+) -> Dict[str, object]:
+    eos_id = tokenizer.eos_token_id
+    think_end_ids = tokenizer.encode("</think>", add_special_tokens=False)
+    device = model.get_input_embeddings().weight.device
+
+    gen = torch.Generator(device=device)
+    gen.manual_seed(seed)
+
+    past_key_values, logits = prefill_kv(model, prompt_ids, chunk_size=chunk_size)
+
+    seen_anchor = False
+    counter_after_anchor = 0
+    generated_ids: List[int] = []
+    generated_text_parts: List[str] = []
+    regex_obj = re.compile(checkpoint_regex, re.IGNORECASE | re.DOTALL) if checkpoint_regex else None
+
+    for _ in range(max_new_tokens):
+        next_token = top_p_sample(logits, temperature, top_p, gen)
+        tid = int(next_token.item())
+        if tid == eos_id:
+            break
+
+        out = model(next_token.to(device), past_key_values=past_key_values, use_cache=True)
+        past_key_values = out.past_key_values
+        logits = out.logits[:, -1, :]
+
+        generated_ids.append(tid)
+        piece = tokenizer.decode(next_token[0], skip_special_tokens=False)
+        generated_text_parts.append(piece)
+        if print_stream:
+            print(piece, end="", flush=True)
+
+        if not seen_anchor:
+            if checkpoint_mode == "think_end":
+                if _ends_with_subseq(generated_ids, think_end_ids):
+                    seen_anchor = True
+                    counter_after_anchor = 0
+            elif checkpoint_mode == "regex":
+                if regex_obj and regex_obj.search("".join(generated_text_parts)):
+                    seen_anchor = True
+                    counter_after_anchor = 0
+            else:
+                raise ValueError(f"Unsupported checkpoint_mode: {checkpoint_mode}")
+        else:
+            counter_after_anchor += 1
+            if counter_after_anchor >= delay_tokens_after_first_think_end:
+                break
+
+    generated_text = "".join(generated_text_parts)
+    return {
+        "generated_ids": generated_ids,
+        "generated_text": generated_text,
+        "seen_first_think_end": seen_anchor,
+        "counter_after_think_end": counter_after_anchor,
+        "checkpoint_mode": checkpoint_mode,
+        "checkpoint_regex": checkpoint_regex,
+        "seen_anchor": seen_anchor,
+        "counter_after_anchor": counter_after_anchor,
+    }
+
+
+@torch.inference_mode()
+def generate_from_state(
+    model: AutoModelForCausalLM,
+    tokenizer: AutoTokenizer,
+    past_key_values: object,
+    logits: torch.Tensor,
+    *,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float,
+    seed: int,
+    print_stream: bool = False,
+) -> List[int]:
+    eos_id = tokenizer.eos_token_id
+    device = model.get_input_embeddings().weight.device
+    gen = torch.Generator(device=device)
+    gen.manual_seed(seed)
+
+    generated_ids: List[int] = []
+    for _ in range(max_new_tokens):
+        next_token = top_p_sample(logits, temperature, top_p, gen)
+        tid = int(next_token.item())
+        if tid == eos_id:
+            break
+
+        generated_ids.append(tid)
+        if print_stream:
+            print(tokenizer.decode(next_token[0], skip_special_tokens=False), end="", flush=True)
+
+        out = model(next_token.to(device), past_key_values=past_key_values, use_cache=True)
+        past_key_values = out.past_key_values
+        logits = out.logits[:, -1, :]
+
+    return generated_ids
+
+
+def longest_suffix_prefix_overlap(left: str, right: str, max_k: int = 400) -> int:
+    if not left or not right:
+        return 0
+    m = min(max_k, len(left), len(right))
+    for k in range(m, 0, -1):
+        if left[-k:] == right[:k]:
+            return k
+    return 0
+
+
+def apply_match_cover(
+    prefix_text: str,
+    continuation_text: str,
+    *,
+    min_exact_overlap: int = 40,
+    fuzzy_min_len: int = 24,
+    fuzzy_max_len: int = 160,
+    fuzzy_ratio: float = 0.92,
+) -> Tuple[str, Dict[str, object]]:
+    """
+    匹配覆盖方案（todo 对应）：
+    1) 先做 exact suffix-prefix overlap，足够长则直接裁掉 continuation 开头重复段。
+    2) 再做 fuzzy overlap（处理“很像但不完全一样”的重复），满足阈值则裁掉。
+    """
+    if not continuation_text:
+        return continuation_text, {"mode": "none", "trimmed_chars": 0}
+    if not prefix_text:
+        return continuation_text, {"mode": "none", "trimmed_chars": 0}
+
+    exact_k = longest_suffix_prefix_overlap(prefix_text, continuation_text, max_k=600)
+    if exact_k >= min_exact_overlap:
+        return continuation_text[exact_k:], {
+            "mode": "exact",
+            "trimmed_chars": exact_k,
+            "exact_overlap": exact_k,
+        }
+
+    max_len = min(fuzzy_max_len, len(prefix_text), len(continuation_text))
+    best_len = 0
+    best_ratio = 0.0
+    for l in range(max_len, fuzzy_min_len - 1, -1):
+        suffix = prefix_text[-l:]
+        head = continuation_text[:l]
+        ratio = SequenceMatcher(None, suffix, head).ratio()
+        if ratio >= fuzzy_ratio:
+            best_len = l
+            best_ratio = ratio
+            break
+
+    if best_len > 0:
+        return continuation_text[best_len:], {
+            "mode": "fuzzy",
+            "trimmed_chars": best_len,
+            "fuzzy_ratio": round(best_ratio, 4),
+            "fuzzy_len": best_len,
+        }
+
+    return continuation_text, {"mode": "none", "trimmed_chars": 0}
+
+
+def think_balance_ok(text: str) -> bool:
+    opens = len(re.findall(r"<think>", text))
+    closes = len(re.findall(r"</think>", text))
+    return opens == closes
+
+
+def corrupt_prefix_text(text: str) -> Tuple[str, Dict[str, object]]:
+    m = re.search(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])", text)
+    if not m:
+        fallback = text + "\n[Injected error marker: claim above may be wrong.]"
+        return fallback, {"mode": "append_marker", "changed": False}
+
+    src = int(m.group(1))
+    dst = src + 1 if src >= 0 else src - 1
+    edited = text[: m.start()] + str(dst) + text[m.end() :]
+    return edited, {"mode": "number_shift", "changed": True, "from": src, "to": dst}
+
+
+def corrupt_numbers_near_anchor(
+    text: str,
+    *,
+    anchor_regex: str,
+    max_changes: int = 2,
+    window_chars: int = 240,
+) -> Tuple[str, Dict[str, object]]:
+    """
+    在锚点（如 Step 3）附近改若干数字，模拟“中间步骤出错”。
+    """
+    if not text:
+        return text, {"mode": "anchor_number_shift", "changed": False, "reason": "empty_text"}
+
+    m_anchor = re.search(anchor_regex, text, re.IGNORECASE | re.DOTALL)
+    if not m_anchor:
+        fallback, meta = corrupt_prefix_text(text)
+        meta["mode"] = "anchor_fallback_number_shift"
+        meta["anchor_found"] = False
+        return fallback, meta
+
+    st = max(0, m_anchor.start() - window_chars // 4)
+    ed = min(len(text), m_anchor.end() + window_chars)
+    seg = text[st:ed]
+
+    matches = list(re.finditer(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])", seg))
+    if not matches:
+        return text, {
+            "mode": "anchor_number_shift",
+            "changed": False,
+            "anchor_found": True,
+            "reason": "no_number_in_window",
+        }
+
+    take = min(max_changes, len(matches))
+    offset = 0
+    changed = []
+    seg_edit = seg
+    for i in range(take):
+        m = matches[i]
+        a = m.start() + offset
+        b = m.end() + offset
+        src = int(seg_edit[a:b])
+        dst = src + 1 if src >= 0 else src - 1
+        seg_edit = seg_edit[:a] + str(dst) + seg_edit[b:]
+        offset += len(str(dst)) - (b - a)
+        changed.append({"from": src, "to": dst})
+
+    edited = text[:st] + seg_edit + text[ed:]
+    return edited, {
+        "mode": "anchor_number_shift",
+        "changed": True,
+        "anchor_found": True,
+        "anchor_regex": anchor_regex,
+        "changes": changed,
+        "window": {"start": st, "end": ed},
+    }
+
+
+def read_text(path: Path) -> str:
+    return path.read_text(encoding="utf-8")
+
+
+def write_text(path: Path, content: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def load_tasks_jsonl(path: Path) -> List[Dict[str, str]]:
+    rows: List[Dict[str, str]] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        rows.append(json.loads(line))
+    return rows
