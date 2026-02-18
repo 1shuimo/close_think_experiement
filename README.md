@@ -125,11 +125,12 @@ bash run_longproc_32b.sh \
 - `--checkpoint-regex` / `--corrupt-anchor-regex`
 - `--min-b-tokens-before-eos`
 - `--b-retry-times`
+- `--auto-close-unclosed-think`
 - `--print-full-output`
 
 说明：默认不会把每题全文打印到终端，只会保存到文件。要终端直接看全文和改错信息，请加 `--print-full-output`。
 说明：`tom_tracking` 默认锚点是 `- Step 3:`（带短横线），因此注入点通常在后半段结构化列表中；如果你想更早插入，可显式传 `--checkpoint-regex '(?i)step\\s*3:'`。
-说明：脚本会在分叉前自动补齐前缀里未闭合的 `<think>`，并在 Branch B 结束前补齐残余未闭合 `<think>`，避免“插入后整体不闭合”。
+说明：默认不会自动补齐未闭合 `<think>`，用于保留真实行为观测；如需补齐可加 `--auto-close-unclosed-think`。
 
 只跑 1 题、只跑 Branch B、三种模式都跑，并且终端打印：
 ```bash

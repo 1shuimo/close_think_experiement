@@ -31,7 +31,7 @@ bash run_longproc_32b.sh \
 
 说明：`prompts/inject_think_v1.txt` 默认只注入开标签 `<think>` 和引导句，不带 `</think>`，闭合由模型自己完成。
 默认不打印每题全文到终端，只保存到文件。若要终端直接看输出，加 `--print-full-output`。
-当前脚本会自动补齐未闭合 `<think>`（前缀和 Branch B 末尾），可直接在 `branch_B_retry.forced_close_think` 里看到是否触发。
+默认不自动补齐未闭合 `<think>`（保留真实行为）；若要补齐可加 `--auto-close-unclosed-think`，并在 `branch_B_retry.forced_close_think` 里查看触发次数。
 
 你当前要的模式（1 题、只跑 Branch B、三种模式、终端打印、带后缀防覆盖）：
 ```bash

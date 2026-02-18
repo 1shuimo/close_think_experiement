@@ -172,6 +172,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
     p.add_argument("--min-b-tokens-before-eos", type=int, default=64)
     p.add_argument("--b-retry-times", type=int, default=2, help="Retry branch B if empty or unclosed think.")
+    p.add_argument("--auto-close-unclosed-think", action="store_true", help="Force close unmatched <think> tags in prefix/final output.")
     p.add_argument("--inject-text", default=DEFAULT_INJECT_TEXT)
     p.add_argument("--apply-match-cover", action="store_true")
     p.add_argument("--cover-min-exact-overlap", type=int, default=40)
@@ -242,6 +243,7 @@ def run_task_ab(
     branch_mode: str,
     min_b_tokens_before_eos: int,
     b_retry_times: int,
+    auto_close_unclosed_think: bool,
     chunk_size: int,
     inject_text: str,
     corrupt_mode: str,
@@ -308,11 +310,12 @@ def run_task_ab(
         )
     else:
         edited_text, corrupt_meta = prefix_text, {"mode": "none", "changed": False}
-    # If checkpoint hits inside an open <think>, close it before branch injection.
+    # Diagnose whether checkpoint cut inside an open <think> block.
     prefix_think_gap = _think_balance_delta(edited_text)
-    if prefix_think_gap > 0:
+    if auto_close_unclosed_think and prefix_think_gap > 0:
         edited_text = edited_text + ("\n</think>" * prefix_think_gap) + "\n"
-    corrupt_meta["prefix_auto_closed_think"] = max(0, prefix_think_gap)
+    corrupt_meta["prefix_open_think_before_inject"] = max(0, prefix_think_gap)
+    corrupt_meta["prefix_auto_closed_think"] = max(0, prefix_think_gap) if auto_close_unclosed_think else 0
 
     edited_ids = tokenizer.encode(edited_text, add_special_tokens=False)
     edited_ids_t = torch.tensor([edited_ids], dtype=torch.long, device=device)
@@ -326,7 +329,7 @@ def run_task_ab(
     if branch_mode == "ab":
         past_a = clone_past_key_values(past_base)
         logits_a = logits_base.clone()
-        gen_a = generate_from_state(
+        gen_a_out = generate_from_state(
             model=model,
             tokenizer=tokenizer,
             past_key_values=past_a,
@@ -335,8 +338,10 @@ def run_task_ab(
             temperature=temperature,
             top_p=top_p,
             seed=seed + 1,
+            return_meta=True,
             print_stream=False,
         )
+        gen_a = gen_a_out["generated_ids"]
         cont_a_raw = tokenizer.decode(gen_a, skip_special_tokens=False)
         if apply_match_cover_flag:
             cont_a, cover_meta_a = apply_match_cover(
@@ -356,6 +361,7 @@ def run_task_ab(
             "continuation_text": cont_a,
             "full_text": full_a,
             "new_tokens": len(gen_a),
+            "stop_reason": str(gen_a_out.get("stop_reason")),
             "match_cover": cover_meta_a,
             "metrics": eval_a,
             "longproc_eval": None,
@@ -372,13 +378,14 @@ def run_task_ab(
     inject_opens_think = ("<think>" in inject_text) and ("</think>" not in inject_text)
     effective_min_b = max(0, int(min_b_tokens_before_eos)) if inject_opens_think else 0
     gen_b: List[int] = []
+    gen_b_stop_reason = "unknown"
     retry_reasons: List[str] = []
     past_b_seed = past_b
     logits_b_seed = logits_b
     for attempt in range(max(0, int(b_retry_times)) + 1):
         past_b_try = clone_past_key_values(past_b_seed)
         logits_b_try = logits_b_seed.clone()
-        gen_b = generate_from_state(
+        gen_b_out = generate_from_state(
             model=model,
             tokenizer=tokenizer,
             past_key_values=past_b_try,
@@ -388,14 +395,17 @@ def run_task_ab(
             top_p=top_p,
             seed=seed + 2 + 97 * attempt,
             min_tokens_before_eos=effective_min_b,
+            return_meta=True,
             print_stream=False,
         )
+        gen_b = gen_b_out["generated_ids"]
+        gen_b_stop_reason = str(gen_b_out.get("stop_reason", "unknown"))
         cont_try = tokenizer.decode(gen_b, skip_special_tokens=False)
         if len(gen_b) == 0:
-            retry_reasons.append(f"attempt_{attempt}:empty_generation")
+            retry_reasons.append(f"attempt_{attempt}:{gen_b_stop_reason}:empty_generation")
             continue
         if inject_opens_think and ("</think>" not in cont_try):
-            retry_reasons.append(f"attempt_{attempt}:unclosed_think")
+            retry_reasons.append(f"attempt_{attempt}:{gen_b_stop_reason}:unclosed_think")
             continue
         break
 
@@ -412,9 +422,8 @@ def run_task_ab(
     else:
         cont_b, cover_meta_b = cont_b_raw, {"mode": "disabled", "trimmed_chars": 0}
     full_b = edited_text + inject_text + cont_b
-    # Final safety: force close any leftover open <think> blocks.
     full_b_think_gap = _think_balance_delta(full_b)
-    if full_b_think_gap > 0:
+    if auto_close_unclosed_think and full_b_think_gap > 0:
         closer = ("\n</think>" * full_b_think_gap) + "\n"
         cont_b = cont_b + closer
         full_b = full_b + closer
@@ -466,11 +475,13 @@ def run_task_ab(
             "continuation_text": cont_b,
             "full_text": full_b,
             "new_tokens": len(gen_b),
+            "stop_reason": gen_b_stop_reason,
             "retry_info": {
                 "retry_times": max(0, int(b_retry_times)),
                 "min_tokens_before_eos": effective_min_b,
+                "prefix_open_think_before_inject": max(0, prefix_think_gap),
                 "retry_reasons": retry_reasons,
-                "forced_close_think": max(0, full_b_think_gap),
+                "forced_close_think": max(0, full_b_think_gap) if auto_close_unclosed_think else 0,
             },
             "match_cover": cover_meta_b,
             "metrics": eval_b,
@@ -650,6 +661,7 @@ def main() -> None:
                 branch_mode=args.branch_mode,
                 min_b_tokens_before_eos=args.min_b_tokens_before_eos,
                 b_retry_times=args.b_retry_times,
+                auto_close_unclosed_think=bool(args.auto_close_unclosed_think),
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
                 corrupt_mode=args.corrupt_mode,
@@ -672,6 +684,7 @@ def main() -> None:
                 print(f"branch_mode={rec.get('branch_mode')}")
                 print(f"corrupt_meta={json.dumps(rec.get('corrupt_meta', {}), ensure_ascii=False)}")
                 print(f"branch_B_retry={json.dumps(rec['branch_B'].get('retry_info', {}), ensure_ascii=False)}")
+                print(f"branch_B_stop_reason={rec['branch_B'].get('stop_reason')}")
                 if rec["branch_A"].get("full_text") is not None:
                     print("\n[Branch A Full Text]\n")
                     print(rec["branch_A"]["full_text"])
@@ -703,6 +716,7 @@ def main() -> None:
                             "branch_A_metrics": rec["branch_A"].get("metrics"),
                             "branch_B_metrics": rec["branch_B"]["metrics"],
                             "branch_B_retry": rec["branch_B"].get("retry_info", {}),
+                            "branch_B_stop_reason": rec["branch_B"].get("stop_reason"),
                             "branch_A_match_cover": rec["branch_A"].get("match_cover", {}),
                             "branch_B_match_cover": rec["branch_B"].get("match_cover", {}),
                         },
@@ -736,6 +750,7 @@ def main() -> None:
             "branch_mode": args.branch_mode,
             "min_b_tokens_before_eos": args.min_b_tokens_before_eos,
             "b_retry_times": args.b_retry_times,
+            "auto_close_unclosed_think": bool(args.auto_close_unclosed_think),
             "checkpoint_mode": args.checkpoint_mode,
             "checkpoint_regex": resolved_checkpoint_regex,
             "corrupt_mode": args.corrupt_mode,

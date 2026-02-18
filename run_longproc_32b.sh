@@ -16,6 +16,7 @@ MAX_PREFIX_TOKENS="${MAX_PREFIX_TOKENS:-1200}"
 MAX_NEW_AFTER="${MAX_NEW_AFTER:-400}"
 MIN_B_TOKENS_BEFORE_EOS="${MIN_B_TOKENS_BEFORE_EOS:-64}"
 B_RETRY_TIMES="${B_RETRY_TIMES:-2}"
+AUTO_CLOSE_UNCLOSED_THINK="${AUTO_CLOSE_UNCLOSED_THINK:-0}"
 OUT_ROOT="${OUT_ROOT:-suite_longproc_32b}"
 OUT_SUFFIX="${OUT_SUFFIX:-}"
 BRANCH_MODE="${BRANCH_MODE:-ab}"
@@ -78,6 +79,10 @@ while [[ $# -gt 0 ]]; do
       B_RETRY_TIMES="$2"
       shift 2
       ;;
+    --auto-close-unclosed-think)
+      AUTO_CLOSE_UNCLOSED_THINK=1
+      shift 1
+      ;;
     --print-full-output)
       PRINT_FULL_OUTPUT=1
       shift 1
@@ -98,6 +103,7 @@ Usage: bash run_longproc_32b.sh [options]
   --branch-mode ab|b
   --min-b-tokens-before-eos N
   --b-retry-times N
+  --auto-close-unclosed-think
   --print-full-output
 USAGE
       exit 0
@@ -116,6 +122,9 @@ fi
 EXTRA_ARGS=()
 if [[ "${PRINT_FULL_OUTPUT}" == "1" ]]; then
   EXTRA_ARGS+=(--print-full-output)
+fi
+if [[ "${AUTO_CLOSE_UNCLOSED_THINK}" == "1" ]]; then
+  EXTRA_ARGS+=(--auto-close-unclosed-think)
 fi
 
 INJECT_TEXT="$(cat "${INJECT_TEXT_FILE}")"

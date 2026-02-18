@@ -4,7 +4,7 @@ import copy
 from difflib import SequenceMatcher
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
@@ -293,14 +293,16 @@ def generate_from_state(
     top_p: float,
     seed: int,
     min_tokens_before_eos: int = 0,
+    return_meta: bool = False,
     print_stream: bool = False,
-) -> List[int]:
+) -> Any:
     eos_id = tokenizer.eos_token_id
     device = model.get_input_embeddings().weight.device
     gen = torch.Generator(device=device)
     gen.manual_seed(seed)
 
     generated_ids: List[int] = []
+    stop_reason = "max_new_tokens"
     for _ in range(max_new_tokens):
         sample_logits = logits
         if len(generated_ids) < min_tokens_before_eos and eos_id is not None:
@@ -311,6 +313,7 @@ def generate_from_state(
         next_token = top_p_sample(sample_logits, temperature, top_p, gen)
         tid = int(next_token.item())
         if tid == eos_id:
+            stop_reason = "eos"
             break
 
         generated_ids.append(tid)
@@ -321,6 +324,8 @@ def generate_from_state(
         past_key_values = out.past_key_values
         logits = out.logits[:, -1, :]
 
+    if return_meta:
+        return {"generated_ids": generated_ids, "stop_reason": stop_reason}
     return generated_ids
 
 
