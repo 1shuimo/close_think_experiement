@@ -398,6 +398,69 @@ def apply_match_cover(
     return continuation_text, {"mode": "none", "trimmed_chars": 0}
 
 
+def apply_cross_think_match_cover(
+    prefix_text: str,
+    continuation_text: str,
+    *,
+    min_exact_overlap: int = 24,
+    fuzzy_min_len: int = 16,
+    fuzzy_max_len: int = 200,
+    fuzzy_ratio: float = 0.9,
+) -> Tuple[str, Dict[str, object]]:
+    """
+    Match/cover between:
+    - tail of body after the first </think> in prefix_text
+    - head of body after the next </think> in continuation_text
+    """
+    if not prefix_text or not continuation_text:
+        return continuation_text, {"mode": "none", "trimmed_chars": 0, "reason": "empty_text"}
+
+    first_close = prefix_text.find("</think>")
+    if first_close < 0:
+        return continuation_text, {"mode": "none", "trimmed_chars": 0, "reason": "no_first_think_close_in_prefix"}
+    prefix_body = prefix_text[first_close + len("</think>") :]
+    if not prefix_body:
+        return continuation_text, {"mode": "none", "trimmed_chars": 0, "reason": "empty_prefix_body"}
+
+    second_close = continuation_text.find("</think>")
+    if second_close < 0:
+        return continuation_text, {"mode": "none", "trimmed_chars": 0, "reason": "no_second_think_close_in_continuation"}
+    head = continuation_text[: second_close + len("</think>")]
+    post_body = continuation_text[second_close + len("</think>") :]
+    if not post_body:
+        return continuation_text, {"mode": "none", "trimmed_chars": 0, "reason": "empty_post_think_body"}
+
+    exact_k = longest_suffix_prefix_overlap(prefix_body, post_body, max_k=600)
+    if exact_k >= min_exact_overlap:
+        return head + post_body[exact_k:], {
+            "mode": "exact",
+            "trimmed_chars": exact_k,
+            "exact_overlap": exact_k,
+        }
+
+    max_len = min(fuzzy_max_len, len(prefix_body), len(post_body))
+    best_len = 0
+    best_ratio = 0.0
+    for l in range(max_len, fuzzy_min_len - 1, -1):
+        suffix = prefix_body[-l:]
+        prefix = post_body[:l]
+        ratio = SequenceMatcher(None, suffix, prefix).ratio()
+        if ratio >= fuzzy_ratio:
+            best_len = l
+            best_ratio = ratio
+            break
+
+    if best_len > 0:
+        return head + post_body[best_len:], {
+            "mode": "fuzzy",
+            "trimmed_chars": best_len,
+            "fuzzy_ratio": round(best_ratio, 4),
+            "fuzzy_len": best_len,
+        }
+
+    return continuation_text, {"mode": "none", "trimmed_chars": 0}
+
+
 def think_balance_ok(text: str) -> bool:
     opens = len(re.findall(r"<think>", text))
     closes = len(re.findall(r"</think>", text))

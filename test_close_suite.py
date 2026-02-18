@@ -10,6 +10,7 @@ import torch
 
 from think_branch_common import (
     apply_match_cover,
+    apply_cross_think_match_cover,
     build_prompt_ids,
     clone_past_key_values,
     compose_system_prompt,
@@ -179,6 +180,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cover-fuzzy-min-len", type=int, default=24)
     p.add_argument("--cover-fuzzy-max-len", type=int, default=160)
     p.add_argument("--cover-fuzzy-ratio", type=float, default=0.92)
+    p.add_argument("--apply-cross-think-cover", action="store_true", help="Trim overlap between pre-think body tail and post-think body head in branch B.")
     p.add_argument("--save-task-texts", action="store_true", help="Save per-task branch full outputs to txt files.")
     p.add_argument("--print-full-output", action="store_true", help="Print full A/B outputs for each task to stdout.")
     p.add_argument(
@@ -251,6 +253,7 @@ def run_task_ab(
     corrupt_max_changes: int,
     corrupt_window_chars: int,
     apply_match_cover_flag: bool,
+    apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
     cover_fuzzy_min_len: int,
     cover_fuzzy_max_len: int,
@@ -421,6 +424,17 @@ def run_task_ab(
         )
     else:
         cont_b, cover_meta_b = cont_b_raw, {"mode": "disabled", "trimmed_chars": 0}
+    if apply_cross_think_cover_flag:
+        cont_b, cross_cover_meta_b = apply_cross_think_match_cover(
+            edited_text,
+            cont_b,
+            min_exact_overlap=max(16, cover_min_exact_overlap // 2),
+            fuzzy_min_len=max(12, cover_fuzzy_min_len // 2),
+            fuzzy_max_len=max(cover_fuzzy_max_len, 200),
+            fuzzy_ratio=cover_fuzzy_ratio,
+        )
+    else:
+        cross_cover_meta_b = {"mode": "disabled", "trimmed_chars": 0}
     full_b = edited_text + inject_text + cont_b
     full_b_think_gap = _think_balance_delta(full_b)
     if auto_close_unclosed_think and full_b_think_gap > 0:
@@ -484,6 +498,7 @@ def run_task_ab(
                 "forced_close_think": max(0, full_b_think_gap) if auto_close_unclosed_think else 0,
             },
             "match_cover": cover_meta_b,
+            "cross_think_cover": cross_cover_meta_b,
             "metrics": eval_b,
             "longproc_eval": longproc_eval_b,
         },
@@ -505,6 +520,9 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
         overlaps: List[int] = []
         trimmed_chars: List[int] = []
         cover_modes: Dict[str, int] = {}
+        cross_trimmed_chars: List[int] = []
+        cross_modes: Dict[str, int] = {}
+        cross_hits: List[bool] = []
         longproc_metric_values: Dict[str, List[float]] = {}
 
         for r in records:
@@ -528,6 +546,12 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             trimmed_chars.append(trimmed)
             mode = str(cover.get("mode", "unknown"))
             cover_modes[mode] = cover_modes.get(mode, 0) + 1
+            cross = branch_obj.get("cross_think_cover", {}) or {}
+            c_trimmed = int(cross.get("trimmed_chars", 0) or 0)
+            c_mode = str(cross.get("mode", "none"))
+            cross_trimmed_chars.append(c_trimmed)
+            cross_modes[c_mode] = cross_modes.get(c_mode, 0) + 1
+            cross_hits.append(c_mode in {"exact", "fuzzy"})
 
             lp = branch_obj.get("longproc_eval")
             if isinstance(lp, dict):
@@ -545,6 +569,9 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             "format_hit_rate": _rate(format_flags) if format_flags else None,
             "avg_trimmed_chars_by_match_cover": (sum(trimmed_chars) / len(trimmed_chars)) if trimmed_chars else None,
             "match_cover_mode_counts": cover_modes,
+            "cross_think_match_rate": _rate(cross_hits) if cross_hits else None,
+            "avg_trimmed_chars_by_cross_think_cover": (sum(cross_trimmed_chars) / len(cross_trimmed_chars)) if cross_trimmed_chars else None,
+            "cross_think_cover_mode_counts": cross_modes,
         }
         if longproc_metric_values:
             branch_summary["longproc_avg_metrics"] = {
@@ -669,6 +696,7 @@ def main() -> None:
                 corrupt_max_changes=args.corrupt_max_changes,
                 corrupt_window_chars=args.corrupt_window_chars,
                 apply_match_cover_flag=bool(args.apply_match_cover),
+                apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,
                 cover_fuzzy_min_len=args.cover_fuzzy_min_len,
                 cover_fuzzy_max_len=args.cover_fuzzy_max_len,
@@ -685,6 +713,7 @@ def main() -> None:
                 print(f"corrupt_meta={json.dumps(rec.get('corrupt_meta', {}), ensure_ascii=False)}")
                 print(f"branch_B_retry={json.dumps(rec['branch_B'].get('retry_info', {}), ensure_ascii=False)}")
                 print(f"branch_B_stop_reason={rec['branch_B'].get('stop_reason')}")
+                print(f"branch_B_cross_think_cover={json.dumps(rec['branch_B'].get('cross_think_cover', {}), ensure_ascii=False)}")
                 if rec["branch_A"].get("full_text") is not None:
                     print("\n[Branch A Full Text]\n")
                     print(rec["branch_A"]["full_text"])
@@ -719,6 +748,7 @@ def main() -> None:
                             "branch_B_stop_reason": rec["branch_B"].get("stop_reason"),
                             "branch_A_match_cover": rec["branch_A"].get("match_cover", {}),
                             "branch_B_match_cover": rec["branch_B"].get("match_cover", {}),
+                            "branch_B_cross_think_cover": rec["branch_B"].get("cross_think_cover", {}),
                         },
                         ensure_ascii=False,
                         indent=2,
@@ -758,6 +788,7 @@ def main() -> None:
             "corrupt_max_changes": args.corrupt_max_changes,
             "corrupt_window_chars": args.corrupt_window_chars,
             "apply_match_cover": bool(args.apply_match_cover),
+            "apply_cross_think_cover": bool(args.apply_cross_think_cover),
             "cover_min_exact_overlap": args.cover_min_exact_overlap,
             "cover_fuzzy_min_len": args.cover_fuzzy_min_len,
             "cover_fuzzy_max_len": args.cover_fuzzy_max_len,

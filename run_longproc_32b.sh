@@ -18,6 +18,7 @@ MAX_NEW_AFTER="${MAX_NEW_AFTER:-400}"
 MIN_B_TOKENS_BEFORE_EOS="${MIN_B_TOKENS_BEFORE_EOS:-64}"
 B_RETRY_TIMES="${B_RETRY_TIMES:-2}"
 AUTO_CLOSE_UNCLOSED_THINK="${AUTO_CLOSE_UNCLOSED_THINK:-0}"
+APPLY_CROSS_THINK_COVER="${APPLY_CROSS_THINK_COVER:-1}"
 OUT_ROOT="${OUT_ROOT:-suite_longproc_32b}"
 OUT_SUFFIX="${OUT_SUFFIX:-}"
 BRANCH_MODE="${BRANCH_MODE:-ab}"
@@ -88,6 +89,14 @@ while [[ $# -gt 0 ]]; do
       AUTO_CLOSE_UNCLOSED_THINK=1
       shift 1
       ;;
+    --apply-cross-think-cover)
+      APPLY_CROSS_THINK_COVER=1
+      shift 1
+      ;;
+    --no-apply-cross-think-cover)
+      APPLY_CROSS_THINK_COVER=0
+      shift 1
+      ;;
     --print-full-output)
       PRINT_FULL_OUTPUT=1
       shift 1
@@ -110,6 +119,8 @@ Usage: bash run_longproc_32b.sh [options]
   --min-b-tokens-before-eos N
   --b-retry-times N
   --auto-close-unclosed-think
+  --apply-cross-think-cover
+  --no-apply-cross-think-cover
   --print-full-output
 USAGE
       exit 0
@@ -131,6 +142,9 @@ if [[ "${PRINT_FULL_OUTPUT}" == "1" ]]; then
 fi
 if [[ "${AUTO_CLOSE_UNCLOSED_THINK}" == "1" ]]; then
   EXTRA_ARGS+=(--auto-close-unclosed-think)
+fi
+if [[ "${APPLY_CROSS_THINK_COVER}" == "1" ]]; then
+  EXTRA_ARGS+=(--apply-cross-think-cover)
 fi
 
 INJECT_TEXT="$(cat "${INJECT_TEXT_FILE}")"
