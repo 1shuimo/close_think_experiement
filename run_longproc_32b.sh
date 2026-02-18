@@ -10,6 +10,10 @@ LONGPROC_DATA_PATH="${LONGPROC_DATA_PATH:-../LongProc/data}"
 LONGPROC_CODE_PATH="${LONGPROC_CODE_PATH:-../LongProc}"
 N_SAMPLES="${N_SAMPLES:-6}"
 OUT_ROOT="${OUT_ROOT:-suite_longproc_32b}"
+PROMPT_BASE_FILE="${PROMPT_BASE_FILE:-prompts/system_base_v1.txt}"
+PROMPT_ENH_FILE="${PROMPT_ENH_FILE:-prompts/system_enhanced_v1.txt}"
+INJECT_TEXT_FILE="${INJECT_TEXT_FILE:-prompts/inject_think_v1.txt}"
+INJECT_TEXT="$(cat "${INJECT_TEXT_FILE}")"
 
 mkdir -p "${OUT_ROOT}"
 
@@ -21,10 +25,11 @@ python test_close_suite.py \
   --longproc-code-path "${LONGPROC_CODE_PATH}" \
   --n-samples "${N_SAMPLES}" \
   --prompt-mode baseline \
+  --system-prompt-file "${PROMPT_BASE_FILE}" \
   --checkpoint-mode regex \
-  --checkpoint-regex '(?i)step\s*3' \
+  --checkpoint-regex '__auto__' \
   --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '(?i)step\s*3' \
+  --corrupt-anchor-regex '__auto__' \
   --checkpoint-delay 120 \
   --max-prefix-tokens 1200 \
   --max-new-after 400 \
@@ -39,10 +44,12 @@ python test_close_suite.py \
   --longproc-code-path "${LONGPROC_CODE_PATH}" \
   --n-samples "${N_SAMPLES}" \
   --prompt-mode enhanced \
+  --system-prompt-file "${PROMPT_ENH_FILE}" \
+  --inject-text "${INJECT_TEXT}" \
   --checkpoint-mode regex \
-  --checkpoint-regex '(?i)step\s*3' \
+  --checkpoint-regex '__auto__' \
   --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '(?i)step\s*3' \
+  --corrupt-anchor-regex '__auto__' \
   --checkpoint-delay 120 \
   --max-prefix-tokens 1200 \
   --max-new-after 400 \
@@ -57,11 +64,13 @@ python test_close_suite.py \
   --longproc-code-path "${LONGPROC_CODE_PATH}" \
   --n-samples "${N_SAMPLES}" \
   --prompt-mode enhanced \
+  --system-prompt-file "${PROMPT_ENH_FILE}" \
+  --inject-text "${INJECT_TEXT}" \
   --apply-match-cover \
   --checkpoint-mode regex \
-  --checkpoint-regex '(?i)step\s*3' \
+  --checkpoint-regex '__auto__' \
   --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '(?i)step\s*3' \
+  --corrupt-anchor-regex '__auto__' \
   --checkpoint-delay 120 \
   --max-prefix-tokens 1200 \
   --max-new-after 400 \

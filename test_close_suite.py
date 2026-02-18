@@ -57,6 +57,92 @@ def _load_longproc_data(
     return load_longproc_data(dataset_name, data_path)
 
 
+def infer_task_family(longproc_task: Optional[str]) -> Optional[str]:
+    if not longproc_task:
+        return None
+    return longproc_task.rsplit("_", 1)[0]
+
+
+def build_task_format_guidance(task_family: Optional[str]) -> str:
+    if task_family == "tom_tracking":
+        return (
+            "Output format requirement: after reasoning, output belief trace lines beginning with '- Step X:' "
+            "and include a final answer line matching the task examples."
+        )
+    if task_family == "path_traversal":
+        return (
+            "Output format requirement: output ONLY one route block wrapped with <Route>...</Route>, "
+            "one route step per line in the exact sentence template."
+        )
+    if task_family == "pseudo_to_code":
+        return (
+            "Output format requirement: output ONLY one C++ code block wrapped with ```cpp and ```."
+        )
+    if task_family == "html_to_tsv":
+        return (
+            "Output format requirement: output ONLY one TSV block wrapped with ```tsv and ```."
+        )
+    if task_family == "countdown":
+        return (
+            "Output format requirement: include '# Search Procedure' and mark final equations with "
+            "<Solution>...</Solution>."
+        )
+    if task_family == "travel_planning":
+        return (
+            "Output format requirement: include <Solving Procedure>...</Solving Procedure> and "
+            "<Plan>...</Plan>."
+        )
+    return ""
+
+
+def format_regex_for_task_family(task_family: Optional[str]) -> Optional[str]:
+    if task_family == "tom_tracking":
+        return r"(?m)^-\s*Step\s+\d+:"
+    if task_family == "path_traversal":
+        return r"(?s)<Route>.*</Route>"
+    if task_family == "pseudo_to_code":
+        return r"(?s)```cpp.*```"
+    if task_family == "html_to_tsv":
+        return r"(?s)```tsv.*```"
+    if task_family == "countdown":
+        return r"(?s)<Solution>.*</Solution>"
+    if task_family == "travel_planning":
+        return r"(?s)<Plan>.*</Plan>"
+    return None
+
+
+def auto_checkpoint_regex(task_family: Optional[str]) -> str:
+    if task_family == "tom_tracking":
+        return r"(?i)-\s*Step\s*3:"
+    if task_family == "path_traversal":
+        return r"(?i)<Route>"
+    if task_family == "pseudo_to_code":
+        return r"(?i)```cpp"
+    if task_family == "html_to_tsv":
+        return r"(?i)```tsv"
+    if task_family == "countdown":
+        return r"(?i)#\s*Search Procedure"
+    if task_family == "travel_planning":
+        return r"(?i)<Solving Procedure>"
+    return r"(?i)step\s*3"
+
+
+def auto_corrupt_anchor_regex(task_family: Optional[str]) -> str:
+    if task_family == "tom_tracking":
+        return r"(?i)-\s*Step\s*3:"
+    if task_family == "path_traversal":
+        return r"(?i)<Route>"
+    if task_family == "pseudo_to_code":
+        return r"(?i)```cpp"
+    if task_family == "html_to_tsv":
+        return r"(?i)```tsv"
+    if task_family == "countdown":
+        return r"(?i)#\s*Search Procedure"
+    if task_family == "travel_planning":
+        return r"(?i)<Solving Procedure>"
+    return r"(?i)step\s*3"
+
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Batch A/B suite for close-think experiments.")
     p.add_argument("--model-paths", required=True, help="Comma-separated model paths.")
@@ -67,9 +153,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--longproc-code-path", default="../LongProc")
     p.add_argument("--n-samples", type=int, default=None, help="Sample count limit (for longproc mode).")
     p.add_argument("--shuffle", action="store_true", help="Shuffle longproc samples before slicing.")
-    p.add_argument("--output-dir", default="close/suite_outputs")
+    p.add_argument("--output-dir", default="suite_outputs")
 
     p.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
+    p.add_argument("--system-prompt-file", default=None, help="Load system prompt text from file.")
+    p.add_argument("--no-task-format-guidance", action="store_true", help="Disable auto task-specific format guidance.")
     p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
     p.add_argument("--think-word-limit", type=int, default=60)
     p.add_argument("--temperature", type=float, default=0.4)
@@ -79,7 +167,7 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--checkpoint-delay", type=int, default=200)
     p.add_argument("--checkpoint-mode", default="think_end", choices=["think_end", "regex"])
-    p.add_argument("--checkpoint-regex", default=r"(?i)step\s*3")
+    p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
     p.add_argument("--max-new-after", type=int, default=1000)
     p.add_argument("--inject-text", default=DEFAULT_INJECT_TEXT)
@@ -96,7 +184,7 @@ def parse_args() -> argparse.Namespace:
         choices=["number_shift", "anchor_number_shift", "none"],
         help="Whether to auto-corrupt prefix before branch A/B.",
     )
-    p.add_argument("--corrupt-anchor-regex", default=r"(?i)step\s*3")
+    p.add_argument("--corrupt-anchor-regex", default="__auto__")
     p.add_argument("--corrupt-max-changes", type=int, default=2)
     p.add_argument("--corrupt-window-chars", type=int, default=240)
     return p.parse_args()
@@ -131,6 +219,8 @@ def run_task_ab(
     system_prompt: str,
     prompt_mode: str,
     think_word_limit: int,
+    task_family: Optional[str],
+    task_format_guidance: str,
     task: Dict[str, object],
     eval_fn: Optional[Callable],
     temperature: float,
@@ -164,6 +254,12 @@ def run_task_ab(
         prompt_mode=prompt_mode,
         think_word_limit=think_word_limit,
     )
+    if task_format_guidance:
+        used_system_prompt = (
+            used_system_prompt
+            + "\n\nTask-specific output format (MUST follow):\n"
+            + task_format_guidance
+        )
 
     prompt_ids = build_prompt_ids(
         tokenizer=tokenizer,
@@ -271,6 +367,10 @@ def run_task_ab(
 
     eval_a = evaluate_branch(edited_text, cont_a, full_a, expected_regex)
     eval_b = evaluate_branch(edited_text, cont_b, full_b, expected_regex)
+    format_re = format_regex_for_task_family(task_family)
+    if format_re:
+        eval_a["format_hit"] = bool(re.search(format_re, full_a, re.IGNORECASE | re.DOTALL))
+        eval_b["format_hit"] = bool(re.search(format_re, full_b, re.IGNORECASE | re.DOTALL))
 
     longproc_eval_a = None
     longproc_eval_b = None
@@ -290,6 +390,7 @@ def run_task_ab(
         "task_id": task_id,
         "user_prompt": user_prompt,
         "expected_regex": expected_regex,
+        "task_family": task_family,
         "reference_output": reference_output,
         "prompt_mode": prompt_mode,
         "system_prompt_used": used_system_prompt,
@@ -334,6 +435,7 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
         think_ok: List[bool] = []
         rep_flags: List[bool] = []
         expected_flags: List[bool] = []
+        format_flags: List[bool] = []
         overlaps: List[int] = []
         trimmed_chars: List[int] = []
         cover_modes: Dict[str, int] = {}
@@ -347,6 +449,9 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             eh = m["expected_hit"]
             if eh is not None:
                 expected_flags.append(bool(eh))
+            fh = m.get("format_hit")
+            if fh is not None:
+                format_flags.append(bool(fh))
             cover = r[branch_key].get("match_cover", {}) or {}
             trimmed = int(cover.get("trimmed_chars", 0) or 0)
             trimmed_chars.append(trimmed)
@@ -366,6 +471,7 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             "repetition_rate": _rate(rep_flags),
             "avg_overlap_prefix_to_continuation": (sum(overlaps) / len(overlaps)) if overlaps else None,
             "expected_hit_rate": _rate(expected_flags) if expected_flags else None,
+            "format_hit_rate": _rate(format_flags) if format_flags else None,
             "avg_trimmed_chars_by_match_cover": (sum(trimmed_chars) / len(trimmed_chars)) if trimmed_chars else None,
             "match_cover_mode_counts": cover_modes,
         }
@@ -379,8 +485,29 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
 
 def main() -> None:
     args = parse_args()
+    if args.system_prompt_file:
+        args.system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8")
+
     eval_fn: Optional[Callable] = None
     task_source: str
+    task_family: Optional[str] = infer_task_family(args.longproc_task)
+    task_format_guidance = ""
+    if args.longproc_task and not args.no_task_format_guidance:
+        task_format_guidance = build_task_format_guidance(task_family)
+
+    resolved_checkpoint_regex: Optional[str]
+    if args.checkpoint_mode == "regex":
+        if args.checkpoint_regex == "__auto__":
+            resolved_checkpoint_regex = auto_checkpoint_regex(task_family)
+        else:
+            resolved_checkpoint_regex = args.checkpoint_regex
+    else:
+        resolved_checkpoint_regex = None
+    if args.corrupt_anchor_regex == "__auto__":
+        resolved_corrupt_anchor_regex = auto_corrupt_anchor_regex(task_family)
+    else:
+        resolved_corrupt_anchor_regex = args.corrupt_anchor_regex
+
     if args.longproc_task:
         longproc_data, eval_fn = _load_longproc_data(
             dataset_name=args.longproc_task,
@@ -403,6 +530,13 @@ def main() -> None:
                 }
             )
         task_source = f"longproc:{args.longproc_task}"
+        print(
+            f"[TaskSpec] family={task_family} "
+            f"checkpoint_regex={resolved_checkpoint_regex} "
+            f"corrupt_anchor_regex={resolved_corrupt_anchor_regex}"
+        )
+        if task_format_guidance:
+            print(f"[TaskSpec] format_guidance={task_format_guidance}")
     else:
         tasks_path = Path(args.tasks_file)
         if not tasks_path.exists():
@@ -441,6 +575,8 @@ def main() -> None:
                 system_prompt=args.system_prompt,
                 prompt_mode=args.prompt_mode,
                 think_word_limit=args.think_word_limit,
+                task_family=task_family,
+                task_format_guidance=task_format_guidance,
                 task=task,
                 eval_fn=eval_fn,
                 temperature=args.temperature,
@@ -448,13 +584,13 @@ def main() -> None:
                 seed=args.seed + 1000 * i,
                 checkpoint_delay=args.checkpoint_delay,
                 checkpoint_mode=args.checkpoint_mode,
-                checkpoint_regex=args.checkpoint_regex if args.checkpoint_mode == "regex" else None,
+                checkpoint_regex=resolved_checkpoint_regex,
                 max_prefix_tokens=args.max_prefix_tokens,
                 max_new_after=args.max_new_after,
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
                 corrupt_mode=args.corrupt_mode,
-                corrupt_anchor_regex=args.corrupt_anchor_regex,
+                corrupt_anchor_regex=resolved_corrupt_anchor_regex,
                 corrupt_max_changes=args.corrupt_max_changes,
                 corrupt_window_chars=args.corrupt_window_chars,
                 apply_match_cover_flag=bool(args.apply_match_cover),
@@ -521,12 +657,16 @@ def main() -> None:
             "longproc_code_path": args.longproc_code_path if args.longproc_task else None,
             "n_samples": args.n_samples if args.longproc_task else None,
             "shuffle": bool(args.shuffle) if args.longproc_task else None,
+            "task_family": task_family,
+            "task_format_guidance": task_format_guidance if args.longproc_task else None,
+            "system_prompt_file": args.system_prompt_file,
+            "no_task_format_guidance": bool(args.no_task_format_guidance),
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
             "checkpoint_mode": args.checkpoint_mode,
-            "checkpoint_regex": args.checkpoint_regex if args.checkpoint_mode == "regex" else None,
+            "checkpoint_regex": resolved_checkpoint_regex,
             "corrupt_mode": args.corrupt_mode,
-            "corrupt_anchor_regex": args.corrupt_anchor_regex,
+            "corrupt_anchor_regex": resolved_corrupt_anchor_regex,
             "corrupt_max_changes": args.corrupt_max_changes,
             "corrupt_window_chars": args.corrupt_window_chars,
             "apply_match_cover": bool(args.apply_match_cover),

@@ -1,223 +1,145 @@
 # close_think_experiement
 
-用于验证一个核心问题：
-在“同一次续写上下文”里，中途插入 `<think>`（加引导词）后，模型能否保持：
-- `<think> ... </think>` 闭合
-- 连贯续写（不复读、不重启）
-- 正确性不下降
+这个仓库用于验证一个问题：
+在同一条生成轨迹中，中途插入 `<think>`（和引导词）后，模型是否还能保持：
+1. `<think>...</think>` 正确闭合。
+2. 中断点连贯续写（不重启、不大段复读）。
+3. 任务格式与正确性不明显下降。
 
----
+## 1. 核心流程（你现在跑的就是这个）
 
-## 1. 你看到的“多个 step”到底是什么
+每个任务按同一流程执行：
+1. `prefill`：把 `system + user` 输入喂给模型，拿到 KV 缓存和最后一个位置的 logits。
+2. `checkpoint 截断`：继续生成到中间锚点（如 `Step 3` 或 `<Route>`）后，再走 N token 停下。
+3. `前缀扰动`：在锚点附近改几个数字（模拟“中间推理出错”）。
+4. `同状态分叉续写`：
+   - Branch A：直接续写。
+   - Branch B：先注入 `<think> + 引导词` 再续写。
+5. `评估`：统计闭合、重复、格式命中、LongProc 指标。
 
-这里有 3 种不同的 step，不要混淆：
-
-1. 任务文本里的 `Step 1 / Step 2 / Step 3`
-- 来自 `tasks_math_steps.jsonl` 的提示词格式（让模型按步骤输出）。
-- 这个 step 是“题目输出格式”，不是代码执行步骤。
-
-2. 实验流程的 Stage/Phase
-- 在代码里是：
-  - 先生成到 checkpoint（中间状态）
-  - 破坏一部分前缀（造错）
-  - 从同一状态分叉 A/B 继续生成
-- 这是“算法流程 step”。
-
-3. shell 脚本里的 `[Test 1]...[Test 6]`
-- 来自 `run_test_matrix.sh`。
-- 这是“批量实验编号 step”。
-
----
-
-## 2. 代码文件作用
-
+对应代码：
 - `think_branch_common.py`
-  - 公共核心逻辑：加载模型、KV prefill、checkpoint 截断、A/B 分叉、匹配覆盖。
 - `test_close_suite.py`
-  - 主实验脚本（批量跑任务、统计指标、保存结果）。
-- `test_branch_manual.py`
-  - 单例交互版（你手工改错后再看 A/B）。
-- `tasks_math_steps.jsonl`
-  - Step 格式任务集，适合 regex checkpoint。
-- `run_test_matrix.sh`
-  - 一键跑 baseline/enhanced/cover 与 8B/32B 对照。
-- `export_full_outputs.py`
-  - 从结果文件导出每题 A/B 完整文本，便于人工检查。
 
----
+## 2. KV prefill / checkpoint / 分叉到底怎么做
 
-## 3. 基本逻辑（核心）
+### 2.1 KV prefill
+- 入口：`think_branch_common.py` 的 `prefill_kv(...)`。
+- 做法：把长输入按 `chunk_size` 分块前向，持续累积 `past_key_values`。
+- 目的：避免一次性 prefill OOM，同时拿到最后位置 logits 用于后续采样。
 
-每条任务按下面流程执行：
+### 2.2 checkpoint 截断
+- 入口：`generate_until_checkpoint(...)`。
+- 两种模式：
+  - `think_end`：首次匹配到 `</think>` 后，再生成 `checkpoint_delay` 个 token 停止。
+  - `regex`：文本命中 `checkpoint_regex` 后，再生成 `checkpoint_delay` 个 token 停止。
+- 推荐：LongProc 一般用 `regex`，并用 `__auto__` 让脚本按任务自动选锚点。
 
-1. 构造 prompt  
-- `prompt_mode=baseline|enhanced`  
-- enhanced 会追加关于 `<think>` 的行为约束（闭合、续写、不重复）。
+### 2.3 分叉续写
+- 入口：`test_close_suite.py` 的 `run_task_ab(...)`。
+- 做法：
+  1. 对“prompt + 被扰动前缀”做一次 `prefill_kv` 得到 `past_base/logits_base`。
+  2. 复制 KV（`clone_past_key_values`）给 A/B，保证两分支同起点。
+  3. A 直接采样；B 先注入 `inject_text` 再采样。
+- 这就是“同一次生成上下文内多路径采样”的近似实现。
 
-2. 生成到 checkpoint（中间状态）  
-- `checkpoint_mode=think_end`：遇到首次 `</think>` 后再走 N token 停下  
-- `checkpoint_mode=regex`：匹配到如 `Step 3` 后再走 N token 停下
+## 3. 为什么会看到很多“step”
 
-3. 造错（可选）  
-- `number_shift`：全局找数字改动  
-- `anchor_number_shift`：只在锚点附近改数字（更符合“中间步骤出错”）
+有三类 step：
+1. 题目内 Step（如 `- Step 1:`）
+- 这是任务输出格式的一部分。
+2. 实验流程 step（prefill/checkpoint/扰动/分叉）
+- 这是算法执行阶段。
+3. 跑批日志 step（`[1/6]`）
+- 这是第几条样本，不是题目 Step。
 
-4. 同状态分叉续写  
-- 先 prefill 一次得到 `past_base/logits_base`  
-- Branch A：直接续写  
-- Branch B：先注入 `<think> + 引导词` 再续写  
-- 两支都从同一前缀状态出发（只改变“是否注入 think”）。
+## 4. LongProc 任务格式要求（已内置）
 
-5. 匹配覆盖（可选）  
-- `--apply-match-cover` 时，对续写头部和前缀尾部做 overlap 去重：
-  - exact overlap
-  - fuzzy overlap（近似重复）
+`test_close_suite.py` 会根据 `--longproc-task` 自动推断任务族（如 `tom_tracking_0.5k -> tom_tracking`），并追加格式约束到 system prompt，同时自动计算 `format_hit_rate`。
 
-6. 计算指标并落盘  
-- think 闭合率、重复率、overlap、expected 命中率等。
+当前内置映射：
+- `tom_tracking`：需要 `- Step X:` 轨迹行。
+- `path_traversal`：需要 `<Route>...</Route>`。
+- `pseudo_to_code`：需要 ```cpp ... ```。
+- `html_to_tsv`：需要 ```tsv ... ```。
+- `countdown`：需要 `<Solution>...</Solution>`。
+- `travel_planning`：需要 `<Solving Procedure>...</Solving Procedure>` 和 `<Plan>...</Plan>`。
 
----
+## 5. Prompt 迭代方式（建议固定文件）
 
-## 4. 超参数说明（最常用）
+你每次迭代 prompt，不要直接改命令行长字符串，而是改文件：
+- `prompts/system_base_v1.txt`
+- `prompts/system_enhanced_v1.txt`
+- `prompts/inject_think_v1.txt`
 
-### 模型与采样
-- `--model-paths`: 模型路径（可逗号分隔多个）
-- `--dtype`: `bf16/fp16/fp32`
-- `--temperature`: 采样温度，越高越发散
-- `--top-p`: nucleus 采样阈值
-- `--seed`: 随机种子
+运行时通过参数加载：
+- `--system-prompt-file`
+- `--inject-text "$(cat prompts/inject_think_v1.txt)"`
 
-### Prompt 相关
-- `--prompt-mode baseline|enhanced`
-- `--think-word-limit`: enhanced 下建议 think 长度
-- `--inject-text`: B 分支插入的文本（默认含 `<think>...</think>`）
+这样可以复现实验并与结果目录一一对应。
 
-### Checkpoint 相关
-- `--checkpoint-mode think_end|regex`
-- `--checkpoint-regex`: regex 模式下的锚点（例如 `(?i)step\\s*3`）
-- `--checkpoint-delay`: 命中锚点后再走多少 token 停下
-- `--max-prefix-tokens`: Stage1 生成上限
-- `--max-new-after`: A/B 分叉后生成上限
-- `--chunk-size`: prefill 分块长度（防 OOM）
+## 6. 超参数速查（最关键）
 
-### 造错相关
-- `--corrupt-mode none|number_shift|anchor_number_shift`
-- `--corrupt-anchor-regex`: 锚点造错时的定位 regex
-- `--corrupt-max-changes`: 最多改几个数字
-- `--corrupt-window-chars`: 锚点附近窗口大小
+- 采样：`temperature`, `top_p`, `seed`
+- 截断：`checkpoint_mode`, `checkpoint_regex`, `checkpoint_delay`, `max_prefix_tokens`
+- 续写：`max_new_after`
+- OOM 控制：`chunk_size`
+- 扰动：`corrupt_mode`, `corrupt_anchor_regex`, `corrupt_max_changes`, `corrupt_window_chars`
+- 去重：`apply_match_cover`, `cover_*`
 
-### 匹配覆盖相关
-- `--apply-match-cover`
-- `--cover-min-exact-overlap`
-- `--cover-fuzzy-min-len`
-- `--cover-fuzzy-max-len`
-- `--cover-fuzzy-ratio`
+## 7. 结果指标怎么解释
 
-### 输出相关
-- `--print-full-output`: 终端打印每题 A/B 全文
-- `--save-task-texts`: 保存每题 A/B 全文到 txt
-- `--output-dir`: 输出目录
+summary 里重点看：
+- `think_balanced_rate`：`<think>` 与 `</think>` 是否平衡。
+- `repetition_rate`：是否出现大段前缀复读。
+- `avg_overlap_prefix_to_continuation`：复读重叠长度（越低越好）。
+- `format_hit_rate`：是否命中任务规定格式。
+- `expected_hit_rate`：命中 `expected_regex`（仅轻量正确性）。
+- `longproc_avg_metrics`：LongProc 官方 evaluator 的均值指标。
 
----
+## 8. 快速运行（32B + LongProc）
 
-## 5. 如何看“完整输出”（你最关心）
-
-### 方式 A：运行时直接打印
+### 8.1 一键三组（baseline / enhanced / enhanced+cover）
 ```bash
-python test_close_suite.py \
-  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
-  --tasks-file tasks_math_steps.jsonl \
-  --prompt-mode enhanced \
-  --checkpoint-mode regex \
-  --checkpoint-regex '(?i)step\s*3' \
-  --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '(?i)step\s*3' \
-  --checkpoint-delay 120 \
-  --max-prefix-tokens 1200 \
-  --max-new-after 400 \
-  --output-dir suite_32b_fullview \
-  --print-full-output \
-  --save-task-texts
+cd /auto/users/guoeng/guolei/close_think_experiement
+MODEL_32B="/scratch-ssd/guoeng/huggingface/models/Qwen3-32B" \
+TASK="tom_tracking_0.5k" \
+N_SAMPLES=20 \
+bash run_longproc_32b.sh
 ```
 
-### 方式 B：从历史结果导出全文
-```bash
-python export_full_outputs.py \
-  --results-jsonl suite_32b_smoke/_scratch-ssd_guoeng_huggingface_models_Qwen3-32B.results.jsonl \
-  --out-dir suite_32b_smoke_dump \
-  --print-to-stdout
-```
-
-你重点看每题的：
-- `branch_A.full.txt`
-- `branch_B.full.txt`
-- `meta.json`
-
----
-
-## 6. 如何判断 `<think>` 是否按你期望工作
-
-先看 summary：
-- `think_balanced_rate` 是否接近 1.0（闭合）
-- `branch_B.repetition_rate` 是否明显升高（说明中插 think 导致复读）
-
-再看全文（强烈建议）：
-1. 是否真出现了 `<think>`
-2. 是否有 `</think>` 结尾
-3. `</think>` 后是不是接着原句/原 step 继续，而不是重启答案
-4. 是否重复了前缀末尾大段文本
-
----
-
-## 7. 常见问题
-
-### Q1: 为什么 public 仓库用 `git@github.com` clone 也会失败？
-因为 SSH 协议仍需有效公钥认证。  
-public 仓库可匿名 clone 的是 HTTPS：
-```bash
-git clone https://github.com/1shuimo/close_think_experiement.git
-```
-
-### Q2: 为什么 match-cover 开了却没效果？
-看 `match_cover_mode_counts`。如果全是 `none`，通常是阈值太严。  
-先尝试降低：
-- `--cover-min-exact-overlap`
-- `--cover-fuzzy-ratio`
-
-### Q3: 32B 显存压力大怎么办？
-先降：
-- `--max-prefix-tokens`
-- `--max-new-after`
-- `--chunk-size`
-
----
-
-## 8. LongProc 题目怎么跑
-
-你现在可以不走 `tasks_math*.jsonl`，直接用 LongProc 官方加载器：
-
+### 8.2 单独跑一组（方便迭代 prompt）
 ```bash
 python test_close_suite.py \
   --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
   --longproc-task tom_tracking_0.5k \
   --longproc-data-path ../LongProc/data \
   --longproc-code-path ../LongProc \
-  --n-samples 6 \
+  --n-samples 20 \
   --prompt-mode enhanced \
+  --system-prompt-file prompts/system_enhanced_v1.txt \
+  --inject-text "$(cat prompts/inject_think_v1.txt)" \
   --checkpoint-mode regex \
-  --checkpoint-regex '(?i)step\s*3' \
+  --checkpoint-regex __auto__ \
   --corrupt-mode anchor_number_shift \
-  --corrupt-anchor-regex '(?i)step\s*3' \
+  --corrupt-anchor-regex __auto__ \
   --checkpoint-delay 120 \
   --max-prefix-tokens 1200 \
   --max-new-after 400 \
-  --output-dir suite_longproc_32b \
+  --output-dir suite_longproc_32b/enhanced_custom \
   --save-task-texts \
   --print-full-output
 ```
 
-LongProc 模式下 summary 会多出：
-- `branch_A.longproc_avg_metrics`
-- `branch_B.longproc_avg_metrics`
+## 9. 输出文件说明
 
-这些就是 LongProc evaluator 的平均分（如 `accuracy`、`partial_accuracy`、`extraction_rate`）。
+每次运行会生成：
+- `*.results.jsonl`：逐题详细记录（A/B全文、metrics、扰动信息）。
+- `*.summary.json`：单模型汇总。
+- `summary_all_models.json`：多模型总汇总。
+- `*.task_texts/<task_id>/branch_A.full.txt`、`branch_B.full.txt`、`meta.json`（若开 `--save-task-texts`）。
+
+## 10. 配套计划文档
+
+- `todo.md`：你下一步实验清单（要跑什么命令、看什么指标、什么结果对应什么结论）。
+
