@@ -200,8 +200,8 @@ git clone https://github.com/1shuimo/close_think_experiement.git
 python test_close_suite.py \
   --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
   --longproc-task tom_tracking_0.5k \
-  --longproc-data-path ../bench/LongProc/data \
-  --longproc-code-path ../bench/LongProc \
+  --longproc-data-path ../LongProc/data \
+  --longproc-code-path ../LongProc \
   --n-samples 6 \
   --prompt-mode enhanced \
   --checkpoint-mode regex \

@@ -6,8 +6,8 @@ cd "${SCRIPT_DIR}"
 
 MODEL_32B="${MODEL_32B:-/scratch-ssd/guoeng/huggingface/models/Qwen3-32B}"
 TASK="${TASK:-tom_tracking_0.5k}"
-LONGPROC_DATA_PATH="${LONGPROC_DATA_PATH:-../bench/LongProc/data}"
-LONGPROC_CODE_PATH="${LONGPROC_CODE_PATH:-../bench/LongProc}"
+LONGPROC_DATA_PATH="${LONGPROC_DATA_PATH:-../LongProc/data}"
+LONGPROC_CODE_PATH="${LONGPROC_CODE_PATH:-../LongProc}"
 N_SAMPLES="${N_SAMPLES:-6}"
 OUT_ROOT="${OUT_ROOT:-suite_longproc_32b}"
 
