@@ -10,6 +10,7 @@ LONGPROC_DATA_PATH="${LONGPROC_DATA_PATH:-../LongProc/data}"
 LONGPROC_CODE_PATH="${LONGPROC_CODE_PATH:-../LongProc}"
 N_SAMPLES="${N_SAMPLES:-6}"
 CHECKPOINT_DELAY="${CHECKPOINT_DELAY:-120}"
+CHECKPOINT_MODE="${CHECKPOINT_MODE:-regex}"
 CHECKPOINT_REGEX="${CHECKPOINT_REGEX:-__auto__}"
 CORRUPT_ANCHOR_REGEX="${CORRUPT_ANCHOR_REGEX:-__auto__}"
 MAX_PREFIX_TOKENS="${MAX_PREFIX_TOKENS:-1200}"
@@ -37,6 +38,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --checkpoint-delay)
       CHECKPOINT_DELAY="$2"
+      shift 2
+      ;;
+    --checkpoint-mode)
+      CHECKPOINT_MODE="$2"
       shift 2
       ;;
     --checkpoint-regex)
@@ -93,6 +98,7 @@ Usage: bash run_longproc_32b.sh [options]
   --max-prefix-tokens N
   --max-new-after N
   --checkpoint-delay N
+  --checkpoint-mode think_end|regex|think_end_then_regex
   --checkpoint-regex REGEX
   --corrupt-anchor-regex REGEX
   --n-samples N
@@ -140,7 +146,7 @@ python test_close_suite.py \
   --n-samples "${N_SAMPLES}" \
   --prompt-mode baseline \
   --system-prompt-file "${PROMPT_BASE_FILE}" \
-  --checkpoint-mode regex \
+  --checkpoint-mode "${CHECKPOINT_MODE}" \
   --checkpoint-regex "${CHECKPOINT_REGEX}" \
   --corrupt-mode anchor_number_shift \
   --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
@@ -164,7 +170,7 @@ python test_close_suite.py \
   --prompt-mode enhanced \
   --system-prompt-file "${PROMPT_ENH_FILE}" \
   --inject-text "${INJECT_TEXT}" \
-  --checkpoint-mode regex \
+  --checkpoint-mode "${CHECKPOINT_MODE}" \
   --checkpoint-regex "${CHECKPOINT_REGEX}" \
   --corrupt-mode anchor_number_shift \
   --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
@@ -189,7 +195,7 @@ python test_close_suite.py \
   --system-prompt-file "${PROMPT_ENH_FILE}" \
   --inject-text "${INJECT_TEXT}" \
   --apply-match-cover \
-  --checkpoint-mode regex \
+  --checkpoint-mode "${CHECKPOINT_MODE}" \
   --checkpoint-regex "${CHECKPOINT_REGEX}" \
   --corrupt-mode anchor_number_shift \
   --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \

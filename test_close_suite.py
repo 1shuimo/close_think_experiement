@@ -165,7 +165,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--chunk-size", type=int, default=2048)
 
     p.add_argument("--checkpoint-delay", type=int, default=200)
-    p.add_argument("--checkpoint-mode", default="think_end", choices=["think_end", "regex"])
+    p.add_argument("--checkpoint-mode", default="think_end", choices=["think_end", "regex", "think_end_then_regex"])
     p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
     p.add_argument("--max-new-after", type=int, default=1000)

@@ -230,6 +230,7 @@ def generate_until_checkpoint(
 
     past_key_values, logits = prefill_kv(model, prompt_ids, chunk_size=chunk_size)
 
+    seen_first_think_end = False
     seen_anchor = False
     counter_after_anchor = 0
     generated_ids: List[int] = []
@@ -252,13 +253,21 @@ def generate_until_checkpoint(
         if print_stream:
             print(piece, end="", flush=True)
 
+        if (not seen_first_think_end) and _ends_with_subseq(generated_ids, think_end_ids):
+            seen_first_think_end = True
+
         if not seen_anchor:
+            joined_text = "".join(generated_text_parts)
             if checkpoint_mode == "think_end":
-                if _ends_with_subseq(generated_ids, think_end_ids):
+                if seen_first_think_end:
                     seen_anchor = True
                     counter_after_anchor = 0
             elif checkpoint_mode == "regex":
-                if regex_obj and regex_obj.search("".join(generated_text_parts)):
+                if regex_obj and regex_obj.search(joined_text):
+                    seen_anchor = True
+                    counter_after_anchor = 0
+            elif checkpoint_mode == "think_end_then_regex":
+                if seen_first_think_end and regex_obj and regex_obj.search(joined_text):
                     seen_anchor = True
                     counter_after_anchor = 0
             else:
@@ -272,7 +281,7 @@ def generate_until_checkpoint(
     return {
         "generated_ids": generated_ids,
         "generated_text": generated_text,
-        "seen_first_think_end": seen_anchor,
+        "seen_first_think_end": seen_first_think_end,
         "counter_after_think_end": counter_after_anchor,
         "checkpoint_mode": checkpoint_mode,
         "checkpoint_regex": checkpoint_regex,
