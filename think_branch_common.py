@@ -88,14 +88,48 @@ def top_p_sample(
     return sorted_idx.gather(-1, sampled)
 
 
+def ensure_input_ids_tensor(input_ids: object, device: Optional[torch.device] = None) -> torch.Tensor:
+    """
+    兼容不同 transformers 版本：
+    - Tensor
+    - BatchEncoding (含 .input_ids 或 data["input_ids"])
+    - dict["input_ids"]
+    """
+    if torch.is_tensor(input_ids):
+        t = input_ids
+    elif hasattr(input_ids, "input_ids"):
+        t = getattr(input_ids, "input_ids")
+    elif isinstance(input_ids, dict) and "input_ids" in input_ids:
+        t = input_ids["input_ids"]
+    elif hasattr(input_ids, "data") and isinstance(getattr(input_ids, "data"), dict) and "input_ids" in input_ids.data:
+        t = input_ids.data["input_ids"]
+    else:
+        raise TypeError(f"Unsupported input_ids type: {type(input_ids)}")
+
+    if isinstance(t, list):
+        t = torch.tensor(t, dtype=torch.long)
+
+    if not torch.is_tensor(t):
+        raise TypeError(f"input_ids is not a Tensor after extraction: {type(t)}")
+
+    if t.dim() == 1:
+        t = t.unsqueeze(0)
+
+    if device is not None:
+        t = t.to(device)
+    return t
+
+
 @torch.inference_mode()
 def prefill_kv(
     model: AutoModelForCausalLM,
-    input_ids: torch.Tensor,
+    input_ids: object,
     chunk_size: int = 2048,
 ) -> Tuple[object, torch.Tensor]:
     past_key_values = None
     logits = None
+    model_device = model.get_input_embeddings().weight.device
+    input_ids = ensure_input_ids_tensor(input_ids, device=model_device)
     _, seqlen = input_ids.shape
 
     for start in range(0, seqlen, chunk_size):
@@ -151,7 +185,7 @@ def build_prompt_ids(
     device: torch.device,
     enable_thinking: bool = True,
 ) -> torch.Tensor:
-    return tokenizer.apply_chat_template(
+    x = tokenizer.apply_chat_template(
         [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
@@ -159,7 +193,8 @@ def build_prompt_ids(
         add_generation_prompt=True,
         return_tensors="pt",
         enable_thinking=enable_thinking,
-    ).to(device)
+    )
+    return ensure_input_ids_tensor(x, device=device)
 
 
 def _ends_with_subseq(tokens: List[int], subseq: List[int]) -> bool:
