@@ -34,6 +34,12 @@ bash run_longproc_32b.sh \
 默认不自动补齐未闭合 `<think>`（保留真实行为）；若要补齐可加 `--auto-close-unclosed-think`，并在 `branch_B_retry.forced_close_think` 里查看触发次数。
 若你要“第一次 think 必须先闭合，再注入”，请使用 `--checkpoint-mode think_end_then_regex`。
 若你要“第一次 think 后正文 vs 第二次 think 后正文头”的去重，请开启 `--apply-cross-think-cover`，并查看 `branch_B_cross_think_cover.mode`（`exact/fuzzy/anchor_exact`）与 `trimmed_chars`。
+LongProc 打分默认会先删除所有 `<think>...</think>` 内容；若要直接用原文打分，可传 `--no-eval-strip-think`。
+
+三数据集完整跑（各 20 题，A/B + baseline/enhanced/enhanced_cover）：
+```bash
+bash run_longproc_32b_3tasks.sh
+```
 
 你当前要的模式（1 题、只跑 Branch B、三种模式、终端打印、带后缀防覆盖）：
 ```bash

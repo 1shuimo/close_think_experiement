@@ -135,6 +135,7 @@ bash run_longproc_32b.sh \
 说明：默认不会自动补齐未闭合 `<think>`，用于保留真实行为观测；如需补齐可加 `--auto-close-unclosed-think`。
 说明：如果你希望“先等第一次 think 闭合，再注入”，用 `--checkpoint-mode think_end_then_regex`。
 说明：`--apply-cross-think-cover` 会匹配“第一次 think 后正文”和“第二次 think 后正文头”的重叠（支持 `exact/fuzzy/anchor_exact`），命中后裁掉重复段。
+说明：LongProc evaluator 默认会先去掉所有 `<think>...</think>` 再评分；如需关闭，用 `--no-eval-strip-think`。
 
 只跑 1 题、只跑 Branch B、三种模式都跑，并且终端打印：
 ```bash
@@ -174,6 +175,13 @@ python test_close_suite.py \
   --save-task-texts \
   --print-full-output
 ```
+
+### 8.3 三数据集完整跑（各 20 题，baseline+enhanced+enhanced_cover，A/B 都跑）
+```bash
+bash run_longproc_32b_3tasks.sh
+```
+输出目录示例：
+`suite_longproc_32b_3tasks_20260218_230501/{tom_tracking_0.5k|pseudo_to_code_0.5k|path_traversal_0.5k}/{baseline|enhanced|enhanced_cover}`
 
 ## 9. 输出文件说明
 

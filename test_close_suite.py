@@ -22,6 +22,7 @@ from think_branch_common import (
     load_tasks_jsonl,
     longest_suffix_prefix_overlap,
     prefill_kv,
+    strip_think_blocks,
     think_balance_ok,
 )
 
@@ -181,6 +182,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cover-fuzzy-max-len", type=int, default=160)
     p.add_argument("--cover-fuzzy-ratio", type=float, default=0.92)
     p.add_argument("--apply-cross-think-cover", action="store_true", help="Trim overlap between pre-think body tail and post-think body head in branch B.")
+    p.add_argument("--no-eval-strip-think", action="store_true", help="Do not strip <think>...</think> before LongProc evaluator.")
     p.add_argument("--save-task-texts", action="store_true", help="Save per-task branch full outputs to txt files.")
     p.add_argument("--print-full-output", action="store_true", help="Print full A/B outputs for each task to stdout.")
     p.add_argument(
@@ -246,6 +248,7 @@ def run_task_ab(
     min_b_tokens_before_eos: int,
     b_retry_times: int,
     auto_close_unclosed_think: bool,
+    eval_strip_think: bool,
     chunk_size: int,
     inject_text: str,
     corrupt_mode: str,
@@ -455,13 +458,23 @@ def run_task_ab(
     if eval_fn is not None and eval_item is not None:
         if full_a is not None and "metrics" in branch_a_rec:
             try:
-                m_a, info_a = eval_fn(full_a, eval_item)
-                branch_a_rec["longproc_eval"] = {"metrics": m_a, "info": info_a}
+                eval_text_a = strip_think_blocks(full_a) if eval_strip_think else full_a
+                m_a, info_a = eval_fn(eval_text_a, eval_item)
+                branch_a_rec["longproc_eval"] = {
+                    "metrics": m_a,
+                    "info": info_a,
+                    "eval_strip_think": bool(eval_strip_think),
+                }
             except Exception as e:
                 branch_a_rec["longproc_eval"] = {"metrics": None, "info": {"error": str(e)}}
         try:
-            m_b, info_b = eval_fn(full_b, eval_item)
-            longproc_eval_b = {"metrics": m_b, "info": info_b}
+            eval_text_b = strip_think_blocks(full_b) if eval_strip_think else full_b
+            m_b, info_b = eval_fn(eval_text_b, eval_item)
+            longproc_eval_b = {
+                "metrics": m_b,
+                "info": info_b,
+                "eval_strip_think": bool(eval_strip_think),
+            }
         except Exception as e:
             longproc_eval_b = {"metrics": None, "info": {"error": str(e)}}
 
@@ -689,6 +702,7 @@ def main() -> None:
                 min_b_tokens_before_eos=args.min_b_tokens_before_eos,
                 b_retry_times=args.b_retry_times,
                 auto_close_unclosed_think=bool(args.auto_close_unclosed_think),
+                eval_strip_think=not bool(args.no_eval_strip_think),
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
                 corrupt_mode=args.corrupt_mode,
@@ -789,6 +803,7 @@ def main() -> None:
             "corrupt_window_chars": args.corrupt_window_chars,
             "apply_match_cover": bool(args.apply_match_cover),
             "apply_cross_think_cover": bool(args.apply_cross_think_cover),
+            "eval_strip_think": not bool(args.no_eval_strip_think),
             "cover_min_exact_overlap": args.cover_min_exact_overlap,
             "cover_fuzzy_min_len": args.cover_fuzzy_min_len,
             "cover_fuzzy_max_len": args.cover_fuzzy_max_len,

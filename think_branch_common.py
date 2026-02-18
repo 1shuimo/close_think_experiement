@@ -491,6 +491,19 @@ def think_balance_ok(text: str) -> bool:
     return opens == closes
 
 
+def strip_think_blocks(text: str) -> str:
+    if not text:
+        return text
+    out = text
+    # Remove closed think blocks first.
+    out = re.sub(r"(?is)<think>.*?</think>", "", out)
+    # Remove trailing unclosed think blocks.
+    out = re.sub(r"(?is)<think>.*$", "", out)
+    # Remove dangling close tags if any.
+    out = out.replace("</think>", "")
+    return out
+
+
 def corrupt_prefix_text(text: str) -> Tuple[str, Dict[str, object]]:
     m = re.search(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])", text)
     if not m:
