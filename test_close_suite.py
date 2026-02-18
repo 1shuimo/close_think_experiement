@@ -198,6 +198,12 @@ def _expected_hit(text: str, expected_regex: Optional[str]) -> Optional[bool]:
     return re.search(expected_regex, text, re.IGNORECASE | re.DOTALL) is not None
 
 
+def _think_balance_delta(text: str) -> int:
+    opens = len(re.findall(r"<think>", text))
+    closes = len(re.findall(r"</think>", text))
+    return opens - closes
+
+
 def evaluate_branch(
     edited_prefix_text: str,
     continuation_text: str,
@@ -302,6 +308,11 @@ def run_task_ab(
         )
     else:
         edited_text, corrupt_meta = prefix_text, {"mode": "none", "changed": False}
+    # If checkpoint hits inside an open <think>, close it before branch injection.
+    prefix_think_gap = _think_balance_delta(edited_text)
+    if prefix_think_gap > 0:
+        edited_text = edited_text + ("\n</think>" * prefix_think_gap) + "\n"
+    corrupt_meta["prefix_auto_closed_think"] = max(0, prefix_think_gap)
 
     edited_ids = tokenizer.encode(edited_text, add_special_tokens=False)
     edited_ids_t = torch.tensor([edited_ids], dtype=torch.long, device=device)
@@ -401,6 +412,12 @@ def run_task_ab(
     else:
         cont_b, cover_meta_b = cont_b_raw, {"mode": "disabled", "trimmed_chars": 0}
     full_b = edited_text + inject_text + cont_b
+    # Final safety: force close any leftover open <think> blocks.
+    full_b_think_gap = _think_balance_delta(full_b)
+    if full_b_think_gap > 0:
+        closer = ("\n</think>" * full_b_think_gap) + "\n"
+        cont_b = cont_b + closer
+        full_b = full_b + closer
 
     eval_b = evaluate_branch(edited_text, cont_b, full_b, expected_regex)
     format_re = format_regex_for_task_family(task_family)
@@ -453,6 +470,7 @@ def run_task_ab(
                 "retry_times": max(0, int(b_retry_times)),
                 "min_tokens_before_eos": effective_min_b,
                 "retry_reasons": retry_reasons,
+                "forced_close_think": max(0, full_b_think_gap),
             },
             "match_cover": cover_meta_b,
             "metrics": eval_b,
