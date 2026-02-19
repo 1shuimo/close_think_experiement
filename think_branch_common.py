@@ -1,6 +1,7 @@
 import json
 import re
 import copy
+import random
 from difflib import SequenceMatcher
 from dataclasses import dataclass
 from pathlib import Path
@@ -218,6 +219,9 @@ def generate_until_checkpoint(
     seed: int,
     checkpoint_mode: str = "think_end",
     checkpoint_regex: Optional[str] = None,
+    checkpoint_mid_min_tokens: int = 80,
+    checkpoint_mid_max_tokens: int = 220,
+    checkpoint_mid_avoid_final_regex: Optional[str] = r"(?i)\bfinal\s*:|\bfinal answer\b",
     chunk_size: int = 2048,
     print_stream: bool = False,
 ) -> Dict[str, object]:
@@ -231,11 +235,23 @@ def generate_until_checkpoint(
     past_key_values, logits = prefill_kv(model, prompt_ids, chunk_size=chunk_size)
 
     seen_first_think_end = False
+    first_think_end_token_pos = -1
+    first_think_end_char_pos = -1
     seen_anchor = False
     counter_after_anchor = 0
+    tokens_after_first_think = 0
+    mid_target_tokens = None
+    mid_early_stop_on_final = False
     generated_ids: List[int] = []
     generated_text_parts: List[str] = []
+    generated_text_len = 0
     regex_obj = re.compile(checkpoint_regex, re.IGNORECASE | re.DOTALL) if checkpoint_regex else None
+    mid_final_obj = (
+        re.compile(checkpoint_mid_avoid_final_regex, re.IGNORECASE | re.DOTALL)
+        if checkpoint_mid_avoid_final_regex
+        else None
+    )
+    mid_rng = random.Random(seed + 131)
 
     for _ in range(max_new_tokens):
         next_token = top_p_sample(logits, temperature, top_p, gen)
@@ -250,14 +266,20 @@ def generate_until_checkpoint(
         generated_ids.append(tid)
         piece = tokenizer.decode(next_token[0], skip_special_tokens=False)
         generated_text_parts.append(piece)
+        generated_text_len += len(piece)
         if print_stream:
             print(piece, end="", flush=True)
 
         if (not seen_first_think_end) and _ends_with_subseq(generated_ids, think_end_ids):
             seen_first_think_end = True
+            first_think_end_token_pos = len(generated_ids)
+            first_think_end_char_pos = generated_text_len
+            tokens_after_first_think = 0
 
         if not seen_anchor:
             joined_text = "".join(generated_text_parts)
+            if seen_first_think_end and first_think_end_token_pos >= 0:
+                tokens_after_first_think = len(generated_ids) - first_think_end_token_pos
             if checkpoint_mode == "think_end":
                 if seen_first_think_end:
                     seen_anchor = True
@@ -270,6 +292,24 @@ def generate_until_checkpoint(
                 if seen_first_think_end and regex_obj and regex_obj.search(joined_text):
                     seen_anchor = True
                     counter_after_anchor = 0
+            elif checkpoint_mode == "think_end_mid":
+                if seen_first_think_end:
+                    lo = max(0, int(checkpoint_mid_min_tokens))
+                    hi = max(lo, int(checkpoint_mid_max_tokens))
+                    if mid_target_tokens is None:
+                        mid_target_tokens = mid_rng.randint(lo, hi)
+                    hit_mid_target = tokens_after_first_think >= int(mid_target_tokens)
+                    post_think_text = (
+                        joined_text[first_think_end_char_pos:]
+                        if first_think_end_char_pos >= 0
+                        else joined_text
+                    )
+                    hit_final = bool(mid_final_obj and mid_final_obj.search(post_think_text))
+                    if hit_mid_target or hit_final:
+                        seen_anchor = True
+                        counter_after_anchor = 0
+                        if hit_final and not hit_mid_target:
+                            mid_early_stop_on_final = True
             else:
                 raise ValueError(f"Unsupported checkpoint_mode: {checkpoint_mode}")
         else:
@@ -287,6 +327,12 @@ def generate_until_checkpoint(
         "checkpoint_regex": checkpoint_regex,
         "seen_anchor": seen_anchor,
         "counter_after_anchor": counter_after_anchor,
+        "tokens_after_first_think": tokens_after_first_think,
+        "checkpoint_mid_min_tokens": int(checkpoint_mid_min_tokens),
+        "checkpoint_mid_max_tokens": int(checkpoint_mid_max_tokens),
+        "checkpoint_mid_target_tokens": int(mid_target_tokens) if mid_target_tokens is not None else None,
+        "checkpoint_mid_avoid_final_regex": checkpoint_mid_avoid_final_regex,
+        "checkpoint_mid_early_stop_on_final": bool(mid_early_stop_on_final),
     }
 
 

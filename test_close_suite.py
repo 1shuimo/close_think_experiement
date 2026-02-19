@@ -167,8 +167,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--chunk-size", type=int, default=2048)
 
     p.add_argument("--checkpoint-delay", type=int, default=200)
-    p.add_argument("--checkpoint-mode", default="think_end", choices=["think_end", "regex", "think_end_then_regex"])
+    p.add_argument(
+        "--checkpoint-mode",
+        default="think_end",
+        choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"],
+    )
     p.add_argument("--checkpoint-regex", default="__auto__")
+    p.add_argument("--checkpoint-mid-min-tokens", type=int, default=80)
+    p.add_argument("--checkpoint-mid-max-tokens", type=int, default=220)
+    p.add_argument(
+        "--checkpoint-mid-avoid-final-regex",
+        default=r"(?i)\bfinal\s*:|\bfinal answer\b",
+        help="In think_end_mid mode, stop early if this regex appears (set empty string to disable).",
+    )
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
     p.add_argument("--max-new-after", type=int, default=1000)
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
@@ -194,6 +205,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--corrupt-anchor-regex", default="__auto__")
     p.add_argument("--corrupt-max-changes", type=int, default=2)
     p.add_argument("--corrupt-window-chars", type=int, default=240)
+    p.add_argument(
+        "--corrupt-after-first-think",
+        action="store_true",
+        help="Apply corruption only to text after the first </think> in prefix.",
+    )
+    p.add_argument(
+        "--corrupt-prefer-sign-flip",
+        action="store_true",
+        help="Try flipping + / - first; fallback to numeric corruption if no operator found.",
+    )
     return p.parse_args()
 
 
@@ -207,6 +228,42 @@ def _think_balance_delta(text: str) -> int:
     opens = len(re.findall(r"<think>", text))
     closes = len(re.findall(r"</think>", text))
     return opens - closes
+
+
+def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
+    m = re.search(r"</think>", text, re.IGNORECASE)
+    if not m:
+        return text, "", False
+    return text[: m.end()], text[m.end() :], True
+
+
+def _flip_first_plus_minus_operator(text: str) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"mode": "sign_flip", "changed": False, "reason": "empty_text"}
+    for i, ch in enumerate(text):
+        if ch not in "+-":
+            continue
+        j = i - 1
+        while j >= 0 and text[j].isspace():
+            j -= 1
+        k = i + 1
+        while k < len(text) and text[k].isspace():
+            k += 1
+        if j < 0 or k >= len(text):
+            continue
+        left = text[j]
+        right = text[k]
+        if (left.isalnum() or left in ")]}") and (right.isalnum() or right in "([{"):
+            repl = "-" if ch == "+" else "+"
+            edited = text[:i] + repl + text[i + 1 :]
+            return edited, {
+                "mode": "sign_flip",
+                "changed": True,
+                "from": ch,
+                "to": repl,
+                "pos": i,
+            }
+    return text, {"mode": "sign_flip", "changed": False, "reason": "no_operator_found"}
 
 
 def evaluate_branch(
@@ -242,6 +299,9 @@ def run_task_ab(
     checkpoint_delay: int,
     checkpoint_mode: str,
     checkpoint_regex: Optional[str],
+    checkpoint_mid_min_tokens: int,
+    checkpoint_mid_max_tokens: int,
+    checkpoint_mid_avoid_final_regex: Optional[str],
     max_prefix_tokens: int,
     max_new_after: int,
     branch_mode: str,
@@ -255,6 +315,8 @@ def run_task_ab(
     corrupt_anchor_regex: str,
     corrupt_max_changes: int,
     corrupt_window_chars: int,
+    corrupt_after_first_think: bool,
+    corrupt_prefer_sign_flip: bool,
     apply_match_cover_flag: bool,
     apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
@@ -299,23 +361,53 @@ def run_task_ab(
         seed=seed,
         checkpoint_mode=checkpoint_mode,
         checkpoint_regex=checkpoint_regex,
+        checkpoint_mid_min_tokens=checkpoint_mid_min_tokens,
+        checkpoint_mid_max_tokens=checkpoint_mid_max_tokens,
+        checkpoint_mid_avoid_final_regex=checkpoint_mid_avoid_final_regex,
         chunk_size=chunk_size,
         print_stream=False,
     )
     prefix_ids = ckpt["generated_ids"]
     prefix_text = ckpt.get("generated_text") or tokenizer.decode(prefix_ids, skip_special_tokens=False)
 
-    if corrupt_mode == "number_shift":
-        edited_text, corrupt_meta = corrupt_prefix_text(prefix_text)
-    elif corrupt_mode == "anchor_number_shift":
-        edited_text, corrupt_meta = corrupt_numbers_near_anchor(
-            prefix_text,
-            anchor_regex=corrupt_anchor_regex,
-            max_changes=corrupt_max_changes,
-            window_chars=corrupt_window_chars,
-        )
-    else:
-        edited_text, corrupt_meta = prefix_text, {"mode": "none", "changed": False}
+    target_prefix = prefix_text
+    head_prefix = ""
+    scope_meta: Dict[str, object] = {
+        "corrupt_after_first_think": bool(corrupt_after_first_think),
+        "first_think_closed_found": False,
+    }
+    if corrupt_after_first_think:
+        head_prefix, target_prefix, found_close = _split_after_first_think_close(prefix_text)
+        scope_meta["first_think_closed_found"] = bool(found_close)
+        if not found_close:
+            head_prefix = ""
+            target_prefix = prefix_text
+
+    edited_target = target_prefix
+    corrupt_meta: Dict[str, object] = {"mode": "none", "changed": False}
+    if corrupt_prefer_sign_flip:
+        sign_edited, sign_meta = _flip_first_plus_minus_operator(edited_target)
+        if bool(sign_meta.get("changed")):
+            edited_target = sign_edited
+            corrupt_meta = sign_meta
+
+    if not bool(corrupt_meta.get("changed")):
+        if corrupt_mode == "number_shift":
+            edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
+        elif corrupt_mode == "anchor_number_shift":
+            edited_target, corrupt_meta = corrupt_numbers_near_anchor(
+                edited_target,
+                anchor_regex=corrupt_anchor_regex,
+                max_changes=corrupt_max_changes,
+                window_chars=corrupt_window_chars,
+            )
+        else:
+            edited_target, corrupt_meta = edited_target, {"mode": "none", "changed": False}
+
+    edited_text = head_prefix + edited_target
+    corrupt_meta.update(scope_meta)
+    corrupt_meta["corrupt_prefer_sign_flip"] = bool(corrupt_prefer_sign_flip)
+    corrupt_meta["corrupt_region_start"] = len(head_prefix)
     # Diagnose whether checkpoint cut inside an open <think> block.
     prefix_think_gap = _think_balance_delta(edited_text)
     if auto_close_unclosed_think and prefix_think_gap > 0:
@@ -491,6 +583,14 @@ def run_task_ab(
             "checkpoint_regex": checkpoint_regex,
             "seen_anchor": bool(ckpt.get("seen_anchor", False)),
             "counter_after_anchor": int(ckpt.get("counter_after_anchor", 0)),
+            "tokens_after_first_think": int(ckpt.get("tokens_after_first_think", 0)),
+            "checkpoint_mid_min_tokens": int(ckpt.get("checkpoint_mid_min_tokens", 0)),
+            "checkpoint_mid_max_tokens": int(ckpt.get("checkpoint_mid_max_tokens", 0)),
+            "checkpoint_mid_target_tokens": ckpt.get("checkpoint_mid_target_tokens"),
+            "checkpoint_mid_avoid_final_regex": ckpt.get("checkpoint_mid_avoid_final_regex"),
+            "checkpoint_mid_early_stop_on_final": bool(
+                ckpt.get("checkpoint_mid_early_stop_on_final", False)
+            ),
         },
         "prefix_seen_first_think_end": bool(ckpt["seen_first_think_end"]),
         "prefix_tokens": len(prefix_ids),
@@ -607,7 +707,7 @@ def main() -> None:
         task_format_guidance = build_task_format_guidance(task_family)
 
     resolved_checkpoint_regex: Optional[str]
-    if args.checkpoint_mode == "regex":
+    if args.checkpoint_mode in {"regex", "think_end_then_regex"}:
         if args.checkpoint_regex == "__auto__":
             resolved_checkpoint_regex = auto_checkpoint_regex(task_family)
         else:
@@ -618,6 +718,9 @@ def main() -> None:
         resolved_corrupt_anchor_regex = auto_corrupt_anchor_regex(task_family)
     else:
         resolved_corrupt_anchor_regex = args.corrupt_anchor_regex
+    resolved_checkpoint_mid_avoid_final_regex: Optional[str] = (
+        args.checkpoint_mid_avoid_final_regex if args.checkpoint_mid_avoid_final_regex else None
+    )
 
     if args.longproc_task:
         longproc_data, eval_fn = _load_longproc_data(
@@ -696,6 +799,9 @@ def main() -> None:
                 checkpoint_delay=args.checkpoint_delay,
                 checkpoint_mode=args.checkpoint_mode,
                 checkpoint_regex=resolved_checkpoint_regex,
+                checkpoint_mid_min_tokens=args.checkpoint_mid_min_tokens,
+                checkpoint_mid_max_tokens=args.checkpoint_mid_max_tokens,
+                checkpoint_mid_avoid_final_regex=resolved_checkpoint_mid_avoid_final_regex,
                 max_prefix_tokens=args.max_prefix_tokens,
                 max_new_after=args.max_new_after,
                 branch_mode=args.branch_mode,
@@ -709,6 +815,8 @@ def main() -> None:
                 corrupt_anchor_regex=resolved_corrupt_anchor_regex,
                 corrupt_max_changes=args.corrupt_max_changes,
                 corrupt_window_chars=args.corrupt_window_chars,
+                corrupt_after_first_think=bool(args.corrupt_after_first_think),
+                corrupt_prefer_sign_flip=bool(args.corrupt_prefer_sign_flip),
                 apply_match_cover_flag=bool(args.apply_match_cover),
                 apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,
@@ -797,10 +905,15 @@ def main() -> None:
             "auto_close_unclosed_think": bool(args.auto_close_unclosed_think),
             "checkpoint_mode": args.checkpoint_mode,
             "checkpoint_regex": resolved_checkpoint_regex,
+            "checkpoint_mid_min_tokens": args.checkpoint_mid_min_tokens,
+            "checkpoint_mid_max_tokens": args.checkpoint_mid_max_tokens,
+            "checkpoint_mid_avoid_final_regex": resolved_checkpoint_mid_avoid_final_regex,
             "corrupt_mode": args.corrupt_mode,
             "corrupt_anchor_regex": resolved_corrupt_anchor_regex,
             "corrupt_max_changes": args.corrupt_max_changes,
             "corrupt_window_chars": args.corrupt_window_chars,
+            "corrupt_after_first_think": bool(args.corrupt_after_first_think),
+            "corrupt_prefer_sign_flip": bool(args.corrupt_prefer_sign_flip),
             "apply_match_cover": bool(args.apply_match_cover),
             "apply_cross_think_cover": bool(args.apply_cross_think_cover),
             "eval_strip_think": not bool(args.no_eval_strip_think),

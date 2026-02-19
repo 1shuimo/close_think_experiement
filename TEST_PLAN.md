@@ -79,3 +79,33 @@ bash run_longproc_32b.sh
 - 是否出现 `<think>...</think>` 完整闭合。
 - `</think>` 后是否从中断点继续。
 - 格式是否符合任务要求（如 `- Step X:` / `<Route>` / code fence）。
+
+## G. 数学中段分叉专项（新增）
+
+目标：先完成第一次 `</think>`，再在正文中段截断，扰动第一次 think 之后正文，然后对比 A/B 后半段差异。
+
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --tasks-file tasks_math_steps.jsonl \
+  --prompt-mode enhanced \
+  --checkpoint-mode think_end_mid \
+  --checkpoint-mid-min-tokens 80 \
+  --checkpoint-mid-max-tokens 220 \
+  --checkpoint-mid-avoid-final-regex '(?i)\\bfinal\\s*:|\\bfinal answer\\b' \
+  --checkpoint-delay 0 \
+  --corrupt-mode anchor_number_shift \
+  --corrupt-anchor-regex '(?i)step\\s*\\d+' \
+  --corrupt-after-first-think \
+  --corrupt-prefer-sign-flip \
+  --branch-mode ab \
+  --save-task-texts \
+  --print-full-output \
+  --output-dir suite_math_step5_branch_compare
+```
+
+通过标准：
+- `checkpoint_meta.checkpoint_mode == "think_end_mid"` 且 `checkpoint_meta.seen_anchor == true`。
+- `checkpoint_meta.checkpoint_mid_target_tokens` 落在你设置的最小/最大范围内。
+- `corrupt_meta.corrupt_after_first_think == true`。
+- `corrupt_meta.corrupt_region_start > 0`（说明扰动点不在 prefix 最前面）。

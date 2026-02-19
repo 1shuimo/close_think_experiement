@@ -30,9 +30,11 @@
 
 ### 2.2 checkpoint 截断
 - 入口：`generate_until_checkpoint(...)`。
-- 两种模式：
+- 四种模式：
   - `think_end`：首次匹配到 `</think>` 后，再生成 `checkpoint_delay` 个 token 停止。
   - `regex`：文本命中 `checkpoint_regex` 后，再生成 `checkpoint_delay` 个 token 停止。
+  - `think_end_then_regex`：先等首次 `</think>`，再等 `checkpoint_regex`，最后再生成 `checkpoint_delay` 个 token 停止。
+  - `think_end_mid`：先等首次 `</think>`，再在“首次 think 后正文”里按 token 区间选中段截断（可设置范围，且可在命中 `Final` 时提前截断）。
 - 推荐：LongProc 一般用 `regex`，并用 `__auto__` 让脚本按任务自动选锚点。
 
 ### 2.3 分叉续写
@@ -86,7 +88,7 @@
 - 截断：`checkpoint_mode`, `checkpoint_regex`, `checkpoint_delay`, `max_prefix_tokens`
 - 续写：`max_new_after`
 - OOM 控制：`chunk_size`
-- 扰动：`corrupt_mode`, `corrupt_anchor_regex`, `corrupt_max_changes`, `corrupt_window_chars`
+- 扰动：`corrupt_mode`, `corrupt_anchor_regex`, `corrupt_max_changes`, `corrupt_window_chars`, `corrupt_after_first_think`, `corrupt_prefer_sign_flip`
 - 去重：`apply_match_cover`, `cover_*`
 
 ## 7. 结果指标怎么解释
@@ -116,7 +118,7 @@ bash run_longproc_32b.sh \
 - `--max-prefix-tokens`
 - `--max-new-after`
 - `--checkpoint-delay`
-- `--checkpoint-mode think_end|regex|think_end_then_regex`
+- `--checkpoint-mode think_end|regex|think_end_then_regex|think_end_mid`
 - `--n-samples`
 - `--task`
 - `--out-root`
@@ -124,6 +126,11 @@ bash run_longproc_32b.sh \
 - `--model-path`
 - `--branch-mode ab|b`
 - `--checkpoint-regex` / `--corrupt-anchor-regex`
+- `--checkpoint-mid-min-tokens` / `--checkpoint-mid-max-tokens`
+- `--checkpoint-mid-avoid-final-regex`
+- `--corrupt-mode number_shift|anchor_number_shift|none`
+- `--corrupt-after-first-think`
+- `--corrupt-prefer-sign-flip`
 - `--min-b-tokens-before-eos`
 - `--b-retry-times`
 - `--auto-close-unclosed-think`
@@ -133,7 +140,10 @@ bash run_longproc_32b.sh \
 说明：默认不会把每题全文打印到终端，只会保存到文件。要终端直接看全文和改错信息，请加 `--print-full-output`。
 说明：`tom_tracking` 默认锚点是 `- Step 3:`（带短横线），因此注入点通常在后半段结构化列表中；如果你想更早插入，可显式传 `--checkpoint-regex '(?i)step\\s*3:'`。
 说明：默认不会自动补齐未闭合 `<think>`，用于保留真实行为观测；如需补齐可加 `--auto-close-unclosed-think`。
-说明：如果你希望“先等第一次 think 闭合，再注入”，用 `--checkpoint-mode think_end_then_regex`。
+说明：如果你希望“先等第一次 think 闭合，再在正文中段截断”，用 `--checkpoint-mode think_end_mid --checkpoint-mid-min-tokens 80 --checkpoint-mid-max-tokens 220`。
+说明：`--checkpoint-mid-avoid-final-regex` 用于避免注入点跑到 `Final` 之后；默认开启。
+说明：`test_close_suite.py` 在 `think_end_then_regex` 下现在会正确使用 `--checkpoint-regex`。
+说明：如果你希望“只在第一次 think 闭合后正文改错”，加 `--corrupt-after-first-think`；如果还希望优先改 `+/-` 符号，加 `--corrupt-prefer-sign-flip`。
 说明：`--apply-cross-think-cover` 会匹配“第一次 think 后正文”和“第二次 think 后正文头”的重叠（支持 `exact/fuzzy/anchor_exact`），命中后裁掉重复段。
 说明：LongProc evaluator 默认会先去掉所有 `<think>...</think>` 再评分；如需关闭，用 `--no-eval-strip-think`。
 
@@ -182,6 +192,33 @@ bash run_longproc_32b_3tasks.sh
 ```
 输出目录示例：
 `suite_longproc_32b_3tasks_20260218_230501/{tom_tracking_0.5k|pseudo_to_code_0.5k|path_traversal_0.5k}/{baseline|enhanced|enhanced_cover}`
+
+### 8.4 数学题“先闭合 think，再正文中段截断后分叉”示例
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --tasks-file tasks_math_steps.jsonl \
+  --prompt-mode enhanced \
+  --checkpoint-mode think_end_mid \
+  --checkpoint-mid-min-tokens 80 \
+  --checkpoint-mid-max-tokens 220 \
+  --checkpoint-mid-avoid-final-regex '(?i)\\bfinal\\s*:|\\bfinal answer\\b' \
+  --checkpoint-delay 0 \
+  --max-prefix-tokens 3500 \
+  --max-new-after 1200 \
+  --corrupt-mode anchor_number_shift \
+  --corrupt-anchor-regex '(?i)step\\s*\\d+' \
+  --corrupt-after-first-think \
+  --corrupt-prefer-sign-flip \
+  --branch-mode ab \
+  --save-task-texts \
+  --print-full-output \
+  --output-dir suite_math_step5_branch_compare
+```
+
+说明：
+- 这个配置对应“先生成到第一次 `</think>` 后，再在正文中段随机截断，然后改错，再做 A/B 分路续写”。
+- 改错限定在第一次 `</think>` 之后；会优先尝试翻转 `+/-`，找不到再做数字扰动。
 
 ## 9. 输出文件说明
 

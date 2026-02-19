@@ -33,6 +33,12 @@ bash run_longproc_32b.sh \
 默认不打印每题全文到终端，只保存到文件。若要终端直接看输出，加 `--print-full-output`。
 默认不自动补齐未闭合 `<think>`（保留真实行为）；若要补齐可加 `--auto-close-unclosed-think`，并在 `branch_B_retry.forced_close_think` 里查看触发次数。
 若你要“第一次 think 必须先闭合，再注入”，请使用 `--checkpoint-mode think_end_then_regex`。
+若你要“第一次 think 闭合后在正文中段截断”，请使用：
+`--checkpoint-mode think_end_mid --checkpoint-mid-min-tokens 80 --checkpoint-mid-max-tokens 220 --checkpoint-delay 0`。
+如需更严格避免跑到答案后再注入，可保留默认：
+`--checkpoint-mid-avoid-final-regex '(?i)\\bfinal\\s*:|\\bfinal answer\\b'`。
+若你要“扰动仅发生在第一次 think 之后正文”，请加 `--corrupt-after-first-think`。
+若你希望“优先改 +/-，找不到再改数字”，请加 `--corrupt-prefer-sign-flip`。
 若你要“第一次 think 后正文 vs 第二次 think 后正文头”的去重，请开启 `--apply-cross-think-cover`，并查看 `branch_B_cross_think_cover.mode`（`exact/fuzzy/anchor_exact`）与 `trimmed_chars`。
 LongProc 打分默认会先删除所有 `<think>...</think>` 内容；若要直接用原文打分，可传 `--no-eval-strip-think`。
 
@@ -82,6 +88,28 @@ python test_close_suite.py \
 
 判定：
 - 有 summary 文件，且 `n_tasks=6`，流程正常。
+
+数学中段分叉（示例：总共约 10 步，在正文中段分叉）：
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --tasks-file tasks_math_steps.jsonl \
+  --prompt-mode enhanced \
+  --checkpoint-mode think_end_mid \
+  --checkpoint-mid-min-tokens 80 \
+  --checkpoint-mid-max-tokens 220 \
+  --checkpoint-delay 0 \
+  --corrupt-mode anchor_number_shift \
+  --corrupt-anchor-regex '(?i)step\\s*\\d+' \
+  --corrupt-after-first-think \
+  --corrupt-prefer-sign-flip \
+  --max-prefix-tokens 3500 \
+  --max-new-after 1200 \
+  --branch-mode ab \
+  --save-task-texts \
+  --print-full-output \
+  --output-dir suite_math_step5_branch_compare
+```
 
 ## 3. 主实验矩阵（同一任务先比三组）
 

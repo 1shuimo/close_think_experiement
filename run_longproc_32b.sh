@@ -12,7 +12,13 @@ N_SAMPLES="${N_SAMPLES:-6}"
 CHECKPOINT_DELAY="${CHECKPOINT_DELAY:-120}"
 CHECKPOINT_MODE="${CHECKPOINT_MODE:-regex}"
 CHECKPOINT_REGEX="${CHECKPOINT_REGEX:-__auto__}"
+CHECKPOINT_MID_MIN_TOKENS="${CHECKPOINT_MID_MIN_TOKENS:-80}"
+CHECKPOINT_MID_MAX_TOKENS="${CHECKPOINT_MID_MAX_TOKENS:-220}"
+CHECKPOINT_MID_AVOID_FINAL_REGEX="${CHECKPOINT_MID_AVOID_FINAL_REGEX:-(?i)\\bfinal\\s*:|\\bfinal answer\\b}"
 CORRUPT_ANCHOR_REGEX="${CORRUPT_ANCHOR_REGEX:-__auto__}"
+CORRUPT_MODE="${CORRUPT_MODE:-anchor_number_shift}"
+CORRUPT_AFTER_FIRST_THINK="${CORRUPT_AFTER_FIRST_THINK:-0}"
+CORRUPT_PREFER_SIGN_FLIP="${CORRUPT_PREFER_SIGN_FLIP:-0}"
 MAX_PREFIX_TOKENS="${MAX_PREFIX_TOKENS:-1200}"
 MAX_NEW_AFTER="${MAX_NEW_AFTER:-400}"
 MIN_B_TOKENS_BEFORE_EOS="${MIN_B_TOKENS_BEFORE_EOS:-64}"
@@ -49,9 +55,33 @@ while [[ $# -gt 0 ]]; do
       CHECKPOINT_REGEX="$2"
       shift 2
       ;;
+    --checkpoint-mid-min-tokens)
+      CHECKPOINT_MID_MIN_TOKENS="$2"
+      shift 2
+      ;;
+    --checkpoint-mid-max-tokens)
+      CHECKPOINT_MID_MAX_TOKENS="$2"
+      shift 2
+      ;;
+    --checkpoint-mid-avoid-final-regex)
+      CHECKPOINT_MID_AVOID_FINAL_REGEX="$2"
+      shift 2
+      ;;
     --corrupt-anchor-regex)
       CORRUPT_ANCHOR_REGEX="$2"
       shift 2
+      ;;
+    --corrupt-mode)
+      CORRUPT_MODE="$2"
+      shift 2
+      ;;
+    --corrupt-after-first-think)
+      CORRUPT_AFTER_FIRST_THINK=1
+      shift 1
+      ;;
+    --corrupt-prefer-sign-flip)
+      CORRUPT_PREFER_SIGN_FLIP=1
+      shift 1
       ;;
     --n-samples)
       N_SAMPLES="$2"
@@ -107,9 +137,15 @@ Usage: bash run_longproc_32b.sh [options]
   --max-prefix-tokens N
   --max-new-after N
   --checkpoint-delay N
-  --checkpoint-mode think_end|regex|think_end_then_regex
+  --checkpoint-mode think_end|regex|think_end_then_regex|think_end_mid
   --checkpoint-regex REGEX
+  --checkpoint-mid-min-tokens N
+  --checkpoint-mid-max-tokens N
+  --checkpoint-mid-avoid-final-regex REGEX
   --corrupt-anchor-regex REGEX
+  --corrupt-mode number_shift|anchor_number_shift|none
+  --corrupt-after-first-think
+  --corrupt-prefer-sign-flip
   --n-samples N
   --task NAME
   --out-root DIR
@@ -146,6 +182,12 @@ fi
 if [[ "${APPLY_CROSS_THINK_COVER}" == "1" ]]; then
   EXTRA_ARGS+=(--apply-cross-think-cover)
 fi
+if [[ "${CORRUPT_AFTER_FIRST_THINK}" == "1" ]]; then
+  EXTRA_ARGS+=(--corrupt-after-first-think)
+fi
+if [[ "${CORRUPT_PREFER_SIGN_FLIP}" == "1" ]]; then
+  EXTRA_ARGS+=(--corrupt-prefer-sign-flip)
+fi
 
 INJECT_TEXT="$(cat "${INJECT_TEXT_FILE}")"
 
@@ -162,7 +204,10 @@ python test_close_suite.py \
   --system-prompt-file "${PROMPT_BASE_FILE}" \
   --checkpoint-mode "${CHECKPOINT_MODE}" \
   --checkpoint-regex "${CHECKPOINT_REGEX}" \
-  --corrupt-mode anchor_number_shift \
+  --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
+  --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
+  --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
+  --corrupt-mode "${CORRUPT_MODE}" \
   --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
@@ -186,7 +231,10 @@ python test_close_suite.py \
   --inject-text "${INJECT_TEXT}" \
   --checkpoint-mode "${CHECKPOINT_MODE}" \
   --checkpoint-regex "${CHECKPOINT_REGEX}" \
-  --corrupt-mode anchor_number_shift \
+  --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
+  --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
+  --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
+  --corrupt-mode "${CORRUPT_MODE}" \
   --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
@@ -211,7 +259,10 @@ python test_close_suite.py \
   --apply-match-cover \
   --checkpoint-mode "${CHECKPOINT_MODE}" \
   --checkpoint-regex "${CHECKPOINT_REGEX}" \
-  --corrupt-mode anchor_number_shift \
+  --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
+  --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
+  --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
+  --corrupt-mode "${CORRUPT_MODE}" \
   --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
   --checkpoint-delay "${CHECKPOINT_DELAY}" \
   --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
