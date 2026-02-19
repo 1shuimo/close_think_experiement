@@ -29,7 +29,7 @@ bash run_longproc_32b.sh \
   --max-new-after 400
 ```
 
-说明：`prompts/inject_think_v1.txt` 默认只注入开标签 `<think>` 和引导句，不带 `</think>`，闭合由模型自己完成。
+说明：`prompts/inject_think_v1.txt` 默认只注入开标签 `<think>` 和通用自检引导（带中断上下文与续写规则），不带 `</think>`，闭合由模型自己完成。
 默认不打印每题全文到终端，只保存到文件。若要终端直接看输出，加 `--print-full-output`。
 默认不自动补齐未闭合 `<think>`（保留真实行为）；若要补齐可加 `--auto-close-unclosed-think`，并在 `branch_B_retry.forced_close_think` 里查看触发次数。
 若你要“第一次 think 必须先闭合，再注入”，请使用 `--checkpoint-mode think_end_then_regex`。

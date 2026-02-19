@@ -74,7 +74,7 @@
 - `prompts/system_enhanced_v1.txt`
 - `prompts/inject_think_v1.txt`
 
-其中 `inject_think_v1.txt` 现在是“只开 `<think>` 不手动闭合”，由模型自行输出 `</think>`。
+其中 `inject_think_v1.txt` 现在是“只开 `<think>` 不手动闭合”，并带有通用自检上下文（说明这是中途注入、要求做局部复核并从中断点续写）；闭合由模型自行输出 `</think>`。
 
 运行时通过参数加载：
 - `--system-prompt-file`
