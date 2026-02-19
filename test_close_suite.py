@@ -847,8 +847,6 @@ def main() -> None:
         )
         if task_format_guidance:
             print(f"[TaskSpec] format_guidance={task_format_guidance}")
-    elif math_step_user_guidance:
-        print(f"[TaskSpec] math_step_guidance={math_step_user_guidance}")
     else:
         tasks_path = Path(args.tasks_file)
         if not tasks_path.exists():
@@ -857,6 +855,8 @@ def main() -> None:
                 tasks_path = alt
         tasks = load_tasks_jsonl(tasks_path)
         task_source = f"jsonl:{tasks_path.resolve()}"
+        if math_step_user_guidance:
+            print(f"[TaskSpec] math_step_guidance={math_step_user_guidance}")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
