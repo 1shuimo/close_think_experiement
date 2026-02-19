@@ -554,12 +554,20 @@ def corrupt_prefix_text(text: str) -> Tuple[str, Dict[str, object]]:
     m = re.search(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])", text)
     if not m:
         fallback = text + "\n[Injected error marker: claim above may be wrong.]"
-        return fallback, {"mode": "append_marker", "changed": False}
+        return fallback, {"mode": "append_marker", "changed": False, "inject_pos": None}
 
     src = int(m.group(1))
     dst = src + 1 if src >= 0 else src - 1
     edited = text[: m.start()] + str(dst) + text[m.end() :]
-    return edited, {"mode": "number_shift", "changed": True, "from": src, "to": dst}
+    return edited, {
+        "mode": "number_shift",
+        "changed": True,
+        "from": src,
+        "to": dst,
+        "edit_start": int(m.start()),
+        "edit_end": int(m.start() + len(str(dst))),
+        "inject_pos": int(m.start() + len(str(dst))),
+    }
 
 
 def corrupt_numbers_near_anchor(
@@ -573,7 +581,12 @@ def corrupt_numbers_near_anchor(
     在锚点（如 Step 3）附近改若干数字，模拟“中间步骤出错”。
     """
     if not text:
-        return text, {"mode": "anchor_number_shift", "changed": False, "reason": "empty_text"}
+        return text, {
+            "mode": "anchor_number_shift",
+            "changed": False,
+            "reason": "empty_text",
+            "inject_pos": None,
+        }
 
     m_anchor = re.search(anchor_regex, text, re.IGNORECASE | re.DOTALL)
     if not m_anchor:
@@ -593,21 +606,27 @@ def corrupt_numbers_near_anchor(
             "changed": False,
             "anchor_found": True,
             "reason": "no_number_in_window",
+            "inject_pos": None,
         }
 
     take = min(max_changes, len(matches))
     offset = 0
     changed = []
     seg_edit = seg
+    first_inject_pos = None
     for i in range(take):
         m = matches[i]
         a = m.start() + offset
         b = m.end() + offset
         src = int(seg_edit[a:b])
         dst = src + 1 if src >= 0 else src - 1
-        seg_edit = seg_edit[:a] + str(dst) + seg_edit[b:]
-        offset += len(str(dst)) - (b - a)
-        changed.append({"from": src, "to": dst})
+        dst_s = str(dst)
+        seg_edit = seg_edit[:a] + dst_s + seg_edit[b:]
+        new_b = a + len(dst_s)
+        if first_inject_pos is None:
+            first_inject_pos = st + new_b
+        offset += len(dst_s) - (b - a)
+        changed.append({"from": src, "to": dst, "start": int(st + a), "end": int(st + new_b)})
 
     edited = text[:st] + seg_edit + text[ed:]
     return edited, {
@@ -617,6 +636,7 @@ def corrupt_numbers_near_anchor(
         "anchor_regex": anchor_regex,
         "changes": changed,
         "window": {"start": st, "end": ed},
+        "inject_pos": int(first_inject_pos) if first_inject_pos is not None else None,
     }
 
 

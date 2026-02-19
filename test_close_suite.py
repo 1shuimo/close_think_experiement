@@ -242,6 +242,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Try flipping + / - first; fallback to numeric corruption if no operator found.",
     )
+    p.add_argument(
+        "--force-inject-at-corrupt",
+        action="store_true",
+        help="Force Branch B to inject <think> immediately at the corruption point.",
+    )
     return p.parse_args()
 
 
@@ -266,7 +271,7 @@ def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
 
 def _flip_first_plus_minus_operator(text: str) -> Tuple[str, Dict[str, object]]:
     if not text:
-        return text, {"mode": "sign_flip", "changed": False, "reason": "empty_text"}
+        return text, {"mode": "sign_flip", "changed": False, "reason": "empty_text", "inject_pos": None}
     for i, ch in enumerate(text):
         if ch not in "+-":
             continue
@@ -289,8 +294,9 @@ def _flip_first_plus_minus_operator(text: str) -> Tuple[str, Dict[str, object]]:
                 "from": ch,
                 "to": repl,
                 "pos": i,
+                "inject_pos": i + 1,
             }
-    return text, {"mode": "sign_flip", "changed": False, "reason": "no_operator_found"}
+    return text, {"mode": "sign_flip", "changed": False, "reason": "no_operator_found", "inject_pos": None}
 
 
 def evaluate_branch(
@@ -345,6 +351,7 @@ def run_task_ab(
     corrupt_window_chars: int,
     corrupt_after_first_think: bool,
     corrupt_prefer_sign_flip: bool,
+    force_inject_at_corrupt: bool,
     apply_match_cover_flag: bool,
     apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
@@ -488,13 +495,39 @@ def run_task_ab(
     edited_ids = tokenizer.encode(edited_text, add_special_tokens=False)
     edited_ids_t = torch.tensor([edited_ids], dtype=torch.long, device=device)
 
-    # 同一次上下文分叉：先 prefill 一次，再复制 KV 给分支
-    full_ids_base = torch.cat([prompt_ids, edited_ids_t], dim=1)
-    past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
+    branch_b_inject_pos = len(edited_text)
+    branch_b_force_overlap_applied = False
+    inject_pos_local_raw = corrupt_meta.get("inject_pos")
+    if force_inject_at_corrupt and bool(corrupt_meta.get("changed")) and inject_pos_local_raw is not None:
+        try:
+            inject_pos_local = int(inject_pos_local_raw)
+            inject_pos_global = len(head_prefix) + inject_pos_local
+            if 0 <= inject_pos_global <= len(edited_text):
+                branch_b_inject_pos = inject_pos_global
+                branch_b_force_overlap_applied = True
+        except Exception:
+            pass
+    branch_b_prefix_text = edited_text[:branch_b_inject_pos]
+    branch_b_suffix_text = edited_text[branch_b_inject_pos:]
+    corrupt_meta["force_inject_at_corrupt"] = bool(force_inject_at_corrupt)
+    corrupt_meta["branch_b_force_overlap_applied"] = bool(branch_b_force_overlap_applied)
+    corrupt_meta["branch_b_inject_pos"] = int(branch_b_inject_pos)
+    corrupt_meta["branch_b_suffix_len"] = int(len(branch_b_suffix_text))
+
+    need_base_prefill = (branch_mode == "ab") or (branch_b_inject_pos == len(edited_text))
+    past_base = None
+    logits_base = None
+    full_ids_base = None
+    if need_base_prefill:
+        # 同一次上下文分叉：先 prefill 一次，再复制 KV 给分支
+        full_ids_base = torch.cat([prompt_ids, edited_ids_t], dim=1)
+        past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
 
     branch_a_rec: Dict[str, object] = {"skipped": True, "reason": "branch_mode=b"}
     full_a: Optional[str] = None
     if branch_mode == "ab":
+        if past_base is None or logits_base is None:
+            raise RuntimeError("Branch A requires base prefill state, but it is missing.")
         past_a = clone_past_key_values(past_base)
         logits_a = logits_base.clone()
         gen_a_out = generate_from_state(
@@ -542,12 +575,26 @@ def run_task_ab(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    past_b = clone_past_key_values(past_base)
-    logits_b = logits_base.clone()
-    # Base KV is no longer needed after cloning B branch seed.
-    del past_base
-    del logits_base
-    del full_ids_base
+    if branch_b_inject_pos == len(edited_text):
+        if past_base is None or logits_base is None:
+            raise RuntimeError("Branch B requires base prefill state, but it is missing.")
+        past_b = clone_past_key_values(past_base)
+        logits_b = logits_base.clone()
+    else:
+        branch_b_ids = tokenizer.encode(branch_b_prefix_text, add_special_tokens=False)
+        branch_b_ids_t = torch.tensor([branch_b_ids], dtype=torch.long, device=device)
+        full_ids_b = torch.cat([prompt_ids, branch_b_ids_t], dim=1)
+        past_b, logits_b = prefill_kv(model, full_ids_b, chunk_size=chunk_size)
+        del branch_b_ids_t
+        del full_ids_b
+
+    # Base KV is no longer needed after cloning/creating B branch seed.
+    if past_base is not None:
+        del past_base
+    if logits_base is not None:
+        del logits_base
+    if full_ids_base is not None:
+        del full_ids_base
     del edited_ids_t
     del prompt_ids
     if torch.cuda.is_available():
@@ -601,7 +648,7 @@ def run_task_ab(
     cont_b_raw = tokenizer.decode(gen_b, skip_special_tokens=False)
     if apply_match_cover_flag:
         cont_b, cover_meta_b = apply_match_cover(
-            edited_text + inject_text,
+            branch_b_prefix_text + inject_text,
             cont_b_raw,
             min_exact_overlap=cover_min_exact_overlap,
             fuzzy_min_len=cover_fuzzy_min_len,
@@ -612,7 +659,7 @@ def run_task_ab(
         cont_b, cover_meta_b = cont_b_raw, {"mode": "disabled", "trimmed_chars": 0}
     if apply_cross_think_cover_flag:
         cont_b, cross_cover_meta_b = apply_cross_think_match_cover(
-            edited_text,
+            branch_b_prefix_text,
             cont_b,
             min_exact_overlap=max(16, cover_min_exact_overlap // 2),
             fuzzy_min_len=max(12, cover_fuzzy_min_len // 2),
@@ -621,14 +668,14 @@ def run_task_ab(
         )
     else:
         cross_cover_meta_b = {"mode": "disabled", "trimmed_chars": 0}
-    full_b = edited_text + inject_text + cont_b
+    full_b = branch_b_prefix_text + inject_text + cont_b
     full_b_think_gap = _think_balance_delta(full_b)
     if auto_close_unclosed_think and full_b_think_gap > 0:
         closer = ("\n</think>" * full_b_think_gap) + "\n"
         cont_b = cont_b + closer
         full_b = full_b + closer
 
-    eval_b = evaluate_branch(edited_text, cont_b, full_b, expected_regex)
+    eval_b = evaluate_branch(branch_b_prefix_text, cont_b, full_b, expected_regex)
     format_re = format_regex_for_task_family(task_family)
     if format_re:
         if full_a is not None and "metrics" in branch_a_rec:
@@ -691,6 +738,7 @@ def run_task_ab(
         "branch_mode": branch_mode,
         "branch_A": branch_a_rec,
         "branch_B": {
+            "prefix_text": branch_b_prefix_text,
             "continuation_text_raw": cont_b_raw,
             "continuation_text": cont_b,
             "full_text": full_b,
@@ -916,6 +964,7 @@ def main() -> None:
                 corrupt_window_chars=args.corrupt_window_chars,
                 corrupt_after_first_think=bool(args.corrupt_after_first_think),
                 corrupt_prefer_sign_flip=bool(args.corrupt_prefer_sign_flip),
+                force_inject_at_corrupt=bool(args.force_inject_at_corrupt),
                 apply_match_cover_flag=bool(args.apply_match_cover),
                 apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,
@@ -973,6 +1022,7 @@ def main() -> None:
                             "branch_mode": rec.get("branch_mode"),
                             "branch_A_metrics": rec["branch_A"].get("metrics"),
                             "branch_B_metrics": rec["branch_B"]["metrics"],
+                            "branch_B_prefix_text": rec["branch_B"].get("prefix_text", ""),
                             "branch_B_retry": rec["branch_B"].get("retry_info", {}),
                             "branch_B_stop_reason": rec["branch_B"].get("stop_reason"),
                             "branch_A_match_cover": rec["branch_A"].get("match_cover", {}),
@@ -1023,6 +1073,7 @@ def main() -> None:
             "corrupt_window_chars": args.corrupt_window_chars,
             "corrupt_after_first_think": bool(args.corrupt_after_first_think),
             "corrupt_prefer_sign_flip": bool(args.corrupt_prefer_sign_flip),
+            "force_inject_at_corrupt": bool(args.force_inject_at_corrupt),
             "apply_match_cover": bool(args.apply_match_cover),
             "apply_cross_think_cover": bool(args.apply_cross_think_cover),
             "eval_strip_think": not bool(args.no_eval_strip_think),
