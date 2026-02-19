@@ -1,0 +1,134 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++ code. Let me go through each part step by step.
+
+First, the pseudocode mentions creating an integer sum. So in C++, I should declare a global variable sum, maybe? Because later, the add function uses this sum. Oh right, because in the pseudocode, add is a function that modifies the sum. So sum needs to be accessible in both the add function and the main function. So I'll declare sum as a global variable. But wait, in C++, variables declared inside main are local. So if sum is declared inside main, then the add function can't modify it unless it's passed by reference. Wait, looking at the pseudocode's add function: it says "increment sum by n % x". So the sum is a variable that's being modified inside the add function. How is that possible? Well, in the pseudocode, sum is declared in the main, perhaps, and passed to add? Or maybe it's a global variable. The initial line says "create integer sum"—probably global.
+
+But in C++, if I declare sum outside of any function, it's global. So I'll need to do that. But the user's instruction says that the code provided already includes certain headers and the using namespace std. So I don't need to include them again. My code will start with that.
+
+So first, I'll declare the sum as a global integer. Then, the gcd function. The gcd function takes two integers a and b. The logic is: if a % b is 1, return b. Otherwise, return gcd(b, a % b). Wait, but in the pseudocode, it says "return result of run gcd with arguments b, a % b from function". So it's a recursive function. So the function is returning the result of calling gcd again. So the base case is when a % b is 0, return b. Otherwise, recurse.
+
+Wait, but the parameters for the gcd function: usually, the Euclidean algorithm is called with (a, b) where a > b. But here, the function is called with a and b, and if a % b is not zero, then we call gcd(b, a%b). So this assumes that a is larger than b? Or does it not matter? Well, the function will still work even if a is smaller than b. For example, if a is 6 and b is 4. Then a % b is 2. Then call gcd(4, 2). Which returns 2. So it works. But if a is smaller than b, then in the first call, a % b is a, and then the next call is gcd(b, a). So for example, if a=4, b=6. Then the first call would be gcd(4,6). Then since 4%6 is 4, then call gcd(6,4). Then 6%4=2, call gcd(4,2), then returns 2. So the function works regardless of the order. But in the pseudocode's gcd function, when you pass a and b, perhaps the initial call is with (sum, n-2) as arguments, which could be in any order. But the function seems to be correctly implemented.
+
+Then the add function. The add function takes integers n and x. The loop runs while n is not 0. Then sum is incremented by n % x, and n is set to n / x. So this is converting n into base x and summing the digits? For example, if n is 5 and x is 2, then the digits are 101, sum is 1+0+1=2. But the add function is adding each digit to the sum. So sum is being accumulated across all calls to add.
+
+In C++, since sum is a global variable, the add function can modify it directly. So the add function would be a void function that takes n and x. Inside, while n != 0, add the remainder to sum and divide n by x.
+
+Now, the main function. Read n. Then for i from 2 to n exclusive, which means i runs from 2 to n-1. For each i, call add(n, i). Then compute the gcd of sum and (n-2), then print sum/div and (n-2)/div as a fraction.
+
+Wait, the main function's steps:
+
+- create integer n, read it.
+
+- for i=2 to n exclusive: run add(n, i). So for each base i from 2 up to n-1, we convert n into base i and sum the digits into sum.
+
+Once all those are done, compute the gcd of sum and (n-2). Then output the sum divided by that gcd, followed by a slash, and (n-2) divided by the gcd.
+
+But why (n-2)? Because for each base from 2 to n-1, there are (n-2) bases. For example, if n is 5, bases are 2,3, so n-2 is 3-2=2? Wait, n is 5, bases from 2 to 4 (since it's exclusive). So 2 and 3. So there are 3-2+1 = 2? Wait, 4-2=2, since for i from 2 to n-1 (exclusive of n), so for n=5, i runs up to 4. So the number of bases is (4-2+1)? Wait, 2,3,4? No, if n is 5, then for i=2 to 5 exclusive is 2,3,4. So three bases. But n-2 is 3. So perhaps the code is using (n-2) as the count? But no, the count is (n-1) - 2 + 1? Let me see: the upper bound is n exclusive. So the loop is for i in 2..n-1 inclusive. The number of elements is (n-1 - 2 + 1) = n-2. So yes, (n-2) elements. But why is that relevant for the gcd?
+
+But according to the pseudocode, after accumulating the sum, we compute the gcd of sum and (n-2). So perhaps the problem is to compute the sum of all digits in all bases, then represent that sum over (n-2) in reduced form. For example, sum/(n-2) as a fraction, simplified by their gcd.
+
+So the code is supposed to calculate the sum of digits of n in all bases from 2 to n-1, then output the sum divided by (n-2) in reduced form.
+
+So the code's logic is correct.
+
+Now, translating into C++.
+
+First, the global variable sum. So:
+
+int sum;
+
+Then the gcd function. But wait, in C++, there's a standard gcd function in <numeric> header since C++17. But according to the included headers, <numeric> is included. However, the problem says that the user will provide pseudocode and we need to generate code. The pseudocode's gcd is a function that takes a and b. But according to the code, the user's code already includes the necessary headers. However, the problem says that the pseudocode is correct and complete, so we can assume that the gcd function is correctly implemented as per the pseudocode.
+
+But in C++, the std::gcd function returns the greatest common divisor of two numbers. However, the way the pseudocode describes the function, perhaps we need to implement it. But according to the pseudocode's logic, the function is recursive. Let me check:
+
+The pseudocode says:
+
+declare gcd with integers a, b as arguments, returning integer
+    if a % b is 0, return b
+    return result of run gcd with arguments b, a % b from function
+end of the block
+
+Wait, but this assumes that a is larger than b. Because if a is smaller than b, then a % b is a, and then the next call is gcd(b, a). Which would then check if b % a is zero, etc. But the parameters here are a and b. Wait, the function is called with a and b. But according to the code, the first call is with sum and (n-2). So sum could be larger or smaller than (n-2). But the function as written will compute the GCD correctly regardless of the order. For example, if a is 4 and b is 6, then a%b is 4, so call gcd(6,4). Then in that function, 6%4=2, call gcd(4,2). Then 4%2=0, return 2. Which is correct.
+
+But according to the function's code, the parameters are a and b. However, the function is written as a recursive function. So in C++, we can implement this as:
+
+int gcd(int a, int b) {
+    if (a % b == 0) return b;
+    return gcd(b, a % b);
+}
+
+But wait, what if b is zero? Well, in the main function, when we call gcd(sum, n-2), the second argument is n-2. Since in the main function, n must be at least 2 (since for i from 2 to n exclusive, if n is 2, then the loop runs from 2 to 2 exclusive, which is not executed. So n-2 would be 0. Wait, but if n is 2, then the loop runs for i from 2 to 2 exclusive, which is nothing. Then sum remains 0, and the code would call gcd(0, 0). Which is undefined. But according to the problem statement, the pseudocode is correct and complete. So perhaps the code is intended for n >= 2. But when n is 2, n-2 is 0. Then, the code would try to compute gcd(0, 0). Which is undefined. However, perhaps in the problem's context, n is given such that this case is handled. But in practice, when n is 2, the sum is 0 (since no add calls are made), and the code would try to output 0 / 0, which is invalid. But perhaps the problem assumes that n is at least 3. But since the code must be written as per the pseudocode, regardless of possible edge cases, we proceed.
+
+Now, the add function. The function is declared with integers n, x, returning void. Inside, while n is not 0, add n%x to sum, then divide n by x. So in C++, the add function would be:
+
+void add(int n, int x) {
+    while (n != 0) {
+        sum += n % x;
+        n = n / x;
+    }
+}
+
+But in C++, integer division with / operator truncates towards zero. Which is correct for this purpose.
+
+Now, the main function. Read n. Then for i from 2 to n exclusive. So for (int i=2; i < n; i++). Then call add(n, i). Then compute the div as the gcd of sum and (n-2). Then print sum/div / (n-2)/div.
+
+But in C++, division of integers truncates. However, in the case where sum and (n-2) have a gcd, we need to output the simplified numerator and denominator. But sum and (n-2) could be such that sum/(n-2) is a fraction. For example, if sum is 5 and n-2 is 10, then the simplified is 1/2.
+
+But the code in the pseudocode says to print sum / div and (n-2)/div. So that's correct.
+
+But what if n-2 is zero? As discussed earlier, but the code is generated as per pseudocode.
+
+Putting it all together.
+
+Now, code structure:
+
+Global variable sum.
+
+Then the gcd function.
+
+Then the add function.
+
+Then main function.
+
+But in C++, functions need to be declared before they are used. So since main calls add and gcd, and those functions are not part of the standard library (assuming that the user's included headers don't have them; according to the included headers, <algorithm> and <numeric> may have gcd, but the problem says that the code already includes those. However, according to the pseudocode, the user is to implement the functions. So perhaps the code should implement them, not use the standard ones. So we need to declare the functions before main.
+
+So the code would be:
+
+int sum;
+
+int gcd(int a, int b) {
+    if (a % b == 0) return b;
+    return gcd(b, a % b);
+}
+
+void add(int n, int x) {
+    while (n != 0) {
+        sum += n % x;
+        n = n / x;
+    }
+}
+
+int main() {
+    int n;
+    cin >> n;
+    for (int i=2; i < n; ++i) {
+        add(n, i);
+    }
+    int div = gcd(sum, n-2);
+    cout << sum / div << '/' << (n-2)/div << endl;
+    return 0;
+}
+
+Wait, but what if n is 2? Then n-2 is 0. So in the call to gcd(sum, 0). Let's see what the code does. Because in the case of b=0, the function will check a%0, which is division by zero. That's undefined behavior. But according to the problem's pseudocode, perhaps the code is supposed to handle that. However, according to the problem statement, the pseudocode is correct and complete, so perhaps in the problem's context, n is always at least 3. For example, if n is 2, then the loop doesn't run, sum is 0, and the code tries to compute gcd(0, 0). Which is undefined. But perhaps the problem's input ensures that n is at least 3. Since the code is generated as per the pseudocode, we proceed.
+
+Another thing: in C++, the modulo operator a % b when b is 0 is undefined. So if n is 2, then in the call to gcd(sum, n-2) which is gcd(0, 0). The code will crash or have undefined behavior. But again, the problem says that the pseudocode is correct and complete, so perhaps the code is intended for n >= 3. So we proceed.
+
+Testing with sample input. Let's take n=5.
+
+For n=5, the bases are 2, 3, 4.
+
+For base 2: 5 is 101, sum digits 1+0+1=2.
+
+For base 3: 5 is 12, sum 1+2=3.
+
+For base 4: 5 is 11, sum 1+1=2. Total sum is 2+3+2=7. n-2 is 3

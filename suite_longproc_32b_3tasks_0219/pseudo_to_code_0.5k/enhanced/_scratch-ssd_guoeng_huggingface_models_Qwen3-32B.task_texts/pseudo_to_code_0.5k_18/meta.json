@@ -1,0 +1,59 @@
+{
+  "task_id": "pseudo_to_code_0.5k_18",
+  "user_prompt": "[TASK]:\nYou will be given lines of pseudocode, your task is to write the corresponding C++ code. The pseudocode will provide detailed description of the c++ code line by line. The pseudocode is garanteed to be correct and complete.\n\n[INSTRUCTION]:\nThe following libraries are already included in the code.\n```cpp\n#include <cstdio>\n#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <numeric>\n#include <cmath>\n#include <cstring>\n#include <set>\n#include <map>\n#include <queue>\n#include <stack>\n#include <list>\n#include <fstream>\n#include <climits>\n#include <cassert>\n#include <iomanip>\n#include <sstream>\n#include <bitset>\nusing namespace std;\n```\nDo not include them in your code again. Please surround your code with ```cpp and ``` markers. Note that the code should correspond to the pseudocode line by line.\n\n[PSEUDOCODE]:\ncreate integer vector array vec with size 3\ncreate map like from string to integer\ncreate integers diff, ans, a, b, c, create 2d integer array mat with size 10 by 10\ndeclare cal\n    create integers sum, i, j, k, with sum = 0\n    for i = 0 to 3 exclusive\n        for j = 0 to integer casted size of vec[i]\n            for k = 0 to integer casted size of vec[i] exclusive, increment sum by mat[vec[i][j]][vec[i][k]]\n    end of the block\n    return sum from function\nend of the block\ndeclare count with integer now as argument, returning void\n    if now is 7\n        if size of vec[0] and size of vec[1] and size of vec[2]\n            create integer array x with x = { a / size of vec[0], b / size of vec[1], c / size of vec[2] }\n            sort elements from x to x + 3\n            if x[2] - x[0] is less than diff\n                set diff to x[2] - x[0]\n                set ans to result of run cal\n            else if x[2] - x[0] is diff\n                set ans to maximum of ans and result of run cal\n        end of the block\n        return from function\n    end of the block\n    for i = 0 to 3 exclusive\n        add element now to end of vec[i]\n        run count with now + 1 as argument\n        remove last element from vec[i]\n    end of the block\nend of the block\ndefine the main function\n    set like[ \"Anka\" ] to 0\n    set like[ \"Chapay\" ] to 1\n    set like[ \"Cleo\" ] to 2\n    set like[ \"Troll\" ] to 3\n    set like[ \"Dracul\" ] to 4\n    set like[ \"Snowy\" ] to 5\n    set like[ \"Hexadecimal\" ] to 6\n    create integers n, i\n    create strings name1, str, name2\n    while read n is true\n        set diff to ( 1 bitshift left 31 ) - 1\n        for i = 0 to 3 exclusive, remove all elements from vec[i]\n        set bytes from mat to size of mat to value 0\n        for i = 0 to n exclusive\n            read name1 read str read name2\n            increment mat[like[name1]][like[name2]]\n        end of the block\n        read a read b read c\n        run count with 0 as argument\n        print diff print \" \" print ans print newline\n    end of the block\nend of the block\n\n[CODE]:",
+  "reference_output": "vector<int> vec[3];\nmap<string, int> like;\nint diff, mat[10][10], ans, a, b, c;\nint cal() {\n    int sum = 0, i, j, k;\n    for (i = 0; i < 3; i++) {\n        for (j = 0; j < (int)vec[i].size(); j++)\n            for (k = 0; k < (int)vec[i].size(); k++) sum += mat[vec[i][j]][vec[i][k]];\n    }\n    return sum;\n}\nvoid count(int now) {\n    if (now == 7) {\n        if (vec[0].size() && vec[1].size() && vec[2].size()) {\n            int x[] = {a / vec[0].size(), b / vec[1].size(), c / vec[2].size()};\n            sort(x, x + 3);\n            if (x[2] - x[0] < diff) {\n                diff = x[2] - x[0];\n                ans = cal();\n            } else if (x[2] - x[0] == diff)\n                ans = max(ans, cal());\n        }\n        return;\n    }\n    for (int i = 0; i < 3; i++) {\n        vec[i].push_back(now);\n        count(now + 1);\n        vec[i].pop_back();\n    }\n}\nint main() {\n    like[\"Anka\"] = 0;\n    like[\"Chapay\"] = 1;\n    like[\"Cleo\"] = 2;\n    like[\"Troll\"] = 3;\n    like[\"Dracul\"] = 4;\n    like[\"Snowy\"] = 5;\n    like[\"Hexadecimal\"] = 6;\n    int n, i;\n    string name1, str, name2;\n    while (cin >> n) {\n        diff = (1 << 31) - 1;\n        for (i = 0; i < 3; i++) vec[i].clear();\n        memset(mat, 0, sizeof(mat));\n        for (i = 0; i < n; i++) {\n            cin >> name1 >> str >> name2;\n            mat[like[name1]][like[name2]]++;\n        }\n        cin >> a >> b >> c;\n        count(0);\n        cout << diff << \" \" << ans << endl;\n    }\n}",
+  "expected_regex": null,
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_then_regex",
+    "checkpoint_regex": null,
+    "seen_anchor": false,
+    "counter_after_anchor": 0
+  },
+  "corrupt_meta": {
+    "mode": "anchor_fallback_number_shift",
+    "changed": true,
+    "from": 3,
+    "to": 4,
+    "anchor_found": false,
+    "prefix_open_think_before_inject": 1,
+    "prefix_auto_closed_think": 0
+  },
+  "branch_mode": "ab",
+  "branch_A_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": false
+  },
+  "branch_B_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": false
+  },
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "prefix_open_think_before_inject": 1,
+    "retry_reasons": [
+      "attempt_0:max_new_tokens:unclosed_think"
+    ],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "max_new_tokens",
+  "branch_A_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "none",
+    "trimmed_chars": 0,
+    "reason": "no_first_think_close_in_prefix"
+  }
+}

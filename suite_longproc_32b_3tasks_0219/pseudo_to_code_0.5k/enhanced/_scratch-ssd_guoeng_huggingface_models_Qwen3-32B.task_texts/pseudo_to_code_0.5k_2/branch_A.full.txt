@@ -1,0 +1,110 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++. Let me go line by line.
+
+First, the main function. So, int main().
+
+Inside main, create a string s. So, string s; Then read s. That's probably cin >> s; or maybe getline. But the pseudocode says "read s", which in C++ could be cin >> s. But if there are spaces, maybe getline. But since it's a string, maybe it's just a single word. Let's assume cin >> s.
+
+Then, make char cur = 'a'. So, char cur = 'a';.
+
+Make int mn. Wait, the pseudocode says "make int mn". So declare int mn;. But in the loop, mn is set each time. Then ans is initialized to 0. So int ans = 1;.
+
+For loop from i=0 to s.length() exclusive. So for (int i = 0; i < s.length(); ++i).
+
+Inside the loop: set mn to min between abs(s[i] - cur) and abs(26 - abs(s[i] - cur)). Wait, the pseudocode says abs(26 - abs((s[i] - cur))). Wait, maybe that's a typo. Let me think. The minimum between the direct difference and going the other way around the alphabet. For example, from 'a' to 'z' is 25 steps, but maybe 1 step if you go the other way. So the two options are the absolute difference, and 26 minus that difference. Then take the minimum of those two. But the pseudocode has abs(26 - abs(...)), which might not be correct. Wait, let's think. Let me take an example. Suppose s[i] is 'a' (0) and cur is 'z' (25). The direct difference is 25. The other way is 1. So 26 - 25 = 1. So the correct way is to take the absolute difference between the two characters, then compute min(difference, 26 - difference). But the pseudocode says abs(26 - abs(...)), which would be abs(26 - difference). Since difference is absolute, it's positive, so 26 - difference could be positive or negative? Wait, no. Because the maximum difference between two letters is 25 (e.g., a and z). So 26 - 25 is 1. So the abs is not needed here. But according to the pseudocode, it's written as abs(26 - abs(...)), which would be 26 - difference, since difference is positive. But since 26 is larger than the difference, maybe the abs is redundant. However, the pseudocode says to do that. So in the code, mn is set to the minimum of those two values.
+
+So in C++, mn = min( abs(s[i] - cur), abs(26 - abs(s[i] - cur)) );
+
+Wait, but s[i] and cur are chars. Their difference is an integer. So we can compute that. So in code, inside the loop:
+
+mn = min( abs(s[i] - cur), abs(26 - abs(s[i] - cur)) );
+
+But wait, let me check. Let's take difference as d = abs(s[i] - cur). Then the two options are d and 26 - d. But since 26 - d could be negative if d exceeds 26? No, because the maximum d between two letters is 25. So 26 - d is positive. So the abs is redundant here. So the code could be written as min(d, 26 -d). But according to the pseudocode, the code should follow exactly. The pseudocode says to compute the min between abs(s[i]-cur) and abs(26 - abs(...)). So perhaps the code should follow that exactly. But maybe there's a mistake in the pseudocode. For example, if the difference is 13 (like 13 steps between two letters), then 26 - 13 is 13, so it's the same. But for smaller differences, the first is better. So perhaps the pseudocode's way is correct. But why the abs around 26 - ...? Well, perhaps the pseudocode is written in a way that works for any possible values, but in reality, for two letters, the difference is between 0 and 25. So the code can be written as min( d, 26 -d ), where d is abs(s[i] - cur). But in the pseudocode, the code is written as abs(26 - abs(...)), which would evaluate to 26 -d, since d is positive. So perhaps the code can be written as mn = min( d, 26 -d ), where d is abs(s[i] - cur). But how to code that. So in C++, perhaps:
+
+int d = abs(s[i] - cur);
+mn = min(d, 26 - d);
+
+But according to the pseudocode, the code says:
+
+set mn to min(abs(...), abs(26 - abs(...)))
+
+So the code must follow that. So in C++, it's:
+
+mn = min( abs(s[i] - cur), abs( 26 - abs( (s[i] - cur) ) ) );
+
+But perhaps the inner abs is redundant. But since the pseudocode says to do that, we have to follow it. However, in C++, the order of operations may require parentheses. Let me think. The inner part is (s[i] - cur), then take its absolute value. Then subtract that from 26, take absolute value again. So code-wise, it's:
+
+abs(26 - abs( (s[i] - cur) )) 
+
+But in C++, operator precedence: subtraction and addition have the same precedence. But let's make sure. The expression is 26 - abs(...), then take the absolute value. But since 26 - ... is already positive, the outer abs is redundant. But again, following the pseudocode exactly. So the code would be:
+
+mn = min( abs(s[i] - cur), abs(26 - abs(s[i] - cur)) );
+
+But perhaps the parentheses are important. For example, the pseudocode says "abs(26 - abs((s[i] - cur)))". The inner (s[i] - cur) is in parentheses. So in C++, that would be as written.
+
+Once mn is computed, add it to ans. Then set cur to s[i].
+
+After the loop, display ans. So cout << ans << endl;.
+
+Return 0 to indicate successful execution.
+
+Now, putting it all together.
+
+So the code would be:
+
+int main() {
+    string s;
+    cin >> s;
+    char cur = 'a';
+    int mn;
+    int ans = 0;
+    for (int i = 0; i < s.length(); ++i) {
+        mn = min( abs(s[i] - cur), abs(26 - abs(s[i] - cur)) );
+        ans += mn;
+        cur = s[i];
+    }
+    cout << ans << endl;
+    return 0;
+}
+
+Wait, but in C++, the min function is in <algorithm> or <cmath>? Oh, the <algorithm> header has min, but I think the standard min is in <algorithm>. However, in the given includes, <algorithm> is included. So that's okay.
+
+Wait, but the pseudocode says "make int mn". So mn is declared as an int. Each time in the loop, it's set. So inside the loop, mn is declared as int. Wait, no. The pseudocode says "make int mn" outside the loop. So in the code, mn is declared outside. But in the code, inside the loop, we assign to it. So in the code, mn is declared inside the main function, not inside the loop. So in the code, the code declares int mn; outside the loop. Then, in each iteration, it's assigned. So the code is correct.
+
+But in C++, if the loop is in a block, but in the code here, the for loop's body is a block. So the code is okay.
+
+Another thing: the initial value of cur is 'a'. So for the first character, it calculates the minimal steps from 'a' to the first character of s.
+
+Yes.
+
+Testing with sample input. For example, if s is "abc", then from a to a is 0, then from a to b is 1, then from b to c is 1. Total is 0 + 1 + 1 = 2. But let's see.
+
+But for the first character, cur is 'a', s[0] is 'a'. So difference is 0. The other term is 26 - 0 = 26. min(0, 26) is 0. So added to ans. Then cur becomes 'a'. Then next character is 'b'. difference is 1. 26 - 1 = 25. min(1,25) is 1. ans becomes 1. Then cur is 'b'. Next character 'c' gives difference 1 again, added 1. Total ans is 0+1+1=2. So output is 2. That seems correct.
+
+Another example: if the string is "zab", then first from a to z: difference is 25. 26 - 25 = 1. So mn is 1. Then z to a: difference is 25 (a is 97, z is 122. a - z is -25, absolute is 25. 26 - 25 is 1. min(25, 1) is 1. Then a to b is 1. Total is 1 + 1 + 1 = 3.
+
+But what's the actual movement? Like, moving from a to z takes 1 step (if you can move clockwise or something). Then from z to a again 1 step. Then from a to b 1. Total 3. So correct.
+
+So the code seems to handle that.
+
+Now, code-wise, all the steps are covered. The libraries are already included, so no need to include again. The code uses the standard namespace.
+
+So the final code is as written above.
+</think>
+
+```cpp
+int main() {
+    string s;
+    cin >> s;
+    char cur = 'a';
+    int mn;
+    int ans = 0;
+    for (int i = 0; i < s.length(); ++i) {
+        mn = min(abs(s[i] - cur), abs(26 - abs(s[i] - cur)));
+        ans += mn;
+        cur = s[i];
+    }
+    cout << ans << endl;
+    return 0;
+}
+```

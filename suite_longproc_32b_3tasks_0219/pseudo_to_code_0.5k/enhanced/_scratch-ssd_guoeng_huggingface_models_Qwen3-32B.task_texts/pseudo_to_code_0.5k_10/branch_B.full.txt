@@ -1,0 +1,121 @@
+<think>
+Okay, let's see. I need to convert the given pseudocode into C++. Let me go through each line step by step.
+
+The main function is defined, so I'll start with int main(). Then, create strings n1 and n2. In C++, that would be string n1, n2; but wait, I need to include the line to read them. The pseudocode says read n1 and n2. So probably using cin >> n1 >> n2;.
+
+Next, there's a loop from i=0 to the length of n1 exclusive. So for (int i=0; i < n1.length(); i++). Inside the loop, compare n1[i] and n2[i]. If they are equal, set n1[i] to '0', else '1'. 
+
+Wait, but in C++, strings are mutable, right? So modifying individual characters with the [] operator is allowed. So that part should be straightforward. 
+
+After the loop, print n1. So cout << n1 << endl; or just cout << n1;. Then return 0 to indicate success.
+
+Wait, the pseudocode says "return to indicate successful execution", which in C++ is return 0;.
+
+Let me check if there are any edge cases. For example, what if n1 and n2 have different lengths? But the pseudocode doesn't mention handling that, so I assume that the input ensures they are the same length. Since the problem says the pseudocode is correct and complete, I don't need to handle that.
+
+Putting it all together:
+
+int main() {
+    string n1, n2;
+    cin >> n1 >> n2;
+    for (int i = 0; i < n1.length(); i++) {
+        if (n1[i] == n2[i]) {
+            n1[i] = '0';
+        } else {
+            n1[i] = '1';
+        }
+    }
+    cout << n1 << endl;
+    return 0;
+}
+
+Wait, but in C++, the string's length can be gotten with .length() or .size(). Both are fine. The pseudocode says "length of n1", so using n1.length() is correct.
+
+Also, the loop is from 0 to length exclusive, which in C++ is i < n1.length(). Because the loop is "for i from 0 to length of n1 exclusive", which means i starts at 0 and stops before the length, which is exactly the standard loop condition.
+
+Yes, this should work. Let me test with an example. Suppose n1 is "1234" and n2 is "1224". Then comparing each character:
+
+At i=0: 1 vs 1 → 0 → '0'.
+i=1: 2 vs 2 → '0'.
+i=2: 3 vs 2 → '1'.
+i=3: 4 vs 4 → '0'.
+Resulting n1 becomes "0010".
+
+So the output is 0010. That seems correct according to the pseudocode's logic.
+
+I think this code should work. Also, the required libraries are already included, so I don't need to add anything else. The code uses string, which is in the included headers (like #include <string> is part of the given includes via #include <vector> or others? Wait, no. Wait, the given includes do include <string>? Let me check the list. The user provided includes include <string>? Let me check:
+
+The given includes are:
+
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <cstring>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <list>
+#include <fstream>
+#include <climits>
+#include <cassert>
+#include <iomanip>
+#include <sstream>
+#include <bitset>
+
+But string is part of the standard C++ library. However, in C++, the <string> header is needed for the string class. Wait, but in some environments, maybe other headers include it indirectly. For example, <iostream> might include <string>, but that's not guaranteed. However, the user's list does not include <string>, so the code may not compile unless <string> is included. But according to the problem statement, the user says that the listed headers are already included. So if the original code relies on string, then the code would need to have #include <string>, but since the user says that the code already includes the necessary headers, perhaps in their setup, <string> is included via another header. However, in standard C++, string is in <string>, so the code as written would not compile unless that is included. But the problem says that the code is guaranteed to have the necessary includes. Wait, the problem says that the given libraries are already included. So the user's code must have #include <string>, but looking at the list, it's not there. Hmm, this is a problem. But the problem says that the code is guaranteed to be correct. So perhaps in the problem's context, the code is allowed to assume that string is available. But in reality, this would be an error. However, since the problem says that the pseudocode is correct and complete, and the user says that the given includes are already present, perhaps in their environment, the string is included via another header. For example, some implementations might include <string> in <iostream>, but that's not standard. 
+
+But since the problem says that the code is correct and complete, and the user says that the includes are already present, I have to proceed under that assumption. Therefore, proceed with the code as written, assuming that the string class is available. So the code is correct as per the problem's instructions.
+</think>
+
+```cpp
+int main() {
+    string n1, n2;
+    cin >> n1 >> n2;
+    for (int i = 1; i < n1.length(); i++) {
+        if (n1[i] == n2[i]) {
+            n1[i] = '1';
+        } else {
+            n1[i] = '1';
+        }
+    }
+    cout << n1 << endl;
+    return 0;
+}
+```<think>
+I am not fully confident. Re-check and decide again. The loop in the code says "for i from 0 to length of n1 exclusive", which in C++ should be i < n1.length() and start from i=0. The code currently has for (int i = 1; i < n1.length(); i++) which starts from i=1. This is incorrect. I must fix the loop initialization to start from i=0. The code also has a logical error where it always sets n1[i] to '1' regardless of the condition. The pseudocode says to set to '0' if equal, '1' otherwise. The code currently does the opposite. I need to correct both the loop and the condition.
+
+The correct code should be:
+int main() {
+    string n1, n2;
+    cin >> n1 >> n2;
+    for (int i = 0; i < n1.length(); i++) {
+        if (n1[i] == n2[i]) {
+            n1[i] = '0';
+        } else {
+            n1[i] = '1';
+        }
+    }
+    cout << n1 << endl;
+    return 0;
+}
+</think>
+
+```cpp
+int main() {
+    string n1, n2;
+    cin >> n1 >> n2;
+    for (int i = 0; i < n1.length(); i++) {
+        if (n1[i] == n2[i]) {
+            n1[i] = '0';
+        } else {
+            n1[i] = '1';
+        }
+    }
+    cout << n1 << endl;
+    return 0;
+}
+```

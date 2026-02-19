@@ -1,0 +1,224 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++. Let me start by understanding each part.
+
+First, the pseudocode creates a vector of integers with size 3. Wait, in C++, that would be a vector of vectors? Because the pseudocode mentions vec[i], and each might have elements added. Oh right, the pseudocode says "create integer vector array vec with size 4"—so probably a vector of vectors, like vector<vector<int>> vec(3).
+
+Then there's a map from string to integer. The pseudocode uses "like" as the map name. So in C++, that's a map<string, int> like.
+
+The variables diff, ans, a, b, c are integers. Then mat is a 2D array of size 10 by 10. Since in C++, that's probably a 2D array like int mat[10][10].
+
+The cal function is declared. Inside, it initializes sum, i, j, k. Then loops over i from 0 to 3 exclusive (so 0-2), then j from 0 to the size of vec[i], but the pseudocode says "for j = 0 to integer casted size of vec[i]". Wait, in C++, for loops usually go up to size, but need to check if it's exclusive. The first loop for i is up to 3 exclusive, which is standard (i < 3). For j, the pseudocode says "for j = 0 to integer casted size of vec[i]". Hmm, maybe it's j from 0 to (int)vec[i].size(), but in C++ loops, usually you have to check if it's up to size. Like, if it's "exclusive", then j < vec[i].size(). But the pseudocode's wording is a bit ambiguous. Let me check the inner loops.
+
+In the cal function, for j, it's "for j = 0 to integer casted size of vec[i]". The inner loop for k is "for k = 0 to integer casted size of vec[i] exclusive"—so that one is k < vec[i].size(). But for j, the pseudocode says "to integer casted size of vec[i]"—maybe it's inclusive? But in C++, loops usually use < size. Wait, maybe the pseudocode's "exclusive" applies only to the k loop. For j, it's up to the size, but not exclusive. Wait, the wording is "for j = 0 to integer casted size of vec[i]". So maybe j runs from 0 to (int)vec[i].size(), but in C++ terms, that would be j < vec[i].size()? Because if you have a loop from 0 to N, exclusive, it's j < N. So maybe for j, it's the same as k's loop but without the "exclusive" part. Wait, the pseudocode says for k it's "exclusive", but for j it's not. So perhaps for j, the loop is up to and including the size? But that would be a problem because accessing vec[i][j] when j is equal to the size would be out of bounds. Hmm, maybe there's a typo. Let me recheck.
+
+Looking at the pseudocode again:
+
+for i = 0 to 3 exclusive
+    for j = 0 to integer casted size of vec[i]
+        for k = 0 to integer casted size of vec[i] exclusive, increment sum by mat[vec[i][j]][vec[i][k]]
+end of the block
+
+Wait, for j, the loop is "to integer casted size of vec[i]"—so maybe j runs from 0 to (int)vec[i].size() - 1? Or up to the size? Because in C++, if you have a loop like for (j=0; j <= size; ...) that would be j up to size, but that's out of bounds. So perhaps the pseudocode's wording is a bit off, and for j, it's also exclusive. Maybe the "exclusive" was omitted in the pseudocode for j's loop. Otherwise, accessing vec[i][j] when j is equal to the size would be invalid. So I think that for j, the loop is from 0 to (int)vec[i].size() exclusive. So in code, for (j=0; j < (int)vec[i].size(); j++).
+
+Then, inside the k loop, it's from 0 to the same size, exclusive. So the code for the cal function would be:
+
+int cal() {
+    int sum = 0, i, j, k;
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < (int)vec[i].size(); j++) {
+            for (k = 0; k < (int)vec[i].size(); k++) {
+                sum += mat[vec[i][j]][vec[i][k]];
+            }
+        }
+    }
+    return sum;
+}
+
+But wait, the pseudocode says "for j = 0 to integer casted size of vec[i]"—maybe that's j < (int)vec[i].size()? So that's correct.
+
+Now, the count function. It takes an integer now and returns void. If now is 7, then check if the sizes of vec[0], vec[1], vec[2] are non-zero. Then create x as {a / size of vec[0], ...}, sort them, and compare the difference. If the difference is less than current diff, update diff and ans. Else if equal, take max of ans and cal().
+
+But in C++, the vec is a global variable? Because in the pseudocode, the count function is modifying vec by adding and removing elements. So vec, like, mat, diff, ans, a, b, c are all global variables.
+
+So in the code, these variables should be declared in the global scope.
+
+Now, the main function. It sets the like map with various names to 0-6. Then reads n, and processes n lines of name1, str, name2, incrementing mat[like[name1]][like[name2]].
+
+Then reads a, b, c. Then runs count(0). Then prints diff and ans.
+
+Now, implementing the count function. The function is recursive. For each now from 0 to 6 (since when now is 7, it does the check), it adds now to each of the three vec[i], then calls count(now+1), then removes it (backtracking).
+
+Wait, the pseudocode says:
+
+for i = 0 to 3 exclusive
+    add element now to end of vec[i]
+    run count with now + 1 as argument
+    remove last element from vec[i]
+end of the block
+
+But there are 3 vecs (vec[0], vec[1], vec[2]). So for each i in 0-2 (since 3 exclusive), add now to vec[i], then recurse, then backtrack.
+
+So in code, the count function would be:
+
+void count(int now) {
+    if (now == 7) {
+        if (vec[0].size() && vec[1].size() && vec[2].size()) {
+            int x[3] = {a / (int)vec[0].size(), b / (int)vec[1].size(), c / (int)vec[2].size()};
+            sort(x, x + 3);
+            if (x[2] - x[0] < diff) {
+                diff = x[2] - x[0];
+                ans = cal();
+            } else if (x[2] - x[0] == diff) {
+                ans = max(ans, cal());
+            }
+        }
+        return;
+    }
+    for (int i = 0; i < 3; i++) {
+        vec[i].push_back(now);
+        count(now + 1);
+        vec[i].pop_back();
+    }
+}
+
+But wait, the pseudocode says "add element now to end of vec[i]". So the 'now' is the current value (like 0, then 1, etc.), and adding it to vec[i]. So each vec[i] collects the sequence of numbers from 0 to 6, but partitioned into the three vecs. But when now is 7, the check is done.
+
+Now, the variables diff and ans are initialized. In the main function, before processing each test case, diff is set to (1 << 31) - 1, which is a very large value (since 1<<31 is 2^31, but since it's signed, that would be -2^30, but (1<<31) -1 would be undefined in C++ for signed integers. Wait, the pseudocode says set diff to (1 bitshift left 31) - 1. In C++, shifting 1 left by 31 is undefined for a signed int (since 32-bit int, shifting 1<<31 would be a negative value on two's complement). But perhaps the intention is to set diff to a very large value, like INT_MAX. So in C++, we can set diff = INT_MAX.
+
+But in the code, the pseudocode says:
+
+set diff to (1 bitshift left 31) - 1
+
+<think>
+I am not fully confident. Re-check and decide again. The code assumes that after the n lines, there's a line with a, b, c. So in C++, after the for loop for i < n, we read a, b, c.
+
+Now, putting all together.
+
+But in the code, the variables a, b, c are global. So in the main function, after reading the n lines, we read a, b, c.
+
+Now, the code:
+
+But in the pseudocode, the main function's code is:
+
+define the main function
+    set like[ "Anka" ] to 0
+    ...
+    create integers n, i
+    create strings name1, str, name2
+    while read n is true
+        set diff to ( 1 bitshift left 31 ) - 1
+        for i = 0 to 3 exclusive, remove all elements from vec[i]
+        set bytes from mat to size of mat to value 0
+        for i = 0 to n exclusive
+            read name1 read str read name2
+            increment mat[like[name1]][like[name2]]
+        end of the block
+        read a read b read c
+        run count with 0 as argument
+        print diff print " " print ans print newline
+    end of the block
+end of the block
+
+So in code:
+
+int main() {
+    like["Anka"] = 0;
+    like["Chapay"] = 1;
+    like["Cleo"] = 2;
+    like["Troll"] = 3;
+    like["Dracul"] = 4;
+    like["Snowy"] = 5;
+    like["Hexadecimal"] = 6;
+    int n, i;
+    string name1, str, name2;
+    while (cin >> n) {
+        diff = INT_MAX;
+        for (int i=0; i<3; i++) vec[i].clear();
+        memset(mat, 0, sizeof(mat));
+        for (i=0; i < n; i++) {
+            cin >> name1 >> str >> name2;
+            mat[like[name1]][like[name2]]++;
+        }
+        cin >> a >> b >> c;
+        count(0);
+        cout << diff << " " << ans << endl;
+    }
+    return 0;
+}
+
+But wait, the variables a, b, c are declared as global, so they are initialized to zero. But in the main function, after reading them, they are set.
+
+Now, the code should be correct. Let me check for any possible errors.
+
+Potential issues:
+
+- The cal function uses vec[i][j], which is correct as long as the loops are correct.
+
+- The count function uses recursion to generate all possible ways to assign 0-6 to the three vecs. But each number from 0-6 is added exactly once to one of the vecs. Because for each step, now starts at 0, and each call adds now to one of the three vecs, then increments now by 1. When now reaches 7, the check is done.
+
+Yes, because there are 7 elements (0-6) to distribute into the three vecs. Each vec must have at least one element when now is 7. Because the check is if the sizes of vec[0], vec[1], vec[2] are non-zero. So during the recursion, each vec must have at least one element.
+
+But the code for the count function's if (now ==7) block checks if all three vecs are non-empty. So that's correct.
+
+Another thing: in the cal function, the sum is initialized to zero each time. Since cal is called multiple times, but the code is correct.
+
+Now, the code should be correct.
+</think>
+
+```cpp
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <cstring>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <list>
+#include <fstream>
+#include <climits>
+#include <cassert>
+#include <iomanip>
+#include <sstream>
+#include <bitset>
+using namespace std;
+
+vector<vector<int>> vec(3);
+map<string, int> like;
+int mat[10][10];
+int diff, ans, a, b, c;
+
+int cal() {
+    int sum = 0, i, j, k;
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < (int)vec[i].size(); j++) {
+            for (k = 0; k < (int)vec[i].size(); k++) {
+                sum += mat[vec[i][j]][vec[i][k]];
+            }
+        }
+    }
+    return sum;
+}
+
+void count(int now) {
+    if (now == 7) {
+        if (vec[0].size() && vec[1].size() && vec[2].size()) {
+            int x[3] = {a / (int)vec[0].size(), b / (int)vec[1].size(), c / (int)vec[2].size()};
+            sort(x, x + 3);
+            if (x[2] - x[0] < diff) {
+                diff = x[2] - x[0];
+                ans = cal();
+            } else if (x[2] - x[0] == diff) {
+                ans = max(ans, cal());
+            }
+        }
+        return;
+    }
+    for (int i = 0; i < 3; i++) {
+        vec[i].push_back(now);
+        count(now + 1);
+        vec[i].pop_back();
+   

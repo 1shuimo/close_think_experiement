@@ -1,0 +1,141 @@
+<think>
+Okay, let's see. I need to convert the given pseudocode into C++. Let me read through the pseudocode carefully.
+
+First, the task says to create long long integers a, b, c and an array of size 100001. Oh right, the array is probably for x. So in C++, I'll need to declare those variables. The array can be a vector or a raw array. Since the size is fixed, maybe a raw array is sufficient here. But since in C++, vectors are safer, but the pseudocode mentions an array, maybe it's intended to use a raw array. However, with size 100002, which is manageable.
+
+So, the variables: long long a, b, c; and the array x of size 100001. Let me think about the data types. The variables a, b, c are long long. The array elements are probably long long as well, since they are being used in calculations with b.
+
+In the main function, the code reads a and b. Then, for i from 0 to a exclusive, read x[i] and add (x[i] + b -1)/b to c. Finally, print (c +1)/2 and return 0.
+
+Wait, the initial value of c? The pseudocode says "set c to c + ...", but c isn't initialized. Oh, that must be a typo. Wait, no. Wait, the pseudocode says "for i = 0 to a exclusive, read x[i] and set c to c + ...". So initially, c must be zero? Otherwise, it's undefined behavior. But in C++, if you don't initialize variables, they have undefined values. So the correct code must initialize c to 0. So in the C++ code, when declaring c, we need to set it to 0. Otherwise, adding to it would be incorrect.
+
+So, the code should have long long c = 0;.
+
+Now, the array. Let's assume that x is an array of long long. So in C++, we can declare it as long long x[100001];. Since the size is 100001, which is manageable on the stack. But if a is up to 100000, since in the loop it's from 0 to a exclusive, so the array is big enough.
+
+Now, in the main function:
+
+Read a and b. So cin >> a >> b; ?
+
+Then, for each i from 0 to a-1 (since it's exclusive), read x[i], and compute (x[i] + b -1)/b and add to c.
+
+Wait, how to read x[i]? Like, for each i in 0 to a (exclusive), read x[i]. So probably, a loop:
+
+for (long long i = 0; i < a; i++) {
+    cin >> x[i];
+    c += (x[i] + b - 1) / b;
+}
+
+But wait, the pseudocode says "read x[i] and set c to c + ...". So during each iteration, after reading x[i], compute that value and add to c.
+
+Once that's done, output (c +1)/2. But since c is a long long, adding 1 and dividing by 2. But how is that handled? For example, if c is even or odd. But since the pseudocode says to print (c +1)/2, in C++ we can just compute that. But since it's integer division? Wait, no. In C++, if c is a long long, (c +1)/2 would be integer division if using integer types. Wait, but in C++, division of integers is done with / operator. So if (c +1) is even, then (c +1)/2 is an integer. If it's odd, then it's also an integer. So yes, but since c is a sum of terms, each term being (x[i] + b -1)/b. Let me think about each term. Each term (x[i] + b -1)/b is equivalent to the ceiling of x[i]/b. Because, for example, if x[i] is exactly divisible by b, then adding b-1 and dividing by b would be (x[i]/b) + (b-1)/b, which is x[i]/b + something less than 1. Wait, no. Let me think. Let's say x[i] = k*b - r where r is between 0 and b-1. For example, when you divide x[i] by b, the quotient is k when r=0, but if r>0, then ceiling(x[i]/b) is k+1. So (x[i] + b -1)/b = (k*b - r + b -1)/b. Let me compute for x[i] = 5, b=2. Then (5 + 2-1)/2 = (6)/2=3. Which is ceiling(5/2) = 3. Similarly, if x[i] is 4, (4+1)/2 is 5/2=2.5, but integer division in C++ truncates towards zero. Wait, but (x[i] + b -1)/b is designed to compute the ceiling. So in integer terms, each term is ceiling(x[i]/b). So c is the sum of those ceilings. Then (c +1)/2 is the ceiling of c/2. Wait, no. If c is even, (c +1)/2 is (even +1)/2. For example, if c is 4, (4+1)/2 is 2.5, but in integer division in C++, it would be 2. Wait, but in C++, when you divide integers, it truncates towards zero. So (c +1)/2 would be equivalent to floor((c +1)/2). Which is the same as the integer division. For example, if c is 5, (5+1)/2 is 3, which is ceiling(5/2). So the overall code is outputting floor( (c+1)/2 ). Wait, but the pseudocode says to print (c +1)/2. How is that handled in the pseudocode? Maybe in the problem, c is always an integer, and (c +1)/2 is intended to be integer division. Or perhaps it's regular division. But in the pseudocode's description, perhaps the actual value is printed with decimal points? But the original problem's sample outputs may vary. However, looking back at the code's instruction, the user provided the pseudocode. The line says to print (c +1)/2. Since in the code example, the variables are long long, adding 1 and dividing by 2. But in C++, if we do (c + 1) / 2, since c is a long long, then adding 1 gives a long long, and dividing by 2 (integer division). For example, if c is 5, (5 +1)/2 is 3. If c is 4, (4 +1)/2 is 2.5 but since integer division, 2. But wait, in C++ when you do integer division, 5/2 is 2. So (c +1)/2 is (c+1) divided by 2, using integer division. So the code would output that as an integer.
+
+But how to print it? Well, the code can just output it as a long long. So in C++, the code would be:
+
+cout << (c + 1) / 2 << endl;
+
+But wait, in C++, the division of two long longs is integer division. So that's correct.
+
+Now, putting it all together.
+
+The variables: long long a, b, c; and the array. Let me think about the array. So in C++, the code would have:
+
+long long x[100001];
+
+But in C++, arrays have fixed size. The problem says that the array is of size 100001, which is given. So that's okay.
+
+Now, in the main function. The code should read a and b. Then loop a times. So:
+
+int main() {
+    long long a, b;
+    cin >> a >> b;
+    long long x[100001];
+    long long c = 0;
+    for (long long i = 0; i < a; ++i) {
+        cin >> x[i];
+        c += (x[i] + b - 1) / b;
+    }
+    cout << (c + 1) / 2 << endl;
+    return 0;
+}
+
+Wait, but in C++, variable-length arrays are not standard. Wait, the code declares a long long array of size 100001. So in the code, the array is fixed size. But in C++, the size of the array must be a compile-time constant. However, in the code given, the array is declared as long long x[100001]; which is allowed if 100001 is a constant. Since in the pseudocode says to create the array of size 100001, so in the code, that's a fixed size. So that's okay. So the code is valid C++.
+
+But wait, in C++ standard, variable-length arrays (like those in C99) are not allowed. So if the code uses a fixed size array, then it's okay. So 100001 is a constant, so the array is of fixed size. So that's acceptable.
+
+But in C++, for variables with static storage duration, the size must be a constant expression. So if the code is written as:
+
+long long x[100001];
+
+inside the main function, that's allowed if 100001 is a compile-time constant, which it is. So that's okay.
+
+Now, what about possible overflow? Well, the problem says that the pseudocode is correct and complete, so we don't need to worry about that.
+
+Now, check the initial code. The variables a, b, c are long long. The array is declared as long long x[100001]. The code reads a and b, then loops a times. Each time, reads x[i] and adds (x[i] + b -1)/b to c. Then outputs (c+1)/2.
+
+But in the pseudocode, the array is part of the variables declared. So in the code, the array is declared as long long array. So the code is correct.
+
+Now, the code uses cin and cout. The headers are already included, so no need to include them again.
+
+Now, the code returns 0, which indicates successful execution. So that's correct.
+
+So putting all together, the code would be:
+
+#include ... (but the user says not to include them again). So the code should not have the includes. The user says that the code should correspond to the pseudocode line by line.
+
+So the code in C++ would be as follows.
+
+But wait, the variables a, b, c are declared as long long. The array is declared as long long x[100001]. So in the code:
+
+long long x[100001];
+
+But where is this declared? The pseudocode says to create these variables. So in C++, the code would have:
+
+long long a, b, c;
+
+and the array. But in the main function? Or globally? Well, since the code is inside main, probably.
+
+So the code inside main is:
+
+Read a and b. Then loop.
+
+So the code would be:
+
+int main() {
+    long long a, b;
+    cin >> a >> b;
+    long long x[100001];
+    long long c = 0;
+    for (long long i = 0; i < a; ++i) {
+        cin >> x[i];
+        c += (x[i] + b - 1LL) / b;
+    }
+    cout << (c + 1) / 2 << endl;
+    return 0;
+}
+
+Wait, but what if b is zero? Well, the pseudocode says that the input is correct, so we don't need to handle division by zero. The problem says that the pseudocode is correct and complete, so the code can assume that b is not zero.
+
+But in C++, when using division, we have to make sure that b is not zero. But since the pseudocode is correct, the input would not have b=0.
+
+Now, one thing to note is that when using the + operator with long long. For example, in (x[i] + b - 1) / b. But if x[i] is very large, and b is also large, but this is handled by the problem's pseudocode.
+
+But in C++, the code is correct as written.
+
+Wait, but in C++, the array is declared as long long x[100001];. So that's okay.
+
+Now, the code uses 1LL? Well, in the case where b is 1, and x[i] is some value. Let's see. For example, when adding (x[i] + b - 1)/b. Let's say x[i] is 5, b is 2. Then 5 + 2 -1 = 6, divided by 2 is 3. Correct. But if we write (x[i] + b - 1) / b, then in C++ all terms are long long. So no problem. Wait, but if x[i] is a very large value, but since it's a long long, it can hold it.
+
+But why would we need 1LL here? Well, perhaps if 1 is treated as an int. But adding to x[i] (a long long) and b (a long long) would promote 1 to long long. So no problem. So the code can be written as (x[i] + b - 1) / b.
+
+So the code is okay.
+
+Now, testing with sample input. Let's imagine a sample input. For example, a=2, b=3. Then x[0] = 4, x[1] = 5. Then for each term:
+
+For x[0] =4, (4 +3-1)/3 = (6)/3=2. For x[1]=5, (5+3-1)/3=7/3=2.333... which integer division in C++ gives 2. So c=4. Then (4+1)/2=5/2=2. So output is 2.
+
+But if the code is (c +1)/2, then 4+1 is 5 divided by 2 is 2.5, but integer division gives 2.
+
+But according to the pseudocode's logic, that's correct.
+
+So the

@@ -1,0 +1,135 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++ code. Let me go through each part step by step.
+
+First, the pseudocode mentions creating an integer sum. So in C++, I'll need a global variable or a static variable inside a function. But looking at the add function, it's modifying sum. Oh right, in the main function, there's a loop where for each i from 3 to n exclusive, they call add(n, i). The add function adds to sum. So sum must be a global variable. So I'll declare int sum; outside.
+
+Next, the gcd function. The function takes a and b. The base case is if a % b is 0, return b. Otherwise, return gcd(b, a%b). Wait, but in C++, the function needs to be declared. So I'll write a function int gcd(int a, int b) { if (a % b == 0) return b; else return gcd(b, a%b); } But wait, what if b is 0? But in the main function, when we call gcd(sum, n-2), sum is the sum of digits in base i, which is at least 1 (since n is at least 2?), and n-2 could be 1 or more. Hmm, but maybe the initial call in main is with n-2 as the second argument. Let's think: when n is read, and the loop is for i from 2 to n exclusive. For example, if n is 2, the loop doesn't run. But in that case, sum remains 0, and then div is gcd(0, 0)? Wait, but if n is 2, then n-2 is 0. So sum would be 0 (since add is never called), and then trying to compute gcd(0, 0) would be a problem. But maybe the problem constraints ensure that n is large enough. The pseudocode says to read n, but perhaps in practice, n is at least 3. But I'll proceed as per the pseudocode.
+
+Then the add function. It takes n and x, and while n is not 0, adds n%x to sum, then sets n = n/x. So the function is void add(int n, int x). Wait, but in C++, parameters are passed by value, so modifying n inside the function won't affect the original. But the pseudocode says "set n to n / x". So the function is using a local copy of n. That's correct. So the function is:
+
+void add(int n, int x) {
+    while (n != 0) {
+        sum += n % x;
+        n = n / x;
+    }
+}
+
+Now, the main function. Read n. Then for i from 2 to n exclusive, call add(n, i). Then compute div as gcd(sum, n-2). Then print sum/div followed by '/' and (n-2)/div.
+
+Wait, but sum is accumulated across all calls to add. So in the main function, sum must be reset to 0 before the loop. Oh, right! The pseudocode says "create integer sum" and then in the main function, the add calls are made. But in the initial part, the pseudocode says "create integer sum" once. But in the main function, each time when processing a new n, the sum should be reset. Wait, looking at the pseudocode:
+
+The pseudocode says:
+
+define main function
+    create integer n
+    read n
+    for i=2 to n exclusive, run add with n, i
+    create integer div ...
+So the sum variable must be declared outside, but in each run of main, sum is initially 0. But in C++, if sum is a global variable, it's initialized to 0. So that's okay. But during the loop, for each i, add is called, which adds to sum. So sum is the total of all the sums from each base conversion.
+
+But in the pseudocode, the sum is created once, so in C++, it's a global variable. So I'll declare int sum; globally. Then in main, after processing all i's, compute the gcd.
+
+Putting it all together:
+
+First, the global variable sum.
+
+Then the gcd function.
+
+Then the add function.
+
+Then the main function.
+
+But wait, in C++, the order matters. Functions need to be declared before they are used. So the gcd function is used in main, so either we need to put it before main, or use a forward declaration.
+
+Same for add function. So the order would be:
+
+int sum;
+
+int gcd(int a, int b) {
+    if (a % b == 0) return b;
+    return gcd(b, a % b);
+}
+
+void add(int n, int x) {
+    while (n != 0) {
+        sum += n % x;
+        n = n / x;
+    }
+}
+
+int main() {
+    int n;
+    cin >> n;
+    sum = 0; // Wait, in the pseudocode, sum is created once. But in the main function, when processing a new n, do we reset sum? The pseudocode says in main, create integer n, read n, then for loop. The sum is declared once, so in the pseudocode, perhaps it's initialized to 0 each time. But in the given pseudocode, the 'create integer sum' is outside. So in the code, sum is a global variable, initialized to 0. But during each run of main, before the loop, sum is 0. But in the code as written, if sum is global, then between different runs (if any) it would retain value, but the main function is called once. So in the code, during the main function, sum starts as 0, then the loop adds to it. So in the code, the global sum is correct.
+
+Wait, but in the pseudocode, the 'create integer sum' is outside. So yes, in C++, it's a global variable. So in the main function, when processing, sum is initially 0. Then during the loop, for each i from 2 to n-1 (exclusive), add(n, i) is called. Each add adds the sum of digits of n in base i. Then after all that, compute the gcd between sum and (n-2). Then print as reduced fraction.
+
+So in code:
+
+In main:
+
+int n;
+cin >> n;
+
+sum = 0; // Wait, no. Because sum is a global variable, it's initialized to 0. But during the loop, it's being added to. So before the loop, sum is 0, and after all the add calls, it's the total. So no need to set to 0 again. Wait, but if the code is run multiple times (like in multiple test cases), but the pseudocode's main function is for a single run. So in the code, sum is initialized to 0 once. Then, when main is executed, the sum starts as 0, and the loop adds to it. So no problem.
+
+But wait, if the code is run once, then sum is 0 initially. Then during the loop, it's incremented. So the code is okay.
+
+So the code for main is:
+
+int main() {
+    int n;
+    cin >> n;
+    for (int i = 2; i < n; ++i) {
+        add(n, i);
+    }
+    int div = gcd(sum, n - 2);
+    cout << sum / div << '/' << (n - 2) / div << endl;
+    return 0;
+}
+
+But wait, the gcd function as written may have issues. For example, if a is not divisible by b, it returns gcd(b, a%b). But what if b is zero? However, in the main function, when we call gcd(sum, n-2), sum is the sum of digits across all bases. Let's think: when n is 2, the loop runs from i=2 to n exclusive (i < n is 2 < 2, which is false). So the loop doesn't run. sum remains 0. Then n-2 is 0. So we call gcd(0, 0). Which would cause a division by zero in the first step. But the problem says that the pseudocode is correct and complete, so perhaps n is at least 3. But in code, we need to handle that. However, according to the problem statement, the pseudocode is correct, so perhaps the input n is such that this doesn't happen. So we proceed.
+
+Another thing: the gcd function. The standard Euclidean algorithm is usually written as: while b is not zero, replace (a, b) with (b, a mod b). But here, the function is recursive. Let's see: suppose a and b are positive integers. For example, if a is 8 and b is 4, returns 4. If a is 10 and b is 3, then 10%3 is 1, so call gcd(3,1). Then 3%1 is 0, return 1. Correct. But what if a is smaller than b? For example, a=3, b=6. Then 3%6 is 3, so returns 6? No, wait, the function is called with a and b. Wait, the function is declared with (int a, int<think>
+I am not fully confident. Re-check and decide again. </think>
+
+Wait, the function is declared as taking a and b. But in the pseudocode, the function is called with a and b as integers. For example, in the main function, it's called with sum and n-2. So the function should compute the GCD of the two numbers. However, the standard Euclidean algorithm requires that the first argument is larger than the second. But in the code as written, if a is smaller than b, then a % b is a, so the function returns gcd(b, a). Which would then proceed correctly. For example, if a=3 and b=6, then a%b is 3, so return gcd(6,3). Then in that call, 6%3 is 0, returns 3. Which is correct. So the function works even if a < b. So the code is okay.
+
+Another thing: in the add function, when n is 0, the loop doesn't run. So for example, if n is 0, but in the main function, n is read from input. But according to the problem statement, the pseudocode is correct and complete, so the input is such that n is valid.
+
+Now, putting all together.
+
+The code:
+
+#include statements are already provided, so we don't include them.
+
+The code:
+
+int sum;
+
+int gcd(int a, int b) {
+    if (a % b == 0) return b;
+    return gcd(b, a % b);
+}
+
+void add(int n, int x) {
+    while (n != 0) {
+        sum += n % x;
+        n = n / x;
+    }
+}
+
+int main() {
+    int n;
+    cin >> n;
+    for (int i = 2; i < n; ++i) {
+        add(n, i);
+    }
+    int div = gcd(sum, n - 2);
+    cout << sum / div << '/' << (n - 2) / div << endl;
+    return 0;
+}
+
+Wait, but what if n is 1? Then the loop runs from 2 to 1, which is not executed. sum is 0. Then n-2 is -1. But the code would call gcd(0, -1). But a%b when a is 0 and b is -1 is 0%(-1) which is 0. So returns b, which is -1. Then the output would be 0 / -1 = 0, and (n-2)/div is -1 / -1 = 1. So output is 0/1. But perhaps the problem constraints ensure that n is at least 2. But again, the pseudocode is correct, so perhaps the input is valid.
+
+But according to the problem statement, the code should correspond to the pseudocode line by line. So the code is correct as written.

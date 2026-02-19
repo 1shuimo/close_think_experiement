@@ -1,0 +1,193 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++. Let me go through each line step by step.
+
+First, the main function is defined. So, the code starts with int main(). Then, variables n, m, x, y are integers. So, I'll declare them as int.
+
+Next, read n, m, x, y. In C++, that's probably using cin. So, cin >> n >> m >> x >> y;
+
+Then, a is a vector of ints with size n. So, vector<int> a(n). Similarly for b with size m: vector<int> b(m).
+
+Then, loops to read a[i] and b[i]. For a, a for loop from 1 to n-1, reading each element. Same for b.
+
+Count is initialized to 0. Result is a vector of ints with size n. Index is an int starting at 0. Wait, but in the pseudocode, index isn't used beyond declaration. Maybe it's a typo or unused variable. But the pseudocode says to let index be 0. Hmm, maybe it's part of the logic, but looking at the loop, maybe it's not used. Maybe the pseudocode has a mistake here, but since the problem says the pseudocode is correct and complete, I have to include it. But in the loop, the variables i and j start at 0. Wait, the pseudocode says "for i and j starting at 0, i < n and j < m". So, probably a loop where i and j are initialized to 0, and loop while i <n and j <m. So, something like:
+
+int i = 0, j = 0;
+while (i < n && j < m) { ... }
+
+Then inside the loop, the conditions. If b[j] < a[i] - x, increment j. Else if b[j] > a[i] + y, increment i. Else, set result[i] to j+1 (since in the pseudocode, it's 1-based?), increment i, j, and count.
+
+Wait, the pseudocode says "set result[i] to j + 1". So, assuming that the indices in the pseudocode are 0-based, but the output is 1-based? For example, if j is 0, then j+1 is 1. So, probably, the result is storing the 1-based index of the b array.
+
+Then, after processing, print count. Then, for i from 1 to result.size() exclusive. Wait, result.size() is n. So, for i starting at 1, up to n-1. So, a loop starting at i=1, and for each, if result[i] is not 0, print i+1, a space, and result[i]. Wait, i+1 would be 2, 3, etc. But why start at i=1? Let me think. The pseudocode says for i=1 to result.size() exclusive. So, in C++, that would be a loop from i=1 to i < result.size(). Since result.size() is n, so for (int i=1; i < n; ++i). Then, if result[i] is not 0, print i+1? Wait, the pseudocode says "print i + 1, then print a space, then print result[i]". So, for example, if i is 1, then print 2, then the result[i]. But why is that the case? Maybe the output requires that for each matched element in a (since result is of size n), the index in a is i, and the output is the position in a (i+1) and the position in b (result[i], which is j+1). So, for each i in a, if there's a match, output i+1 and result[i].
+
+But the loop in the pseudocode starts at i=1. Wait, maybe the first element (i=0) is handled differently? Or perhaps it's a mistake. But according to the pseudocode, the loop starts at i=1. So, in the code, after the initial loop, the code will loop from i=1 to n-1. For each of those, if result[i] is not zero, print the required output. Also, during this loop, after each print, decrement count, and if count is 0, break.
+
+Wait, the pseudocode says: for i = 1 to result.size() exclusive. So, for i from 1 up to but not including result.size(). Since result.size() is n, the loop runs for i=1, 2,..., n-1. Then, for each i in that range, if result[i] is not 0, print i+1, space, result[i]. Then decrement count. Then, if count is 0, break.
+
+But why start at i=1? Maybe the first possible match is stored in result[0], but the loop starts at i=1. That seems odd. Unless there's a mistake in the pseudocode. But since the problem says the pseudocode is correct, I have to follow it.
+
+So, after the initial loop where i and j are processed, the code then prints count. Then, for the output lines, it starts from i=1. But perhaps the first element (i=0) is not considered here. Maybe the output is supposed to list all the pairs, but the pseudocode's loop starts at i=1. That might be an error, but again, the pseudocode is correct.
+
+So, in the code, after the initial loop, we print count. Then, for i from 1 to n-1:
+
+if (result[i] != 0) {
+    print i+1, space, result[i]
+    count--;
+    if (count == 0) break;
+}
+
+But why not start from i=0? Maybe the pseudocode intended to start from i=0. But according to the given pseudocode, it's starting from i=1. So perhaps the first element is not considered here. But perhaps the code is supposed to output all the matched pairs. Maybe the loop is supposed to start from i=0. But the pseudocode says i starts at 1. Hmm. Well, I have to follow the pseudocode.
+
+Now, putting this into C++ code.
+
+Let me outline the code structure.
+
+In C++:
+
+int main() {
+    int n, m, x, y;
+    cin >> n >> m >> x >> y;
+    vector<int> a(n);
+    vector<int> b(m);
+    for (int i=0; i < n; ++i) cin >> a[i];
+    for (int i=0; i < m; ++i) cin >> b[i];
+    int count = 0;
+    vector<int> result(n);
+    int index = 0; // but not used?
+    int i=0, j=0;
+    while (i < n && j < m) {
+        if (b[j] < a[i] - x) {
+            ++j;
+        } else if (b[j] > a[i] + y) {
+            ++i;
+        } else {
+            result[i] = j + 1;
+            ++i;
+            ++j;
+            ++count;
+        }
+    }
+    cout << count << endl;
+    for (int i=1; i < result.size(); ++i) {
+        if (result[i] != 0) {
+            cout << i+1 << " " << result[i] << endl;
+            --count;
+            if (count == 0) break;
+        }
+    }
+    return 0;
+}
+
+Wait, but in the pseudocode, after printing count, the loop starts. Also, in the pseudocode's loop, for each i from 1 to result.size() exclusive. So, in C++, for (int i=1; i < result.size(); ++i). Since result.size() is n, but n could be any size. So, that's correct.
+
+But what about the first element (i=0)? The loop starts at i=1, so it's not processed here. So, if there was a match for i=0, it's in result[0], but the loop starts at i=1. Therefore, the code as per the pseudocode would not output that. But according to the pseudocode's logic, perhaps the initial count is printed, and then the loop is for outputting the pairs. But if the loop starts at i=1, then perhaps the first element is not considered. That seems odd. But again, the pseudocode is correct.
+
+But maybe the pseudocode's loop is supposed to start at i=0. Let me check again. The pseudocode says:
+
+for i = 1 to result.size() exclusive
+
+Which in C++ is for (i=1; i < result.size(); ...). So, the code is correct as written.
+
+But why would the first element be skipped? Maybe the pseudocode intended to start at i=0. But since the problem says the pseudocode is correct, perhaps there's a reason. For example, maybe the first element is not part of the output, but that seems unlikely. However, given the pseudocode, I have to follow it.
+
+Another thing: in the pseudocode's output loop, after printing, it decrements count, and if count is 0, breaks. So, the number of outputs is equal<think>
+I am not fully confident. Re-check and decide again. 
+
+Wait, the pseudocode's output loop is supposed to print all the matches. But if the loop starts at i=1, then the first match (i=0) is not printed. But according to the code, the count is printed first, which is the total number of matches. But if the code's output loop starts at i=1, then it will only print (count - 1) lines, assuming the first match is at i=0. 
+
+This suggests that the pseudocode may have an error. But since the problem says the pseudocode is correct, perhaps the loop is intended to start at i=0. 
+
+Wait, looking back at the pseudocode:
+
+for i = 1 to result.size() exclusive
+
+But perhaps the pseudocode uses 1-based indexing for the loop. For example, if the result.size() is n, then in pseudocode, the loop runs from i=1 to n-1. But in C++, that's for (int i=1; i < n; ++i). However, if the first match is at i=0, then it's not included. 
+
+But the count is printed first, which is the total number of matches. Then, the loop is supposed to print each of the matches. But if the loop starts at i=1, then it's possible that the code prints fewer lines than the count. 
+
+This suggests that there's a mistake in the pseudocode. However, the problem states that the pseudocode is correct and complete. Therefore, I must follow it. 
+
+So, the code as written will have the loop starting at i=1. Therefore, if there are matches in result[0], they are not printed. But according to the pseudocode, that's correct. 
+
+Perhaps the pseudocode intended to start the loop at i=0. But given the current pseudocode, I have to proceed. 
+
+Another thing: in the output loop, the code prints i+1. For example, if i is 1, then it prints 2. But the original a's index is i (which is 1), so the position in a is i+1? Wait, no. The a's index is i, so the position is i+1. For example, if i is 0, the first element of a is at position 1. So, in the output, for a match at a[i], the output is (i+1) and (j+1). 
+
+But in the pseudocode's output loop, the code is for i=1 to result.size() exclusive. So, for i=1, the output is i+1 = 2. That would correspond to the second element of a. 
+
+But why would the first element (i=0) not be part of the output? 
+
+This is confusing, but according to the pseudocode, the code must be written as such. 
+
+So, the code is correct as per the pseudocode. 
+
+Now, the final code includes the index variable, which is declared but not used. But the pseudocode says to let index be an int with value 0. So, including it is correct. 
+
+Thus, the final code is as written above. 
+
+Another thing: in the pseudocode, the output for the pairs is printed with a space between the numbers. In C++, using << " " << would do that. 
+
+Also, the code uses endl, which adds a newline. But the problem may require space-separated outputs. However, the pseudocode says to print each line with the pair. So, using endl is correct. 
+
+So, the code should be correct.
+</think>
+
+```cpp
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <cstring>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <list>
+#include <fstream>
+#include <climits>
+#include <cassert>
+#include <iomanip>
+#include <sstream>
+#include <bitset>
+using namespace std;
+
+int main() {
+    int n, m, x, y;
+    cin >> n >> m >> x >> y;
+    vector<int> a(n);
+    vector<int> b(m);
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+    for (int i = 0; i < m; ++i) {
+        cin >> b[i];
+    }
+    int count = 0;
+    vector<int> result(n);
+    int index = 0;
+    int i = 0, j = 0;
+    while (i < n && j < m) {
+        if (b[j] < a[i] - x) {
+            ++j;
+        } else if (b[j] > a[i] + y) {
+            ++i;
+        } else {
+            result[i] = j + 1;
+            ++i;
+            ++j;
+            ++count;
+        }
+    }
+    cout << count << endl;
+    for (i = 1; i < result.size(); ++i) {
+        if (result[i] != 0) {
+            cout << i + 1 << " " << result[i] << endl;
+            --count;
+            if (count == 0) break;
+        }
+    }
+    return 0;
+}
+```

@@ -1,0 +1,184 @@
+<think>
+Okay, let's see. I need to convert the given pseudocode into C++. Let me go through each part step by step.
+
+First, the pseudocode declares a function tostr that takes an integer n and returns a string. The implementation uses a stringstream. So in C++, that would be straightforward. The function tostr would take an int n, create a stringstream, use << to insert n, then return the string. That's easy enough.
+
+Next, the check_lucky function. It takes a long long n and returns an integer. The loop checks if any digit is 8. If so, returns 1. Otherwise, after the loop, returns 1 (since in C++, returning to indicate successful execution probably means returning 0). Wait, the pseudocode says "return to indicate successful execution", which in C++ is return 0. So the check_lucky function returns 1 if any digit is 8, else 0.
+
+Then the main function. It reads a long long a. Then integer res is 0. The while loop condition is check_lucky(abs(a)) is false or res is 0. Wait, the pseudocode says "while result of run check_lucky( absolute value of a ) is false or res is 0". Wait, the condition for the loop is while (check_lucky(abs(a)) == false || res == 0). But in C++, the loop will continue as long as this condition is true. So inside the loop, res is incremented by 1, and a is incremented by 1. So the loop will run until check_lucky(abs(a)) is true and res is not 0. Wait, but the condition is OR. So if either part is true, the loop runs. So for example, if check_lucky returns false, the loop runs. If check_lucky returns true, but res is 0, the loop also runs. Once both are false, the loop stops.
+
+The goal of the code seems to be to find the smallest res where a + res has a lucky digit (8) in it, and res is the minimal steps needed. Wait, maybe not. Let me think. The loop continues while check_lucky(abs(a)) is false OR res is 0. So the loop will run until check_lucky(abs(a)) is true AND res is not 0. Wait, no. The loop is while (condition is true). So the loop runs as long as either check_lucky is false or res is 0. So once check_lucky is true and res is non-zero, the loop stops. Wait, but the loop is while (check_lucky(...) is false OR res is 0). So if check_lucky is true, then the first part is false, but if res is 0, then the OR is false only when both are false. So for example, when a is already a lucky number (has 8), then check_lucky returns 1. Then the condition is (false) OR (res is 0). Initially, res is 0, so the condition is true. So the loop runs once. Then res becomes 1, a becomes a+1. Then in the next iteration, check_lucky(a) may not have 8, but res is now 1. So the condition is (check_lucky(...) is false) OR (res is 0) → false OR false → false. So the loop stops. Wait, but that would mean that if the original a is lucky, the loop runs once, increments res to 1 and a to a+1. Then the loop stops, and prints res=1. But maybe the problem is to find the minimal res where a + res has an 8. If a itself has an 8, then res is 0? But according to the code logic, the loop runs while check_lucky is false OR res is 0. Let's see:
+
+Let me take an example. Suppose a is 18. check_lucky(a) returns 1. res is 0. The condition is (false) OR (true) → true. So the loop runs. Inside, res becomes 1, a becomes 19. Now, check_lucky(19) is 0. The condition is (true) OR (res is 0? No, res is 1 now. So condition is true OR false → true. So loop runs again. Increment res to 2, a to 20. Check 20 → no 8. Condition is true again. So loop continues until a's digits have 8. For example, when a becomes 28. check_lucky returns 1. Now, condition is (false) OR (res is 0? res is 2 now → false). So loop stops. So res is 2. Which is the number of steps taken to reach 28 from a=18. So the code is finding the minimal number of steps to add to a to get a number that contains an 8. But the initial check for a itself is not considered. Because even if a has 8, the loop runs once, increments res and a. So maybe the code is incorrect? But according to the pseudocode, that's how it's written. So perhaps the problem is to find the minimal res ≥ 1 such that a + res has an 8. Or maybe there's a misunderstanding. But according to the pseudocode, the code is written as such. So I need to follow the pseudocode.
+
+Now, translating that into C++. Let's proceed.
+
+The tostr function: in C++, the function can be written as:
+
+string tostr(int n) {
+    stringstream rr;
+    rr << n;
+    return rr.str();
+}
+
+But the pseudocode uses 'read n with rr' which is equivalent to rr << n.
+
+The check_lucky function: returns 1 if any digit is 8, else 0.
+
+int check_lucky(long long n) {
+    while (n > 0) {
+        if (n % 10 == 8) return 1;
+        n = n / 10;
+    }
+    return 0;
+}
+
+But in C++, the function returns an int. So that's correct.
+
+In main:
+
+long long a;
+cin >> a;
+
+int res = 0;
+
+while (check_lucky(abs(a)) == 0 || res == 0) {
+    res++;
+    a++;
+}
+
+cout << res << endl;
+
+Wait, the pseudocode says "while result of run check_lucky( absolute value of a ) is false or res is 0". So the condition is (check_lucky(abs(a)) == false) || (res == 0). In C++, that's (check_lucky(abs(a)) == 0) || (res == 0). So the loop runs while that is true. Inside the loop, res is incremented by 1, a is incremented by 1.
+
+But when the loop exits, we print res.
+
+Now, for example, if a is 8, then check_lucky(a) is 1. The condition is (0 || res == 0). Initially, res is 0. So (false || true) → true. So the loop runs once. res becomes 1, a becomes 9. Now, check_lucky(9) is 0, and res is 1. So condition is (true || false) → true. So loop runs again. res becomes 2, a becomes 10. Check again. This continues until a has an 8. For example, when a is 8, the initial a is already 8. But according to the loop, the code will increment a until it finds the next occurrence? That seems odd. But according to the pseudocode's logic, that's how it is. So perhaps the problem is to find the minimal res where a + res is a lucky number, but the code is written in a way that even if a is already lucky, it starts incrementing. But that's according to the pseudocode.
+
+Now, translating that into code. The main function:
+
+int main() {
+    long long a;
+    cin >> a;
+    int res = 0;
+    while (check_lucky(abs(a)) == 0 || res == 0) {
+        res++;
+        a++;
+    }
+    cout << res << endl;
+    return 0;
+}
+
+But wait, the pseudocode says "read a" — which is cin >> a. The check_lucky is called with absolute value of a. So in C++, abs(a) is for integers, but a is a long long. So we need to use llabs from <cstdlib>, but the included headers include <cstdlib? Wait, the included headers list includes <cmath>, but for llabs, we need <cstdlib>. Wait, the user provided the list of included headers. Let me check: the included headers include <cstdlib? The user's included headers are:
+
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <cstring>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <list>
+#include <fstream>
+#include <climits>
+#include <cassert>
+#include <iomanip>
+#include <sstream>
+#include <bitset>
+
+No, <cstdlib is not included. But the function abs is in <cstdlib for long long? Wait, in C++, the abs function for long long is in <cstdlib, but the standard functions are for int, long, etc. For example, llabs is in <cstdlib. So if the code uses abs(a) where a is long long, that would be incorrect. Because the standard abs() functions may not handle long long. So in C++, to get the absolute value of a long long, we need to use llabs from <cstdlib. However, the user's included headers do not include <cstdlib. But the problem says that the code should correspond to the pseudocode line by line. The pseudocode says "absolute value of a", so in C++, we need to compute that. So perhaps the code should use a < 0 ? -a : a, or include <cstdlib and use llabs. But since the user's included headers do not include <cstdlib, but the code is allowed to use the standard libraries included. Wait, the user says that the following libraries are already included. So if <cstdlib is not in the list, then the code cannot use functions from that header. But the problem says that the code should correspond to the pseudocode. So how to handle the absolute value?
+
+In the pseudocode, it's "absolute value of a". So in C++, for a long long, perhaps the code can compute it manually. For example:
+
+long long abs_val = (a < 0) ? -a : a;
+
+So in the check_lucky function call, instead of using abs(a), we pass (a < 0 ? -a : a). Because the standard abs functions may not be available for long long. For example, if a is -1234567890123, then -a may be a very big number. But in C++, if we just do a < 0 ? -a : a, that's valid.
+
+So in the code, the check_lucky is called with absolute value of a. So in the code, the line would be:
+
+check_lucky( (a < 0 ? -a : a) )
+
+So modifying the code accordingly.
+
+So the while condition becomes:
+
+while ( check_lucky( a < 0 ? -a : a ) == 0 || res == 0 )
+
+But in C++, the ternary operator returns a long long. So that's okay.
+
+So putting it all together.
+
+Now, the code:
+
+The tostr function is declared first. Then check_lucky. Then main.
+
+But in C++, functions need to be declared before they are used. So if main calls check_lucky, and check_lucky is after main, then we need function prototypes. But the pseudocode shows the functions declared in order. So in the code, the tostr function is declared first, then check_lucky, then main.
+
+But in C++, the code would need to have function prototypes or have the functions defined before main. So perhaps adding function prototypes at the beginning.
+
+But the user's instruction says that the code should correspond to the pseudocode line by line. The pseudocode declares tostr, then check_lucky, then main. So in the code, the functions are written in that order. So no need for prototypes. Because in C++, if you define functions before main, they can be called in main.
+
+So the code structure would be:
+
+string tostr(int n) {
+    ...
+}
+
+int check_lucky(long long n) {
+    ...
+}
+
+int main() {
+    ...
+}
+
+Yes, that's correct.
+
+Now, putting all together.
+
+Testing for possible errors. For example, in the tostr function, the parameter is int n. But in the pseudocode, the function is declared with integer n. So in C++, integer is int. So that's okay.
+
+Another thing: the pseudocode says "return string from rr". Which is return rr.str().
+
+So the code for tostr is correct.
+
+Now, the check_lucky function: the loop runs while n > 0. For each digit, checks if it's 8. If so, returns 1. Otherwise, divides by 10. Once the loop ends, returns 0.
+
+Yes.
+
+In main, the loop condition is check_lucky(absolute value of a) is 0 or res is 0. So the code uses the ternary operator.
+
+Now, code:
+
+#include ... (but the user says not to include them again. So the code will not have those includes.)
+
+So the code starts with the functions.
+
+Now, writing the code.
+
+So the final code would be:
+
+string tostr(int n) {
+    stringstream rr;
+    rr << n;
+    return rr.str();
+}
+
+int check_lucky(long long n) {
+    long long num = (n < 0 ? -n : n); // Wait, no. The pseudocode says check_lucky is called with absolute value of a. But in the check_lucky function, the parameter is long long n. So inside check_lucky, n is already the absolute value. So in the function, we don't need to take absolute again. Because the function is called with absolute value. So the code in check_lucky can just process n as positive. So the code in check_lucky is as written before. Because the function is called with absolute value of a. So in check_lucky, n is non-negative. So the loop is okay.
+
+Wait, the check_lucky function's parameter is long long n. The pseudocode says that check_lucky is called with absolute value of a, so n is non-negative. So in check_lucky, n is non-negative, so the loop is okay. So no need to handle negative numbers in check_lucky.
+
+So the code for check_lucky is as written.
+
+Now, in the main function, the while loop condition is:
+
+while ( check_lucky( a < 0 ? -a : a ) == 0 || res == 0 )
+
+Yes.
+
+So

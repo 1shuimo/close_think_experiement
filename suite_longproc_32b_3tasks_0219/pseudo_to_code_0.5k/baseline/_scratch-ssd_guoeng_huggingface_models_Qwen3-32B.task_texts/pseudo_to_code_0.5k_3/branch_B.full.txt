@@ -1,0 +1,96 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++. Let me go through each part step by step.
+
+First, there's the tostr function. The pseudocode says it takes an integer n and returns a string. The implementation uses a stringstream. Oh right, in C++, we can use stringstream to convert numbers to strings. So the function would be something like:
+
+string tostr(int n) {
+    stringstream rr;
+    rr << n;
+    return rr.str();
+}
+
+Wait, but the pseudocode says "read n with rr"—so yeah, that's correct. So that's straightforward.
+
+Next, the check_lucky function. It takes a long long n and returns an integer. The logic is: while n is greater than 1, check if the last digit is 8. If yes, return 1. Otherwise, divide n by 10. So this loops through each digit. If any digit is 8, returns 1. Otherwise, returns 0, I guess? Because when the loop ends (n becomes 0), it returns to indicate successful execution, which in C++ would probably be return 0;. So the function is checking if any digit in n is 8. So:
+
+int check_lucky(long long n) {
+    while (n > 0) {
+        if (n % 10 == 8) return 1;
+        n = n / 10;
+    }
+    return 0;
+}
+
+Wait, the pseudocode says "return to indicate successful execution"—probably return 0, since in C++, functions that return int typically return 0 for success. But the function is supposed to return an integer. So yes, that's correct.
+
+Then the main function. Let's see. Declare long long a, read it. Then integer res = 0. Then a while loop that runs while check_lucky(absolute value of a) is false or res is 0. Wait, the condition is "while result of run check_lucky( absolute value of a ) is false or res is 0". Wait, in C++, the while condition is while (check_lucky(abs(a)) == 0 || res == 0). But wait, the loop continues as long as either of those is true. But let me think about the logic here. The loop is supposed to run while either check_lucky returns false (i.e., 0) or res is 0. But initially, res is 0, so the loop will run. But how does the loop exit?
+
+Let me think. The loop increments res by 1 and a by 1 each time. So the idea is to find the smallest res where check_lucky(abs(a + res)) returns true. Wait, no. Let me re-examine the pseudocode:
+
+The loop condition is "while result of run check_lucky( absolute value of a ) is false or res is 0". Wait, the loop runs while (check_lucky(abs(a)) is false OR res is 0). Wait, but res starts at 0, so the loop will run. Inside the loop, res is incremented by 1, and a is incremented by 1. So the check is for check_lucky(abs(a)) being false. Wait, but during the loop, a is changing. Wait, but the a inside the loop is being incremented by 1 each iteration. So the loop continues until check_lucky(abs(a)) returns true and res is not 0. Wait, but the condition is while (condition is false OR res is 0). Wait, the loop continues as long as either of those is true. So once check_lucky(...) returns 1 (i.e., true), the first part of the OR is false, but if res is 0, then the loop will run again. But inside the loop, res is being incremented. So this seems like it's looking for the first occurrence where check_lucky is true, but maybe there's some logic here.
+
+Wait, perhaps the loop is intended to find the smallest res such that check_lucky(abs(a + res)) is true. Wait, no. Let me re-express the loop:
+
+The loop runs while (check_lucky(abs(a)) == false) OR (res == 0). Wait, but once check_lucky returns true, the first part is false. But if res is not 0, then the loop stops. So the loop will run until check_lucky returns true. But why is the res == 0 part there?
+
+Hmm, maybe the pseudocode is written in a way that ensures that the loop runs at least once. Let's think. Suppose initially check_lucky returns true. Then, the loop condition is false, so the loop doesn't run. res is 0. But then, the code would print res, which is 0. But perhaps the problem is to find the minimal res such that a + res has an 8 in it. But maybe the code is incorrect in the pseudocode? Or perhaps I'm misunderstanding the loop condition.
+
+Wait, the pseudocode says:
+
+while result of run check_lucky( absolute value of a ) is false or res is 0
+    increment res by 1
+    increment a by 1
+end of the block
+
+So the loop runs while (check_lucky(abs(a)) is false OR res is 0). Let's think of an example. Suppose check_lucky(abs(a)) is true initially. Then, the condition is (false OR res is 0). res starts at 0, so the condition is true. So the loop runs. Then res becomes 1, a becomes a+1. Then check again. Now check_lucky is for a (original a +1?), but the initial check is for the original a?
+
+Wait, no. The loop's condition is check_lucky(abs(a)) is false. But during the loop, a is being incremented. Wait, but inside the loop, a is incremented by 1 each time. So during each iteration, after the condition is checked, a is increased by 1. Let me think about the order.
+
+The loop is a while loop. So during each iteration, the condition is checked first. Let's take an example where a is 7. Suppose check_lucky(7) returns 0. The loop condition is (true OR res is 0). Initially res is 0, so condition is true. Enter loop. res becomes 1, a becomes 8. Now, next iteration: check condition. check_lucky(abs(a)) is check_lucky(8) which returns 1. So the condition is (false OR res is 0 (res is 1 now?)). So the condition is false. So loop stops. The res is 1, which is the correct answer. So the code would output 1. Which makes sense because adding 1 to 7 gives 8.
+
+But why is the res initialized to 0 and the loop condition includes res is 0? Let me think. Suppose check_lucky(abs(a)) returns true initially. Then, during the first check of the loop condition, it's false. But res is 0, so the condition is (false OR true) → true. So the loop runs once. Inside, res increments to 1, a increments by 1. Then, the loop condition is check_lucky(abs(a)) is true? Well, a has changed. So perhaps the code is incorrect. Wait, maybe the pseudocode is intended to find the minimal res where a + res has an 8. But if check_lucky(a) is already true, then res should be 0. But according to the loop condition, since res is 0, the loop will run once. Because the loop condition is (check returns false) OR (res is 0). If check returns true, then the first part is false. But res is 0, so the condition is true. So the loop runs once. Then res becomes 1, a becomes a+1. So the code would output 1, which is wrong. Because the correct res should be 0.
+
+This suggests that there's a problem with the pseudocode. But the problem says that the pseudocode is correct and complete. So perhaps I'm misunderstanding the pseudocode.
+
+Wait, let me re-examine the pseudocode for the main function:
+
+declare integer res = 0
+while result of run check_lucky( absolute value of a ) is false or res is 0
+    increment res by 1
+    increment a by 1
+end of the block
+print res and newline
+
+So, if check_lucky(a) is true initially, then the condition is (false OR res is 0). res is 0, so the condition is true. So the loop runs once. res becomes 1, a becomes a+1. Then, the loop ends. The code prints 1, but the correct answer should be 0. That's a problem. But according to the problem statement, the pseudocode is correct. So perhaps there's a misunderstanding here.
+
+Wait, perhaps the pseudocode is written in a way that the loop is intended to find the first occurrence where check_lucky is true, but starting from a + res. Wait, no. Let me think again. The loop is incrementing a by 1 each time. But initially, a is the input value. Let me think about the variables. Suppose the original a is some value, and during the loop, a is being incremented. But the check is for the absolute value of a. But during the loop, a is being<think>
+I am not fully confident. Re-check and decide again.
+</think>
+
+```cpp
+string tostr(int n) {
+    stringstream rr;
+    rr << n;
+    return rr.str();
+}
+
+int check_lucky(long long n) {
+    while (n > 0) {
+        if (n % 10 == 8) return 1;
+        n = n / 10;
+    }
+    return 0;
+}
+
+int main() {
+    long long a;
+    cin >> a;
+    int res = 0;
+    while (!check_lucky(abs(a)) || res == 0) {
+        res++;
+        a++;
+    }
+    cout << res << endl;
+    return 0;
+}
+```

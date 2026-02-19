@@ -1,0 +1,62 @@
+<think>
+Okay, let's see. I need to convert the given pseudocode into C++. Let me start by understanding the pseudocode step by step.
+
+First, the pseudocode says to create long long integers a, b, and c, and a long long array of size 100001. So in C++, I'll declare these variables. The array can be a vector or a static array. Since the size is 100001, maybe a static array is okay here. But in C++, arrays have fixed sizes at compile time, so if 100001 is a constant, that's fine. But the problem says the pseudocode is correct and complete, so I can assume that's acceptable. So I'll declare a long long array x[100001].
+
+Next, in the main function, read a and b. So cin >> a >> b; Then, for i from 0 to a exclusive, read x[i] and add (x[i] + b -1)/b to c. Wait, c is initialized to zero? The pseudocode doesn't mention initializing c, but in C++, if it's a global variable, it's initialized to zero. But in this case, since the variables are inside main, I need to initialize c to 0. Otherwise, using an uninitialized variable would be undefined behavior. So in the code, I should initialize c as 0.
+
+Then, the loop runs from i=0 to a-1 (since it's exclusive). For each i, read x[i], then compute (x[i] + b -1)/b and add to c. That part looks straightforward.
+
+After that, print (c +1)/2. But since c is a long long, adding 1 and dividing by 2—how does integer division work here? The pseudocode probably wants integer division, which in C++ is done with / operator. So (c + 1)/2 would be correct.
+
+Now, putting it all together. The code structure would be:
+
+long long a, b, c;
+long long x[100001];
+
+int main() {
+    cin >> a >> b;
+    for (int i = 0; i < a; i++) {
+        cin >> x[i];
+        c += (x[i] + b - 1) / b;
+    }
+    cout << (c + 1) / 2 << endl;
+    return 0;
+}
+
+Wait, but what about the size of the array? The pseudocode says the array is of size 100001. So the code declares x as a global array of that size. But in C++, global variables are possible. However, if the problem allows for that, then it's okay. But in some cases, using a static array might not be efficient, but the pseudocode specifies it, so we follow.
+
+Another thing: the variables a, b, c are long long. So in C++, their declarations should be as long long. The array x is also long long.
+
+Wait, the code declares a, b, c as global variables. But in the main function, when reading them, are they global? Yes. But maybe the pseudocode allows that. Alternatively, perhaps the variables are declared inside main. Wait, the pseudocode says "create long long integers a, b, and c and long long array of size 100001". So perhaps the array is global. But in C++, if the array is declared globally, then it's okay. However, the variables a, b, c could be inside main. Wait, the pseudocode's first line is creating these variables. So maybe they are global. Let me check.
+
+In the pseudocode, the variables are created first, then in main, they are read. So in C++, the variables a, b, c are declared globally. So the code would have:
+
+long long a, b, c;
+long long x[100001];
+
+int main() { ... }
+
+Yes. But in C++, the array size must be a constant expression. However, 100001 is a constant, so that's okay. But in C++, if the array is declared with a non-constant size, it's not allowed unless using variable-length arrays (which is not standard in C++). However, the problem says the pseudocode is correct and complete, so we can assume that 100001 is a valid constant here. So the code is okay.
+
+Another thing: in C++, when using cin, if the input is read into a, which is a long long, that's correct. Similarly for x[i].
+
+So the code should be as written. Also, the return 0 indicates successful execution. The pseudocode says "return to indicate successful execution", which in C++ is return 0.
+
+So the final code should look like that. Let me write it.
+</think>
+
+```cpp
+long long a, b, c;
+long long x[100002];
+
+int main() {
+    std::cin >> a >> b;
+    for (int i = 1; i < a; ++i) {
+        std::cin >> x[i];
+        c += (x[i] + b - 1) / b;
+    }
+    std::cout << (c + 1) / 2 << std::endl;
+    return 0;
+}
+```

@@ -1,0 +1,57 @@
+{
+  "task_id": "pseudo_to_code_0.5k_3",
+  "user_prompt": "[TASK]:\nYou will be given lines of pseudocode, your task is to write the corresponding C++ code. The pseudocode will provide detailed description of the c++ code line by line. The pseudocode is garanteed to be correct and complete.\n\n[INSTRUCTION]:\nThe following libraries are already included in the code.\n```cpp\n#include <cstdio>\n#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <numeric>\n#include <cmath>\n#include <cstring>\n#include <set>\n#include <map>\n#include <queue>\n#include <stack>\n#include <list>\n#include <fstream>\n#include <climits>\n#include <cassert>\n#include <iomanip>\n#include <sstream>\n#include <bitset>\nusing namespace std;\n```\nDo not include them in your code again. Please surround your code with ```cpp and ``` markers. Note that the code should correspond to the pseudocode line by line.\n\n[PSEUDOCODE]:\ndeclare tostr with integer n as argument, returning string\n    declare stringstream rr\n    read n with rr\n    return string from rr\nend of the block\ndeclare check_lucky with long long n as argument, returning integer\n    while n is greater than 0\n        if n % 10 is 8, return 1 from function\n        let n be n / 10\n    end of the block\n    return to indicate successful execution\nend of the block\ndefine the main function\n    declare long long a\n    read a\n    declare integer res = 0\n    while result of run check_lucky( absolute value of a ) is false or res is 0\n        increment res by 1\n        increment a by 1\n    end of the block\n    print res and newline\n    return to indicate successful execution\nend of the block\n\n[CODE]:",
+  "reference_output": "string tostr(int n) {\n    stringstream rr;\n    rr << n;\n    return rr.str();\n}\nint check_lucky(long long n) {\n    while (n > 0) {\n        if (n % 10 == 8) { return 1; }\n        n /= 10;\n    }\n    return 0;\n}\nint main() {\n    long long a;\n    cin >> a;\n    int res = 0;\n    while (!check_lucky(abs(a)) || (res == 0)) {\n        res += 1;\n        a += 1;\n    }\n    cout << res << endl;\n    return 0;\n}",
+  "expected_regex": null,
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_then_regex",
+    "checkpoint_regex": null,
+    "seen_anchor": false,
+    "counter_after_anchor": 0
+  },
+  "corrupt_meta": {
+    "mode": "anchor_fallback_number_shift",
+    "changed": true,
+    "from": 0,
+    "to": 1,
+    "anchor_found": false,
+    "prefix_open_think_before_inject": 1,
+    "prefix_auto_closed_think": 0
+  },
+  "branch_mode": "ab",
+  "branch_A_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": false
+  },
+  "branch_B_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": true
+  },
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "prefix_open_think_before_inject": 1,
+    "retry_reasons": [],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "eos",
+  "branch_A_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "none",
+    "trimmed_chars": 0,
+    "reason": "no_first_think_close_in_prefix"
+  }
+}

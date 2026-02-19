@@ -1,0 +1,108 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++. Let me go through each part step by step.
+
+First, the pseudocode starts by creating an integer vector array vec with size 3. So in C++, that would be a vector of vectors. Like vector<vector<int>> vec(4). Then there's a map-like structure from string to integer. Oh right, the pseudocode uses "like" which probably refers to a std::map or unordered_map. Since the keys are strings and the values are integers, I'll use a map<string, int> called like.
+
+Next, they declare several integers: diff, ans, a, b, c, and a 2D array mat of size 10x10. So mat can be a 2D array, maybe int mat[10][10], since the size is fixed.
+
+Then there's a function called cal. Inside cal, they declare sum, i, j, k with sum initialized to 0. Then loops: i from 0 to 3 exclusive (so 0-2), j from 0 to the size of vec[i], but wait, the pseudocode says "for j = 0 to integer casted size of vec[i]". Wait, in C++, for loops are usually for (int j = 0; j < vec[i].size(); j++). But the inner loop for k is from 0 to integer casted size of vec[i] exclusive. So for k, it's looping through the size of vec[i], so same as j's loop. But j's loop, maybe the original pseudocode meant j runs up to the size? Like, maybe j is from 0 to vec[i].size() - 1? Or maybe there's a typo. Let me check again.
+
+Original pseudocode for cal function:
+
+for i = 0 to 3 exclusive (so i runs 0,1,2)
+    for j = 0 to integer casted size of vec[i] (maybe j runs from 0 to size, inclusive? But that's not possible. Wait, in C++ terms, maybe it's for (j=0; j <= vec[i].size(); ...), but that would be up to size, which is one past the end. But vec[i].size() is the number of elements, so indexes are 0 to size-1. So maybe the pseudocode's "exclusive" part is for the upper limit. For example, "for i = 0 to 3 exclusive" translates to i < 3. So for j, the pseudocode says "for j = 0 to integer casted size of vec[i]". If it's exclusive, then j runs up to but not including the size. But the way it's written here, the j loop's upper limit is not clear. Let me look again:
+
+Original line: for j = 0 to integer casted size of vec[i]. Then for k, it's for k = 0 to integer casted size of vec[i] exclusive. So for k, it's up to but not including the size. So for j, maybe it's up to and including? Or maybe there's a mistake here. Because if both loops are for j and k, but the k loop is exclusive, perhaps j's loop is inclusive? But that would be a problem. For example, if vec[i].size() is 5, then j would go up to 5, which would be out of bounds. Wait, maybe the pseudocode is written in a way that for j, the loop is from 0 to size-1 inclusive. But the way it's written is ambiguous. Let me think again.
+
+In the pseudocode for the cal function:
+
+for i from 0 to 3 exclusive (so i < 3)
+    for j from 0 to integer casted size of vec[i] (maybe j runs up to vec[i].size()? Like j <= size? Or j < size? Similarly for k, it's exclusive. So for k, it's from 0 to size-1. So perhaps for j, the loop is from 0 to size-1 inclusive. But the pseudocode says "to integer casted size of vec[i]". Maybe the j loop is written as j < vec[i].size()? So in code, for (j=0; j < vec[i].size(); j++).
+
+But the pseudocode for j's loop says "to integer casted size of vec[i]"—maybe that's a typo and meant "exclusive". Because otherwise, if j runs up to the size, which is one past the end, that's an error. So perhaps the j loop is intended to run from 0 to vec[i].size() - 1 inclusive, which would be j < vec[i].size(). So for j, the loop is for (int j=0; j < vec[i].size(); j++).
+
+Then for k, it's from 0 to integer casted size of vec[i] exclusive. Which again would be the same as j's loop. Wait, but then why have two loops? Maybe there's a mistake in the pseudocode. But according to the pseudocode, inside the cal function, there are three nested loops: i, j, k. For each i, j runs from 0 to the size of vec[i], and for each j, k runs from 0 to the same size. But perhaps the j loop is for some outer loop and k is inner. The code inside the loop is incrementing sum by mat[vec[i][j]][vec[i][k]]. So for each i, j, and k, they are accessing vec[i][j] and vec[i][k]. But if j and k are both indices into vec[i], then they must be within the valid range. So the loops for j and k must be from 0 to size-1. Therefore, the pseudocode's j loop probably has a typo and should be "exclusive" as well. But given the pseudocode as written, perhaps the j loop runs from 0 to vec[i].size() inclusive? That would be a problem. But since the problem says the pseudocode is correct and complete, perhaps I need to follow it as written. However, given that in the k loop, it's exclusive, and the code is correct, maybe the j loop is intended to run up to the size. But that's impossible. Wait, maybe the pseudocode for j is written as "for j = 0 to integer casted size of vec[i] exclusive"? But the original says "for j = 0 to integer casted size of vec[i]" (without exclusive). Hmm. This is a bit confusing. Let me check again.
+
+Original pseudocode lines for cal function:
+
+for i = 0 to 3 exclusive
+    for j = 0 to integer casted size of vec[i]
+        for k = 0 to integer casted size of vec[i] exclusive, increment sum by mat[vec[i][j]][vec[i][k]]
+end block
+
+Wait, the j loop's upper limit is written as "to integer casted size of vec[i]" without exclusive. But the k loop is "exclusive". So perhaps the j loop is written as j runs from 0 to the size (inclusive?), but that would be incorrect. But maybe the pseudocode is using a different convention. For example, in some pseudocode notations, "for i from a to b" includes both a and b. So if the size is, say, 3, then j would run 0, 1, 2, 3. But that's impossible. So perhaps there's a mistake here. But since the problem says the pseudocode is correct and complete, I have to assume that the code is correct. Maybe the j loop is written as j runs from 0 to vec[i].size() - 1 inclusive, and the pseudocode's wording is just ambiguous. Alternatively, perhaps the j loop is for (int j=0; j < vec[i].size(); j++) and the k loop is the same. Then, in the code, the line would be sum += mat[vec[i][j]][vec[i][k]]. So that's possible.
+
+So I'll proceed under the assumption that for j, the loop is from 0 to vec[i].size() - 1 inclusive. So the code for the j loop is for (int j=0; j < vec[i].size(); j++).
+
+Now, the cal function returns sum. So the cal function is a function that returns an int. So in C++, we can write it as int cal() { ... }.
+
+Then there's the count function, which takes an integer now and returns void. The function has some logic. Let's see:
+
+Inside count, if now is 7, then check if the sizes of vec[0], vec[1], vec[2] are all non-zero? Wait, the pseudocode says "if size of vec[0] and size of vec[1] and size of vec[2]". Probably, this means that all of them are non-zero. But how? Maybe the original pseudocode is checking if all the sizes are non-zero. For example, if (vec[0].size() && vec[1].size() && vec[2].size())? But that would be true if all are non-zero. But in the code, when now is 7, they create an integer array x with x = { a / size of vec[0<think>
+I am not fully confident. Re-check and decide again.
+</think>
+
+```cpp
+vector<vector<int>> vec(3);
+map<string, int> like;
+int diff, ans, a, b, c;
+int mat[10][10];
+
+int cal() {
+    int sum = 0, i, j, k;
+    for (i = 0; i < 3; i++) {
+        for (j = 0; j < vec[i].size(); j++) {
+            for (k = 0; k < vec[i].size(); k++) {
+                sum += mat[vec[i][j]][vec[i][k]];
+            }
+        }
+    }
+    return sum;
+}
+
+void count(int now) {
+    if (now == 7) {
+        if (vec[0].size() && vec[1].size() && vec[2].size()) {
+            int x[3] = { a / vec[0].size(), b / vec[1].size(), c / vec[2].size() };
+            sort(x, x + 3);
+            if (x[2] - x[0] < diff) {
+                diff = x[2] - x[0];
+                ans = cal();
+            } else if (x[2] - x[0] == diff) {
+                ans = max(ans, cal());
+            }
+        }
+        return;
+    }
+    for (int i = 0; i < 3; i++) {
+        vec[i].push_back(now);
+        count(now + 1);
+        vec[i].pop_back();
+    }
+}
+
+int main() {
+    like["Anka"] = 0;
+    like["Chapay"] = 1;
+    like["Cleo"] = 2;
+    like["Troll"] = 3;
+    like["Dracul"] = 4;
+    like["Snowy"] = 5;
+    like["Hexadecimal"] = 6;
+    int n, i;
+    string name1, str, name2;
+    while (scanf("%d", &n) != EOF) {
+        diff = (1 << 31) - 1;
+        for (i = 0; i < 3; i++) vec[i].clear();
+        memset(mat, 0, sizeof(mat));
+        for (i = 0; i < n; i++) {
+            cin >> name1 >> str >> name2;
+            mat[like[name1]][like[name2]]++;
+        }
+        cin >> a >> b >> c;
+        count(0);
+        cout << diff << " " << ans << endl;
+    }
+    return 0;
+}
+```

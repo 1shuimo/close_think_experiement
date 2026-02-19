@@ -1,0 +1,99 @@
+<think>
+Okay, let's see. I need to convert the given pseudocode into C++. Let me go through each line step by step.
+
+First, the pseudocode says to define the main function. So I'll start with int main().
+
+Inside main, we need to declare an integer n and an array a with 1010 elements. In C++, I can do int n; and int a[1010];. The array size is 1010, which is probably enough for the problem's requirements.
+
+Next, read n from input. So cin >> n; or maybe scanf? But since the included headers have iostream, using cin is fine.
+
+Then read n sequential elements of a. So maybe a loop: for (int i=0; i<n; i++) cin >> a[i];? Or perhaps using something like std::copy, but the pseudocode says "read n sequential elements", so a loop is more straightforward.
+
+Then sort a. The C++ sort function is sort(a, a + n); from<algorithm>.
+
+Then check if a[0] - 1 <= 0. Wait, a[0] is the first element after sorting. So if the first element minus 1 is <=0, then print -1. Otherwise print 1.
+
+Wait, but in C++, arrays are 0-based, so the first element is a[0], which after sorting is the smallest element. So the logic here is that if the smallest element minus 1 is <=0, output -1 else 1.
+
+So the code would be:
+
+if (a[0] - 1 <= 0) {
+    cout << -1;
+} else {
+    cout << 1;
+}
+
+But wait, the pseudocode says "print -1" and "print 1". Also, after that, there's an "end of the block" and "return to indicate successful execution". So after that if-else, there's a return statement. In C++, the main function should return 0 for success.
+
+Putting it all together:
+
+int main() {
+    int n;
+    int a[1010];
+    cin >> n;
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+    sort(a, a + n);
+    if (a[0] - 1 <= 0) {
+        cout << -1;
+    } else {
+        cout << 1;
+    }
+    return 0;
+}
+
+Wait, but what if n is zero? Oh, but according to the problem statement, the pseudocode is correct and complete, so perhaps n is always valid. The code reads n and then reads n elements, so n is probably at least 1. Or maybe there's some handling elsewhere. But since the pseudocode doesn't mention handling n=0, the code doesn't need to either.
+
+Also, the array a is declared with 1010 elements. So if n exceeds that, it would be a problem. But again, the problem says pseudocode is correct, so the code is safe.
+
+Another thing: the pseudocode says "print -1" and "print 1". So the output is just that number, no newlines. In C++, using cout << -1; would output that without a newline. But maybe the problem expects a newline. However, the pseudocode says "print", which could imply that it's the only output. The problem's actual requirements are not given, but the code follows the pseudocode.
+
+So the code seems correct. Let me check again:
+
+- Read n, then n elements. Check.
+
+- Sort the array. Check.
+
+- Check a[0] -1 <=0. So if a[0] is 1 or less, output -1. Else 1. That's correct.
+
+Yes. So the code should be as written.
+</think>
+
+```cpp
+int main() {
+    int n;
+    int a[1011];
+    std::cin >> n;
+    for (int i = 1; i < n; ++i) {
+        std::cin >> a[i];
+    }
+    std::sort(a, a + n);
+    if (a[0] - 1 <= 0) {
+        std::cout << -1;
+    } else {
+        std::cout << 1;
+    }
+    return 0;
+}
+```<think>
+I am not fully confident. Re-check and decide again.
+</think>
+
+```cpp
+int main() {
+    int n;
+    int a[1010];
+    std::cin >> n;
+    for (int i = 0; i < n; ++i) {
+        std::cin >> a[i];
+    }
+    std::sort(a, a + n);
+    if (a[0] - 1 <= 0) {
+        std::cout << -1;
+    } else {
+        std::cout << 1;
+    }
+    return 0;
+}
+```

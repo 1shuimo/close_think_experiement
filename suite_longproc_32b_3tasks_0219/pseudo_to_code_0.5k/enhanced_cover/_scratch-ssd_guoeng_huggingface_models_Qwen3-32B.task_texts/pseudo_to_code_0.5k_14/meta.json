@@ -1,0 +1,69 @@
+{
+  "task_id": "pseudo_to_code_0.5k_14",
+  "user_prompt": "[TASK]:\nYou will be given lines of pseudocode, your task is to write the corresponding C++ code. The pseudocode will provide detailed description of the c++ code line by line. The pseudocode is garanteed to be correct and complete.\n\n[INSTRUCTION]:\nThe following libraries are already included in the code.\n```cpp\n#include <cstdio>\n#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <numeric>\n#include <cmath>\n#include <cstring>\n#include <set>\n#include <map>\n#include <queue>\n#include <stack>\n#include <list>\n#include <fstream>\n#include <climits>\n#include <cassert>\n#include <iomanip>\n#include <sstream>\n#include <bitset>\nusing namespace std;\n```\nDo not include them in your code again. Please surround your code with ```cpp and ``` markers. Note that the code should correspond to the pseudocode line by line.\n\n[PSEUDOCODE]:\ndefine the main function\n    curr is a 2d array of integers 3 by 3 with elements 1, 1, 1, 1, 1, 1, 1, 1, 1\n    actions is a 2d array of integers 3 by 3\n    for i = 0 to 3 exclusive\n        for j = 0 to 3 exclusive, read actions[i][j]\n    end of the block\n    for i = 0 to 3 exclusive\n        for j = 0 to 3 exclusive\n            if actions[i][j] is odd\n                if curr[i][j] = 1\n                    set curr[i][j] to 0\n                else\n                    assign 1 to curr[i][j]\n                if j is greater than 0\n                    if curr[i][j - 1] = 1\n                        assign 0 to curr[i][j - 1]\n                    else\n                        assign 1 to curr[i][j - 1]\n                end of the block\n                if i is greater than 0\n                    if curr[i - 1][j] = 1\n                        assign 0 to curr[i - 1][j]\n                    else\n                        assign 1 to curr[i - 1][j]\n                end of the block\n                if j is less than 2\n                    if curr[i][j + 1] = 1\n                        change curr[i][j + 1] to 0\n                    else\n                        change curr[i][j + 1] to 1\n                end of the block\n                if i is less than 2\n                    if curr[i + 1][j] is equal to 1\n                        assign 0 to curr[i + 1][j]\n                    else\n                        assign 1 to curr[i + 1][j]\n                end of the block\n            end of the block\n        end of the block\n    end of the block\n    for i from 0 to 3 exclusive\n        for j = 0 to 3 exclusive, print curr[i][j]\n        print new line\n    end of the block\n    return to indicate successful execution\nend of the block\n\n[CODE]:",
+  "reference_output": "int main() {\n    int curr[3][3] = {1, 1, 1, 1, 1, 1, 1, 1, 1};\n    int actions[3][3];\n    for (int i = 0; i < 3; i++) {\n        for (int j = 0; j < 3; j++) { cin >> actions[i][j]; }\n    }\n    for (int i = 0; i < 3; i++) {\n        for (int j = 0; j < 3; j++) {\n            if (actions[i][j] % 2 == 1) {\n                if (curr[i][j] == 1)\n                    curr[i][j] = 0;\n                else\n                    curr[i][j] = 1;\n                if (j > 0) {\n                    if (curr[i][j - 1] == 1)\n                        curr[i][j - 1] = 0;\n                    else\n                        curr[i][j - 1] = 1;\n                }\n                if (i > 0) {\n                    if (curr[i - 1][j] == 1)\n                        curr[i - 1][j] = 0;\n                    else\n                        curr[i - 1][j] = 1;\n                }\n                if (j < 2) {\n                    if (curr[i][j + 1] == 1)\n                        curr[i][j + 1] = 0;\n                    else\n                        curr[i][j + 1] = 1;\n                }\n                if (i < 2) {\n                    if (curr[i + 1][j] == 1)\n                        curr[i + 1][j] = 0;\n                    else\n                        curr[i + 1][j] = 1;\n                }\n            }\n        }\n    }\n    for (int i = 0; i < 3; i++) {\n        for (int j = 0; j < 3; j++) { cout << curr[i][j]; }\n        cout << endl;\n    }\n    return 0;\n}",
+  "expected_regex": null,
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_then_regex",
+    "checkpoint_regex": null,
+    "seen_anchor": false,
+    "counter_after_anchor": 0
+  },
+  "corrupt_meta": {
+    "mode": "anchor_number_shift",
+    "changed": true,
+    "anchor_found": true,
+    "anchor_regex": "(?i)```cpp",
+    "changes": [
+      {
+        "from": 3,
+        "to": 4
+      },
+      {
+        "from": 3,
+        "to": 4
+      }
+    ],
+    "window": {
+      "start": 5967,
+      "end": 6273
+    },
+    "prefix_open_think_before_inject": 0,
+    "prefix_auto_closed_think": 0
+  },
+  "branch_mode": "ab",
+  "branch_A_metrics": {
+    "think_balanced": true,
+    "overlap_prefix_to_continuation": 1,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": true
+  },
+  "branch_B_metrics": {
+    "think_balanced": true,
+    "overlap_prefix_to_continuation": 1,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": true
+  },
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "prefix_open_think_before_inject": 0,
+    "retry_reasons": [],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "eos",
+  "branch_A_match_cover": {
+    "mode": "none",
+    "trimmed_chars": 0
+  },
+  "branch_B_match_cover": {
+    "mode": "none",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "none",
+    "trimmed_chars": 0
+  }
+}

@@ -1,0 +1,113 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++. Let me go step by step.
+
+First, the main function. The pseudocode says to define the main function. So I'll start with int main().
+
+Next, create a multidimensional char array wb of size 10x10. In C++, that would be char wb[10][10]. But wait, in C++, arrays are 0-based, but the pseudocode uses indices from 1 to 8. Oh, but the pseudocode is using 1-based indexing. However, in C++, the array will be 0-based. So when the pseudocode says i and j run from 1 to 8 inclusive, I need to make sure that the array is accessed correctly. Wait, but in C++, if I declare it as [10][10], indices 0-9. The pseudocode uses 1-8, so maybe they are using 1-based indices but in C++ it's 0-based. Wait, but the code in C++ will have to use 0-based. Wait, the pseudocode says for i from 1 to 8 inclusive. So in C++, perhaps the loop variables are i from 1 to 8, but the array is 0-based? That would be a problem. Wait, no. The pseudocode's array is 10x10, but maybe the indices in the pseudocode are 1-based up to 8. Wait, maybe the pseudocode is using 1-based indices for the loops, but in C++, the array is 0-based. So for example, when the pseudocode says i=1 to 8, in C++ the loop would be for (int i=1; i<=8; i++). But then accessing wb[i][j] would be correct if the array is 10x10. Wait, in C++, the indexes would be 0-9. So if the pseudocode uses 1-8, then in C++ the indexes are 1-8, which is allowed since the array is size 10x10. So no problem here. So the code for the array is char wb[10][10]. But wait, in C++, the array declaration is fixed. So the code would be correct.
+
+Then, the first loop: for i from 1 to 8 inclusive, and same for j. So in C++, loops would be for (int i = 1; i <= 8; ++i) and similar for j. Inside, read wb[i][j]. How to read them? Probably using cin >> wb[i][j]; but need to make sure that each character is read properly. But maybe the input is such that each character is read one by one. So that's okay.
+
+Then, create int judge = 1. Then, for i from 1 to 8, j from 1 to 7 inclusive. For each, check if wb[i][j] equals wb[i][j+1]. If so, set judge to 0. Then, after all loops, if judge is 1, print YES else NO.
+
+Wait, but in C++, the loops need to be properly structured. Let me think about the code structure.
+
+In the main function:
+
+char wb[10][10];
+
+for (int i = 1; i <= 8; ++i) {
+    for (int j = 1; j <= 8; ++j) {
+        cin >> wb[i][j];
+    }
+}
+
+int judge = 1;
+
+for (int i = 1; i <= 8; ++i) {
+    for (int j = 1; j <= 7; ++j) {
+        if (wb[i][j] == wb[i][j+1]) {
+            judge = 0;
+        }
+    }
+}
+
+if (judge == 1) {
+    cout << "YES" << endl;
+} else {
+    cout << "NO" << endl;
+}
+
+return 0;
+
+Wait, but in C++, the array indices start at 0. But here, the code is using i and j from 1 to 8. So the array is declared as 10x10, so indexes 0-9. So using 1-8 is okay. But perhaps the pseudocode is using 1-based for the loops, but in C++ the array is 0-based. Wait, no, the pseudocode says create a 10x10 array. So in the pseudocode, perhaps the indices go from 0 to 9, but the loops are for 1 to 8. Not sure. But according to the pseudocode, the code is correct, so I need to follow it as written. So in the C++ code, the loops are as per the pseudocode.
+
+But wait, in C++, the array is declared as [10][10], so indexes 0-9. The pseudocode's loops for i and j from 1 to 8 inclusive would access elements from 1-8, which is valid. So no problem.
+
+Now, the code. But what about the initial values? The rest of the array (like indexes 0 or 9) are not initialized, but the pseudocode doesn't use them, so it's okay.
+
+Now, the code for reading. Suppose the input is such that each character is read in sequence. For example, for each i and j, the code reads a character. So using cin >> wb[i][j]; is correct.
+
+But what if the input is given as lines? Well, the pseudocode says to read each wb[i][j], so assuming that the input is 8x8 grid of characters, each read as a single character. So in C++, using cin >> would work if the input is given properly.
+
+Then, the judge variable. Then, the second loop checks for consecutive same characters in each row. If any are found, judge becomes 0. Then, after all loops, output YES or NO.
+
+So the code seems straightforward. Now, check for any possible errors. For example, in C++, the return 0; indicates successful execution. So the code returns 0, which is correct.
+
+Now, write the code accordingly. Also, note that the pseudocode uses "print" which in C++ is cout. Also, the code uses "YES" and "NO" as output. So the code should output exactly that.
+
+Now, putting it all together. The code should be wrapped in the cpp tags. Also, the user said that the given libraries are already included, so we don't need to include them again. Also, the using namespace std; is already present.
+
+So the code is as follows.
+</think>
+
+```cpp
+int main() {
+    char wb[11][11];
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 8; ++j) {
+            cin >> wb[i][j];
+        }
+    }
+    int judge = 1;
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 7; ++j) {
+            if (wb[i][j] == wb[i][j + 1]) {
+                judge = 0;
+            }
+        }
+    }
+    if (judge == 1) {
+        cout << "YES" << endl;
+    } else {
+        cout << "NO" << endl;
+    }
+    return 0;
+}
+```<think>
+I am not fully confident. Re-check and decide again. The pseudocode says the array is 10x10, but in C++ the declaration is char wb[11][11] to match 1-based indexing up to 10? Or is it 10x10? The pseudocode says 10x10 array. In C++, char wb[10][10] would have indices 0-9. But the pseudocode uses indices 1-8. So in C++, the code uses 1-based indices for i and j, but the array is declared as [10][10], which allows indices 0-9. So using 1-8 is valid. Therefore, the code should declare wb as [10][10]. But in the code above, I wrote [11][11], which is incorrect. That's a mistake. Need to correct it to [10][10]. So the correct code should have char wb[10][10]. But wait, in C++, if you declare char wb[10][10], then the valid indices are 0-9. The pseudocode uses i and j from 1 to 8 inclusive. So accessing wb[1][1] is valid. So the code should be char wb[10][10]. The previous code had [11][11], which is wrong. So I need to fix that. Let me adjust the code accordingly. Also, the loops for i and j are from 1 to 8 inclusive, which is correct. So the correct code is as follows.
+</think>
+
+```cpp
+int main() {
+    char wb[10][10];
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 8; ++j) {
+            cin >> wb[i][j];
+        }
+    }
+    int judge = 1;
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 7; ++j) {
+            if (wb[i][j] == wb[i][j + 1]) {
+                judge = 0;
+            }
+        }
+    }
+    if (judge == 1) {
+        cout << "YES" << endl;
+    } else {
+        cout << "NO" << endl;
+    }
+    return 0;
+}
+```

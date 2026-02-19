@@ -1,0 +1,61 @@
+{
+  "task_id": "pseudo_to_code_0.5k_20",
+  "user_prompt": "[TASK]:\nYou will be given lines of pseudocode, your task is to write the corresponding C++ code. The pseudocode will provide detailed description of the c++ code line by line. The pseudocode is garanteed to be correct and complete.\n\n[INSTRUCTION]:\nThe following libraries are already included in the code.\n```cpp\n#include <cstdio>\n#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <numeric>\n#include <cmath>\n#include <cstring>\n#include <set>\n#include <map>\n#include <queue>\n#include <stack>\n#include <list>\n#include <fstream>\n#include <climits>\n#include <cassert>\n#include <iomanip>\n#include <sstream>\n#include <bitset>\nusing namespace std;\n```\nDo not include them in your code again. Please surround your code with ```cpp and ``` markers. Note that the code should correspond to the pseudocode line by line.\n\n[PSEUDOCODE]:\ndeclare const int INF = 0x3f3f3f3f\ncreate const long long INFLL = 0x3f3f3f3f3f3f3f3fLL\ninlined long long function read\n    create long longs x = 0 and f = 1\n    read char from the input to the new char variable ch\n    while ch is not a digit character\n        if ch = '-', assign -1 to f\n        read char from the input to ch\n    end of the block\n    while ch is a digit character\n        assign x * 10 + ch - '0' to x\n        read char from the input to ch\n    end of the block\n    return x * f\nend of the block\ndeclare const int maxn = 1e5 + 10\ncreate integers m and k\ndeclare integer arrays d, mx and s with size maxn\ndefine the main function\n    read m and k\n    loop i from 1 to m inclusive read d[i]\n    for i = 1 to m inclusive\n        read s[i]\n        change mx[i] to max(mx[i - 1], s[i])\n    end of the block\n    declare ints ans = 0 and now = s[1]\n    for i = 1 to m inclusive\n        while d[i] > now, increment now by mx[i] and ans by k\n        subtract d[i] from now\n        increase now by s[i + 1]\n        increase ans by d[i]\n    end of the block\n    print ans\n    return to indicate successful execution\nend of the block\n\n[CODE]:",
+  "reference_output": "const int INF = 0x3f3f3f3f;\nconst long long INFLL = 0x3f3f3f3f3f3f3f3fLL;\ninline long long read() {\n    long long x = 0, f = 1;\n    char ch = getchar();\n    while (ch < '0' || ch > '9') {\n        if (ch == '-') f = -1;\n        ch = getchar();\n    }\n    while (ch >= '0' && ch <= '9') {\n        x = x * 10 + ch - '0';\n        ch = getchar();\n    }\n    return x * f;\n}\nconst int maxn = 1e5 + 10;\nint m, k;\nint d[maxn], mx[maxn], s[maxn];\nint main() {\n    cin >> m >> k;\n    for (int i = 1; i <= m; i++) cin >> d[i];\n    for (int i = 1; i <= m; i++) {\n        cin >> s[i];\n        mx[i] = max(mx[i - 1], s[i]);\n    }\n    int ans = 0, now = s[1];\n    for (int i = 1; i <= m; i++) {\n        while (d[i] > now) now += mx[i], ans += k;\n        now -= d[i];\n        now += s[i + 1];\n        ans += d[i];\n    }\n    cout << ans << endl;\n    return 0;\n}",
+  "expected_regex": null,
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_then_regex",
+    "checkpoint_regex": null,
+    "seen_anchor": false,
+    "counter_after_anchor": 0
+  },
+  "corrupt_meta": {
+    "mode": "anchor_fallback_number_shift",
+    "changed": true,
+    "from": 10,
+    "to": 11,
+    "anchor_found": false,
+    "prefix_open_think_before_inject": 1,
+    "prefix_auto_closed_think": 0
+  },
+  "branch_mode": "ab",
+  "branch_A_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": false
+  },
+  "branch_B_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": false
+  },
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "prefix_open_think_before_inject": 1,
+    "retry_reasons": [
+      "attempt_0:max_new_tokens:unclosed_think",
+      "attempt_1:max_new_tokens:unclosed_think",
+      "attempt_2:max_new_tokens:unclosed_think"
+    ],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "max_new_tokens",
+  "branch_A_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "none",
+    "trimmed_chars": 0,
+    "reason": "no_first_think_close_in_prefix"
+  }
+}

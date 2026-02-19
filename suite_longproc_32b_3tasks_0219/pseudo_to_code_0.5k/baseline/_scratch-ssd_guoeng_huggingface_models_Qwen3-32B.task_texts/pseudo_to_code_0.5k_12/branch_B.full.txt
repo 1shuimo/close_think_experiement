@@ -1,0 +1,106 @@
+<think>
+Okay, let's see. I need to convert this pseudocode into C++. Let me go through each line step by step.
+
+First, the main function. So, in C++, that's int main(). Then, the first part is creating a multidimensional char array wb of size 10x10. Oh right, in C++, arrays are 0-based, but the pseudocode uses 1-based indices. So when they loop from 1 to 8, in C++ we'll use indexes 1 to 8, but the array is 10x10. So maybe they're using 1-based indexing for the array. Wait, but in C++, arrays are 0-based. Hmm. Wait, but the pseudocode says for i=1 to 8 inclusive. So maybe the code in C++ will have to use indexes starting from 1. But in C++, arrays are 0-based, so perhaps the actual code will have wb as a 10x10 array, and the loops run from 1 to 8. So for reading, the code will loop i from 1 to 8, and j from 1 to 8. So for each i and j, read a character into wb[i][j]. But in C++, to declare a 2D array, it's char wb[10][10]. That part is straightforward.
+
+Then, the next part is creating an int judge = 1. Then, loops i from 1 to 8, and j from 1 to 7. For each, check if wb[i][j] equals wb[i][j+1]. If so, set judge to 0. So this is checking if any two adjacent elements in the same row are the same. If any such pair exists, judge becomes 0. Then, after all checks, if judge is 1, print YES, else NO.
+
+But wait, in C++, when you have a 2D array, the first index is rows, the second columns. So wb[i][j] is correct here.
+
+Now, the code structure. Let's outline:
+
+int main() {
+    char wb[10][10];
+    for (int i=1; i<=8; ++i) {
+        for (int j=1; j<=8; ++j) {
+            cin >> wb[i][j];
+        }
+    }
+    int judge = 1;
+    for (int i=1; i<=8; ++i) {
+        for (int j=1; j<=7; ++j) {
+            if (wb[i][j] == wb[i][j+1]) {
+                judge = 0;
+            }
+        }
+    }
+    if (judge == 1) {
+        cout << "YES" << endl;
+    } else {
+        cout << "NO" << endl;
+    }
+    return 0;
+}
+
+Wait, but how are the inputs being read? Each character is read via cin. Assuming that the input is such that each row is provided as a sequence of 8 characters, perhaps. For example, if the input is 8 lines each with 8 characters, but the code is reading each element individually. But that's how the pseudocode says to do it. The pseudocode says for each i and j, read wb[i][j]. So perhaps the input is 8 lines, each with 8 characters, but each character is read individually. For example, if the input is given as a grid, but read in row-major order. But in practice, when using cin, if you have a line like "abc", then cin >> a >> b >> c would work if the input is given as a single line. But here, perhaps the input is given as 8 lines, each with 8 characters. Or maybe the code reads all in one go. But the code as written would read 8*8 = 64 elements. So, for example, if the input is provided as 64 characters, each read one by one. But perhaps in practice, this would work as intended.
+
+Now, considering that in C++, the array is declared as 10x10, but indexes 1-8 are used. The rest are unused. So that's okay.
+
+Now, the code seems straightforward. Let me check for possible errors. For example, in the loops:
+
+The first loop for i from 1 to 8 inclusive. In C++, that would be for (int i=1; i<=8; ++i). Similarly for j. So yes.
+
+In the second loop, j runs from 1 to 7 inclusive. Because j+1 would be up to 8. So for each row, check adjacent pairs. That's correct.
+
+The judge is set to 0 if any such duplicates are found. Then output YES or NO.
+
+The return 0 indicates successful execution. So the code returns 0.
+
+Yes, that's all. So the code should be as written. Now, check if any syntax errors. For example, in C++, the array declaration is correct. The loops are properly nested. The cin and cout statements are correct. So the code should be correct.
+
+But wait, in C++, when you have a multi-dimensional array, the first dimension can be omitted, but not the others. However, since we are declaring the array as 10x10, it's okay. So the code is correct.
+
+So the final code is as above. Now, wrap it in the cpp tags.
+</think>
+
+```cpp
+int main() {
+    char wb[11][11];
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 8; ++j) {
+            std::cin >> wb[i][j];
+        }
+    }
+    int judge = 1;
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 7; ++j) {
+            if (wb[i][j] == wb[i][j + 1]) {
+                judge = 0;
+            }
+        }
+    }
+    if (judge == 1) {
+        std::cout << "YES" << std::endl;
+    } else {
+        std::cout << "NO" << std::endl;
+    }
+    return 0;
+}
+```<think>
+I am not fully confident. Re-check and decide again.
+</think>
+
+```cpp
+int main() {
+    char wb[10][10];
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 8; ++j) {
+            std::cin >> wb[i][j];
+        }
+    }
+    int judge = 1;
+    for (int i = 1; i <= 8; ++i) {
+        for (int j = 1; j <= 7; ++j) {
+            if (wb[i][j] == wb[i][j + 1]) {
+                judge = 0;
+            }
+        }
+    }
+    if (judge == 1) {
+        std::cout << "YES" << std::endl;
+    } else {
+        std::cout << "NO" << std::endl;
+    }
+    return 0;
+}
+```

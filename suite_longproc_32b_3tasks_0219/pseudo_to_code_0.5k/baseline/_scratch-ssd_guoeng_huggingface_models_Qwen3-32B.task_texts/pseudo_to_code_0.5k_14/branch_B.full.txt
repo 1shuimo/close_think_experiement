@@ -1,0 +1,193 @@
+<think>
+Okay, let's see. I need to translate this pseudocode into C++. Let me go through each part step by step.
+
+First, the main function. So, the pseudocode starts with defining the main function. In C++, that's int main().
+
+Then, there's a 2D array curr of 3x3 integers initialized to 1s. Wait, in C++, to create a 3x3 array, I'll need to declare it as int curr[3][3], and initialize each element to 1. Maybe using a loop or initializing directly. But since all elements are 1, perhaps a nested loop would be better, or maybe a static initialization. But the pseudocode shows elements as 1,1,1... so maybe I can initialize it as all 1s.
+
+Then there's actions, another 3x3 array. Then, the code reads actions[i][j] for i from 0 to 3 exclusive (so 0,1,2) and same for j. Wait, 3 by 3 arrays. So loops are from 0 to 3, but in C++, for (int i=0; i<3; ++i) etc.
+
+Next, the nested loops over i and j from 0 to 3 exclusive. Then, if actions[i][j] is odd. So checking if (actions[i][j] % 2 == 1). Then, if curr[i][j] is 1, set to 0 else set to 1. That's a toggle. So maybe we can use curr[i][j] = 1 - curr[i][j]; but let's see. The pseudocode uses if-else, but the effect is to flip the value. Same for other parts.
+
+Then, for the neighboring cells (left, up, down, right), each of them is toggled as well. So for each direction, check if the index is valid, then flip their values.
+
+Then, after processing all actions, print the curr matrix, each row on a new line.
+
+Let me think about the code structure.
+
+In C++, the main function will be:
+
+int main() {
+    int curr[3][3] = { {1,1,1}, {1,1,1}, {1,1,1} };
+    int actions[3][3];
+    
+    // Read actions
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            cin >> actions[i][j];
+        }
+    }
+    
+    // Process each cell
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            if (actions[i][j] % 2 == 1) {  // Check if odd
+                // Toggle current cell
+                curr[i][j] = 1 - curr[i][j];
+                
+                // Left neighbor (j-1)
+                if (j > 0) {
+                    curr[i][j-1] = 1 - curr[i][j-1];
+                }
+                
+                // Up neighbor (i-1)
+                if (i > 0) {
+                    curr[i-1][j] = 1 - curr[i-1][j];
+                }
+                
+                // Right neighbor (j+1)
+                if (j < 2) {
+                    curr[i][j+1] = 1 - curr[i][j+1];
+                }
+                
+                // Down neighbor (i+1)
+                if (i < 2) {
+                    curr[i+1][j] = 1 - curr[i+1][j];
+                }
+            }
+        }
+    }
+    
+    // Print the curr matrix
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            cout << curr[i][j];
+        }
+        cout << endl;
+    }
+    
+    return 0;
+}
+
+Wait, but in the pseudocode, the loops are for i = 0 to 3 exclusive. So 0,1,2. So in C++, i < 3. That's correct.
+
+Now, checking if actions[i][j] is odd. The code uses % 2 == 1. That's correct.
+
+For each condition, when the action is odd, the current cell is toggled. And then the neighbors. The code seems to handle that.
+
+But wait, in the pseudocode, for each direction, there's an if check. For example, if j > 0, then process left neighbor. And same for others. The code here handles that with if (j>0) etc. So that's correct.
+
+Testing the toggle: for example, if curr[i][j] is 1, set to 0. Else set to 1. Which is exactly 1 - curr... So that's correct.
+
+Then, after processing all, print each cell. And for each row, print a new line. The code uses cout << endl; which adds a new line.
+
+But wait, in the pseudocode's print part, it says for i from 0 to 3 exclusive. So same loops as the code.
+
+But wait, the code for the print loops is correct. So that's okay.
+
+What about the initial curr array? The pseudocode defines it as 3x3 with all 1s. The C++ code initializes it properly with three rows of {1,1,1}.
+
+So the code should be correct. Let me check for possible errors.
+
+What if the actions are read correctly? The code uses cin >> actions[i][j], which is correct.
+
+Yes. So this should work.
+
+Now, the problem says that the pseudocode is correct and complete. So the code should follow exactly the steps. So the C++ code should be as written above.
+
+Now, write that code inside the required delimiters.
+</think>
+
+```cpp
+int main() {
+    int curr[4][4] = {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}};
+    int actions[3][3];
+    
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            std::cin >> actions[i][j];
+        }
+    }
+    
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            if (actions[i][j] % 2 == 1) {
+                curr[i][j] = 1 - curr[i][j];
+                
+                if (j > 0) {
+                    curr[i][j-1] = 1 - curr[i][j-1];
+                }
+                
+                if (i > 0) {
+                    curr[i-1][j] = 1 - curr[i-1][j];
+                }
+                
+                if (j < 2) {
+                    curr[i][j+1] = 1 - curr[i][j+1];
+                }
+                
+                if (i < 2) {
+                    curr[i+1][j] = 1 - curr[i+1][j];
+                }
+            }
+        }
+    }
+    
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            std::cout << curr[i][j];
+        }
+        std::cout << std::endl;
+    }
+    
+    return 0;
+}
+```<think>
+I am not fully confident. Re-check and decide again.
+</think>
+
+```cpp
+int main() {
+    int curr[3][3] = {{1, 1, 1}, {1, 1, 1}, {1, 1, 1}};
+    int actions[3][3];
+    
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            std::cin >> actions[i][j];
+        }
+    }
+    
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            if (actions[i][j] % 2 == 1) {
+                curr[i][j] = 1 - curr[i][j];
+                
+                if (j > 0) {
+                    curr[i][j-1] = 1 - curr[i][j-1];
+                }
+                
+                if (i > 0) {
+                    curr[i-1][j] = 1 - curr[i-1][j];
+                }
+                
+                if (j < 2) {
+                    curr[i][j+1] = 1 - curr[i][j+1];
+                }
+                
+                if (i < 2) {
+                    curr[i+1][j] = 1 - curr[i+1][j];
+                }
+            }
+        }
+    }
+    
+    for (int i = 0; i < 3; ++i) {
+        for (int j = 0; j < 3; ++j) {
+            std::cout << curr[i][j];
+        }
+        std::cout << std::endl;
+    }
+    
+    return 0;
+}
+```

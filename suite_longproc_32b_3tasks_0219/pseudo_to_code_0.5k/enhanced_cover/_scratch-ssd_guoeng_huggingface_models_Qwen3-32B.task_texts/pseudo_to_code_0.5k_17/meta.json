@@ -1,0 +1,59 @@
+{
+  "task_id": "pseudo_to_code_0.5k_17",
+  "user_prompt": "[TASK]:\nYou will be given lines of pseudocode, your task is to write the corresponding C++ code. The pseudocode will provide detailed description of the c++ code line by line. The pseudocode is garanteed to be correct and complete.\n\n[INSTRUCTION]:\nThe following libraries are already included in the code.\n```cpp\n#include <cstdio>\n#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <numeric>\n#include <cmath>\n#include <cstring>\n#include <set>\n#include <map>\n#include <queue>\n#include <stack>\n#include <list>\n#include <fstream>\n#include <climits>\n#include <cassert>\n#include <iomanip>\n#include <sstream>\n#include <bitset>\nusing namespace std;\n```\nDo not include them in your code again. Please surround your code with ```cpp and ``` markers. Note that the code should correspond to the pseudocode line by line.\n\n[PSEUDOCODE]:\ndefine the main function\n    let n, m, x, y be integers\n    read n, m, x, and y\n    let a be a vector of ints\n    set the size of a to n\n    let b be a vector of ints\n    set the size of b to m\n    for i = 0 to n exclusive, read a[i]\n    for i = 0 to m exclusive, read b[i]\n    let count be an int with value 0\n    let result be a vector of ints\n    set the size of result to n\n    let index be an int with value 0\n    for i and j starting at 0, i < n and j < m\n        if b[j] < a[i] - x\n            increment j\n        else if b > a[i] + y\n            increment i\n        else\n            set result[i] to j + 1\n            increment i\n            increment j\n            increment count\n        end of the block\n    end of the block\n    print count\n    for i = 1 to result.size() exclusive\n        if result[i] is not 0\n            print i + 1, then print a space, then print result[i]\n            decrement count\n        end of the block\n        if count is 0 then break\n    end of the block\n    return to indicate successful execution\nend of the block\n\n[CODE]:",
+  "reference_output": "int main() {\n    int n, m, x, y;\n    cin >> n >> m >> x >> y;\n    vector<int> a;\n    a.resize(n);\n    vector<int> b;\n    b.resize(m);\n    for (int i = 0; i < n; i++) { cin >> a[i]; }\n    for (int i = 0; i < m; i++) { cin >> b[i]; }\n    int count = 0;\n    vector<int> result;\n    result.resize(n);\n    int index = 0;\n    for (int i = 0, j = 0; i < n && j < m;) {\n        if (b[j] < a[i] - x) {\n            ++j;\n        } else if (b[j] > a[i] + y) {\n            ++i;\n        } else {\n            result[i] = j + 1;\n            i++;\n            j++;\n            ++count;\n        }\n    }\n    cout << count << \"\\n\";\n    for (int i = 0; i < result.size(); i++) {\n        if (result[i] != 0) {\n            cout << i + 1 << \" \" << result[i] << \"\\n\";\n            count--;\n        }\n        if (count == 0) break;\n    }\n    return 0;\n}",
+  "expected_regex": null,
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_then_regex",
+    "checkpoint_regex": null,
+    "seen_anchor": false,
+    "counter_after_anchor": 0
+  },
+  "corrupt_meta": {
+    "mode": "anchor_fallback_number_shift",
+    "changed": true,
+    "from": 0,
+    "to": 1,
+    "anchor_found": false,
+    "prefix_open_think_before_inject": 1,
+    "prefix_auto_closed_think": 0
+  },
+  "branch_mode": "ab",
+  "branch_A_metrics": {
+    "think_balanced": true,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": true
+  },
+  "branch_B_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": true
+  },
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "prefix_open_think_before_inject": 1,
+    "retry_reasons": [
+      "attempt_0:max_new_tokens:unclosed_think"
+    ],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "eos",
+  "branch_A_match_cover": {
+    "mode": "none",
+    "trimmed_chars": 0
+  },
+  "branch_B_match_cover": {
+    "mode": "none",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "none",
+    "trimmed_chars": 0,
+    "reason": "no_first_think_close_in_prefix"
+  }
+}

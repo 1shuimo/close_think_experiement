@@ -1,0 +1,147 @@
+<think>
+Okay, let's see. I need to convert the given pseudocode into C++ code. Let me go through each part step by step.
+
+First, the pseudocode declares some constants. The const int INF is 0x3f3f3f3f. Then there's a const long long INFLL. Got it. Then there's an inline function read that returns a long long. Let me think about how to write that. The function reads characters and processes input, so maybe it's using getchar or something similar. The variables x and f are initialized, then it reads a character. Then there's a loop while ch is not a digit. If it's '-', f becomes -1. Then it starts reading digits and builds x. Then returns x*f. So that's the read function.
+
+Next, there's maxn set to 1e5 + 10. But wait, 1e5 is a float, so in C++ it's better to use 100001 + 10. But maybe the code can use 1'000'000 + 10? Well, the pseudocode says 1e5 + 10, but in C++ code, using 100000 + 10 is better to avoid floating point issues. But maybe the code uses 1e5 as 100000. Let me check. Oh, the pseudocode uses it as array size. So probably, in C++, we can write it as 100010 or define it as 1e5 + 10, but since it's a const int, maybe the code uses 100000 + 10.
+
+Then, variables m and k are declared. Then arrays d, mx, and s of size maxn. So in C++, they would be arrays of integers, probably using new or static arrays. But given that maxn is up to 1e5+10, using a static array would be better. But in C++, for such sizes, maybe using a global array is better. However, the code is supposed to be written with the given includes. The main function reads m and k, then loops from 1 to m reading d[i], then for each i from 1 to m, reads s[i], and computes mx[i] as max of mx[i-1] and s[i]. So mx is a prefix max of the s array.
+
+Then, ans and now are initialized. Now starts as s[1]. Then for each i from 1 to m:
+
+While d[i] > now, add mx[i] to now and add k to ans. Then subtract d[i] from now. Then increase now by s[i+1], and add d[i] to ans. Wait, the pseudocode says "increase ans by d[i]"—but what's the logic here? Let me think. The while loop is handling when the current now (some resource) is not enough to cover d[i]. Each time you need to replenish (add mx[i], which is the maximum s up to i) and each time you do that, you add k to the answer. Once you have enough, you subtract d[i] from now. Then, you add s[i+1] to now. But wait, s[i+1] is probably the next value. But when i is m, i+1 would be m+1, which is beyond the array. But in the pseudocode, maybe s[m+1] is considered as zero or something? Or maybe there's a mistake here. Let me check the pseudocode again.
+
+In the loop for i from 1 to m:
+
+After handling the current d[i], subtract d[i] from now. Then increase now by s[i+1]. Oh, but for i = m, s[i+1] would be s[m+1], which is out of bounds. Unless the array s is of size maxn, which is 1e5+10. So perhaps in the code, s[m+1] is 0? Or maybe the pseudocode assumes that s[m+1] is 0. Or maybe there's a typo and it's supposed to be s[i], but that's unclear. Let me think. For example, maybe after processing the i-th delivery, the next s is s[i+1]. But perhaps the code should have s[i] here? Or maybe the pseudocode is correct and there's an s[m+1] that is initialized to something. But in the given pseudocode, the for loop for reading s[i] is up to m. So s[m+1] is not initialized. That's a problem. Wait, in the code, when i is m, then i+1 is m+1. So in the code, perhaps s[i+1] is accessed, but in the array declaration, it's size is maxn. So if the array is 1-based, then s[1..m] are filled. So s[m+1] is undefined. That's a problem. But according to the pseudocode, it's written as "increase now by s[i + 1]". So perhaps in the problem statement, there is an s[m+1] which is zero. So maybe in the code, after reading s[1..m], we need to set s[m+1] to 0? Or maybe the pseudocode is wrong. But since the pseudocode is supposed to be correct and complete, perhaps I should follow it as is. So in the code, when i is m, accessing s[i+1] would be s[m+1], which is not initialized. That's a problem. How to handle this?
+
+Looking back at the pseudocode's for loop: for i=1 to m inclusive, read s[i]. So s[1..m] are read. Then, in the loop for processing, when i is m, the code refers to s[i+1], which is s[m+1]. So perhaps in the code, we need to set s[m+1] to 0. Let me check the pseudocode again. The pseudocode says:
+
+for i = 1 to m inclusive:
+    read s[i]
+    mx[i] = max(mx[i-1], s[i])
+
+So mx[0] is probably 0? Because mx[0] is used in the first iteration (i=1). So mx is initialized with mx[0] = 0? Because otherwise, for i=1, mx[1] is max(mx[0], s[1]). So maybe mx[0] is 0. Then, for the s[i+1] part, perhaps when i is m, s[m+1] is 0. Therefore, in the code, after reading s[1..m], we need to set s[m+1] to 0. Otherwise, it's undefined behavior. So the code should include that. But the pseudocode may have implicitly assumed that. Therefore, in the C++ code, after reading s, perhaps we need to set s[m+1] = 0. Otherwise, the code would have undefined behavior. So I need to add that line.
+
+Now, putting all this into code.
+
+First, the constants:
+
+const int INF = 0x3f3f3f3f;
+const long long INFLL = 0x3f3f3f3f3f3f3f3fLL;
+
+Then the inline function read(). The function uses getchar, perhaps. Because in the pseudocode, it's reading a char from input to ch. So in C++, perhaps using getchar().
+
+So the function:
+
+inline long long read() {
+    long long x = 0, f = 1;
+    char ch;
+    while (!isdigit(ch)) {
+        if (ch == '-') f = -1;
+        ch = getchar();
+    }
+    while (isdigit(ch)) {
+        x = x * 10 + ch - '0';
+        ch = getchar();
+    }
+    return x * f;
+}
+
+Wait, but the initial loop is: read char from input to ch. Then while ch is not a digit, process. So the initial ch is read before the loop. For example, the code may have leading whitespace or a sign. So the loop checks if ch is not a digit. So the code for the read function is correct.
+
+But in C++, the isdigit function may require the header <cctype>, but since the given includes include <cstdio> and others, but not <cctype>. Wait, the user's included headers include <cstdio>, which is for getchar, but the isdigit is from <cctype>? Or maybe the code is using the standard library functions. So in C++, to use isdigit, we need to include <cctype>. However, the given includes in the problem do not include that. Wait, the user's included headers are listed in the problem. Let me check:
+
+The included headers are:
+
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <cstring>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <list>
+#include <fstream>
+#include <climits>
+#include <cassert>
+#include <iomanip>
+#include <sstream>
+#include <bitset>
+
+So <cctype> is not included. But the functions like isdigit are in <cctype>? Yes. So in C++, if we don't include <cctype>, then isdigit<think>
+I am not fully confident. Re-check and decide again.
+</think>
+
+```cpp
+#include <cstdio>
+#include <iostream>
+#include <vector>
+#include <algorithm>
+#include <numeric>
+#include <cmath>
+#include <cstring>
+#include <set>
+#include <map>
+#include <queue>
+#include <stack>
+#include <list>
+#include <fstream>
+#include <climits>
+#include <cassert>
+#include <iomanip>
+#include <sstream>
+#include <bitset>
+#include <cctype>
+using namespace std;
+
+const int INF = 0x3f3f3f3f;
+const long long INFLL = 0x3f3f3f3f3f3f3f3fLL;
+
+inline long long read() {
+    long long x = 0, f = 1;
+    char ch;
+    while (!isdigit(ch)) {
+        if (ch == '-') f = -1;
+        ch = getchar();
+    }
+    while (isdigit(ch)) {
+        x = x * 10 + ch - '0';
+        ch = getchar();
+    }
+    return x * f;
+}
+
+const int maxn = 100010;
+int m, k;
+int d[maxn], mx[maxn], s[maxn];
+
+int main() {
+    m = read();
+    k = read();
+    for (int i = 1; i <= m; ++i) {
+        d[i] = read();
+    }
+    for (int i = 1; i <= m; ++i) {
+        s[i] = read();
+        mx[i] = max(mx[i - 1], s[i]);
+    }
+    s[m + 1] = 0; // Handle the s[i+1] for i = m
+    int ans = 0, now = s[1];
+    for (int i = 1; i <= m; ++i) {
+        while (d[i] > now) {
+            now += mx[i];
+            ans += k;
+        }
+        now -= d[i];
+        now += s[i + 1];
+        ans += d[i];
+    }
+    cout << ans << endl;
+    return 0;
+}
+```

@@ -1,0 +1,57 @@
+{
+  "task_id": "pseudo_to_code_0.5k_11",
+  "user_prompt": "[TASK]:\nYou will be given lines of pseudocode, your task is to write the corresponding C++ code. The pseudocode will provide detailed description of the c++ code line by line. The pseudocode is garanteed to be correct and complete.\n\n[INSTRUCTION]:\nThe following libraries are already included in the code.\n```cpp\n#include <cstdio>\n#include <iostream>\n#include <vector>\n#include <algorithm>\n#include <numeric>\n#include <cmath>\n#include <cstring>\n#include <set>\n#include <map>\n#include <queue>\n#include <stack>\n#include <list>\n#include <fstream>\n#include <climits>\n#include <cassert>\n#include <iomanip>\n#include <sstream>\n#include <bitset>\nusing namespace std;\n```\nDo not include them in your code again. Please surround your code with ```cpp and ``` markers. Note that the code should correspond to the pseudocode line by line.\n\n[PSEUDOCODE]:\ncreate integer sum\ndeclare gcd with integers a, b as arguments, returning integer\n    if a % b is 0, return b from function\n    return result of run gcd with arguments b, a %b from function\nend of the block\ndeclare add with integers n, x as arguments, returning void\n    while n is not 0\n        increment sum by n % x\n        set n to n / x\n    end of the block\nend of the block\ndefine the main function\n    create integer n\n    read n\n    for i = 2 to n exclusive, run add with n, i as arguments\n    create integer div with div = result of run gcd with sum, n - 2 as arguments\n    print sum / div print '/' print (n - 2)/div print newline\n    return to indicate successful execution\nend of the block\n\n[CODE]:",
+  "reference_output": "int sum;\nint gcd(int a, int b) {\n    if (a % b == 0) return b;\n    return gcd(b, a % b);\n}\nvoid add(int n, int x) {\n    while (n != 0) {\n        sum += n % x;\n        n /= x;\n    }\n}\nint main() {\n    int n;\n    cin >> n;\n    for (int i = 2; i < n; i++) add(n, i);\n    int div = gcd(sum, n - 2);\n    cout << sum / div << '/' << (n - 2) / div << endl;\n    return 0;\n}",
+  "expected_regex": null,
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_then_regex",
+    "checkpoint_regex": null,
+    "seen_anchor": false,
+    "counter_after_anchor": 0
+  },
+  "corrupt_meta": {
+    "mode": "anchor_fallback_number_shift",
+    "changed": true,
+    "from": 0,
+    "to": 1,
+    "anchor_found": false,
+    "prefix_open_think_before_inject": 1,
+    "prefix_auto_closed_think": 0
+  },
+  "branch_mode": "ab",
+  "branch_A_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": false
+  },
+  "branch_B_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit": null,
+    "format_hit": true
+  },
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "prefix_open_think_before_inject": 1,
+    "retry_reasons": [],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "eos",
+  "branch_A_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "none",
+    "trimmed_chars": 0,
+    "reason": "no_first_think_close_in_prefix"
+  }
+}

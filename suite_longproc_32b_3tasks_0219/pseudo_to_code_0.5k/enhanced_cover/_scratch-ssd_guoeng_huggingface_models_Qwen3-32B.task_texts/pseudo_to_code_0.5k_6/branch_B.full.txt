@@ -1,0 +1,91 @@
+<think>
+Okay, let's see. I need to convert the given pseudocode into C++. Let me go step by step.
+
+First, the main function is defined. So I'll start with int main(). Then, inside main, we declare an integer n and an array a with 1010 elements. Wait, in C++, arrays have fixed sizes, but maybe they mean a vector here? But the pseudocode says "array a with 1010 elements". Oh, maybe it's a static array. So perhaps int a[1010];. But sometimes in programming contests, people use vectors, but the pseudocode might be using a fixed array. Let's go with that.
+
+Next, read n from input. So cin >> n;. Then read n sequential elements of a. So for (int i=0; i<n; i++) cin >> a[i];. Then sort a. The sort function in C++ is sort(a, a + n) if it's an array. But wait, if the array is of size 1010, but we only read n elements. So when we sort, we need to sort the first n elements. So the code for that is sort(a, a + n);.
+
+Then the condition: if a[0] - 1 <= 0, print -1 else print 1. Wait, a[0] -1 <=0 is equivalent to a[0] <=1. So if the first element after sorting is less than or equal to 1, output -1, else 1. So the code would be if (a[0] - 1 <= 0) cout << -1 << endl; else cout << 1 << endl;. But wait, maybe the pseudocode is trying to check if 1 is missing? Like, if the smallest element is greater than 1, then output 1. Otherwise, output -1. For example, if the array has elements starting from 1 or lower, then there's no 1 in the array. Wait, no. If a[0] is the smallest element. If a[0] -1 <=0 means a[0] <=1. So if the smallest element is <=1, then output -1. Otherwise, 1. So for example, if the array has all elements greater than 1, then the answer is 1. Otherwise, -1. That makes sense.
+
+But wait, what if the array is empty? But according to the problem, n is read from input, but the pseudocode says to read n elements. So assuming n is at least 1? Well, the code should handle that. But according to the pseudocode, maybe n is given correctly. Let's proceed.
+
+Now, putting it all together. Let me check the code:
+
+int main() {
+    int n;
+    int a[1010];
+    cin >> n;
+    for (int i = 0; i < n; i++) {
+        cin >> a[i];
+    }
+    sort(a, a + n);
+    if (a[0] - 1 <= 0) {
+        cout << -1 << endl;
+    } else {
+        cout << 1 << endl;
+    }
+    return 0;
+}
+
+Wait, but what if n is zero? But the problem says that the pseudocode is correct and complete, so maybe n is at least 1. But in practice, if n is zero, accessing a[0] would be undefined. However, since the pseudocode says to read n elements, perhaps n is given as a valid number. So the code is okay.
+
+Another thing: in C++, the array a is declared with 1010 elements. So if n exceeds 1010, this code would have a problem. But the pseudocode says that the array has 1010 elements, so perhaps n is guaranteed to be within that. So the code is okay.
+
+So this should correspond to the pseudocode. Let me check each line again.
+
+Yes, the code seems to follow the pseudocode line by line. So this should be the correct C++ code.
+</think>
+
+```cpp
+int main() {
+    int n;
+    int a[1011];
+    cin >> n;
+    for (int i = 1; i < n; ++i) {
+        cin >> a[i];
+    }
+    sort(a, a + n);
+    if (a[0] - 1 <= 0) {
+        cout << -1 << endl;
+    } else {
+        cout << 1 << endl;
+    }
+    return 0;
+}
+```<think>
+I am not fully confident. Re-check and decide again. The code has a[1011] but the pseudocode says 1010 elements. Also, the loop for reading elements starts at i=1 but the pseudocode says to read n sequential elements. The loop should start at i=0. The code is incorrect. The correct code should have a[1010] and the loop should run from i=0 to i < n. The current code has a[1011] and starts at i=1, which is wrong. Need to fix the array size and loop indices. The correct code should be:
+
+int main() {
+    int n;
+    int a[1010];
+    cin >> n;
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+    sort(a, a + n);
+    if (a[0] - 1 <= 0) {
+        cout << -1 << endl;
+    } else {
+        cout << 1 << endl;
+    }
+    return 0;
+}
+</think>
+
+```cpp
+int main() {
+    int n;
+    int a[1010];
+    cin >> n;
+    for (int i = 0; i < n; ++i) {
+        cin >> a[i];
+    }
+    sort(a, a + n);
+    if (a[0] - 1 <= 0) {
+        cout << -1 << endl;
+    } else {
+        cout << 1 << endl;
+    }
+    return 0;
+}
+```
