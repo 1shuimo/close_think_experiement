@@ -41,6 +41,12 @@ DEFAULT_INJECT_TEXT = (
     "I am not fully confident. Re-check and decide again.\n"
 )
 
+DEFAULT_MATH_STEP_USER_GUIDANCE = (
+    "Output format requirement (MUST follow): after reasoning, output one step per line using "
+    "'Step 0:', 'Step 1:', 'Step 2:', ...; then output one final line that contains ONLY the final "
+    "answer value (no extra words)."
+)
+
 
 def _safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", s or "task")
@@ -95,6 +101,21 @@ def build_task_format_guidance(task_family: Optional[str]) -> str:
             "<Plan>...</Plan>."
         )
     return ""
+
+
+def maybe_append_math_step_guidance(
+    user_prompt: str,
+    task_family: Optional[str],
+    math_step_user_guidance: str,
+) -> str:
+    # Only apply this to non-LongProc tasks.
+    if task_family is not None:
+        return user_prompt
+    if not math_step_user_guidance:
+        return user_prompt
+    if re.search(r"(?i)step\\s*0\\s*:", user_prompt):
+        return user_prompt
+    return user_prompt.rstrip() + "\n\n" + math_step_user_guidance
 
 
 def format_regex_for_task_family(task_family: Optional[str]) -> Optional[str]:
@@ -160,6 +181,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
     p.add_argument("--system-prompt-file", default=None, help="Load system prompt text from file.")
     p.add_argument("--no-task-format-guidance", action="store_true", help="Disable auto task-specific format guidance.")
+    p.add_argument(
+        "--no-math-step-format-guidance",
+        action="store_true",
+        help="Disable auto step-format guidance injected into non-LongProc task user prompts.",
+    )
     p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
     p.add_argument("--think-word-limit", type=int, default=60)
     p.add_argument("--temperature", type=float, default=0.4)
@@ -292,6 +318,7 @@ def run_task_ab(
     think_word_limit: int,
     task_family: Optional[str],
     task_format_guidance: str,
+    math_step_user_guidance: str,
     task: Dict[str, object],
     eval_fn: Optional[Callable],
     temperature: float,
@@ -327,6 +354,11 @@ def run_task_ab(
 ) -> Dict[str, object]:
     task_id = task.get("id", "")
     user_prompt = task["user_prompt"]
+    user_prompt = maybe_append_math_step_guidance(
+        user_prompt=user_prompt,
+        task_family=task_family,
+        math_step_user_guidance=math_step_user_guidance,
+    )
     expected_regex = task.get("expected_regex")
     eval_item = task.get("eval_item")
     reference_output = task.get("reference_output")
@@ -764,8 +796,11 @@ def main() -> None:
     task_source: str
     task_family: Optional[str] = infer_task_family(args.longproc_task)
     task_format_guidance = ""
+    math_step_user_guidance = ""
     if args.longproc_task and not args.no_task_format_guidance:
         task_format_guidance = build_task_format_guidance(task_family)
+    if (not args.longproc_task) and (not args.no_math_step_format_guidance):
+        math_step_user_guidance = DEFAULT_MATH_STEP_USER_GUIDANCE
 
     resolved_checkpoint_regex: Optional[str]
     if args.checkpoint_mode in {"regex", "think_end_then_regex"}:
@@ -812,6 +847,8 @@ def main() -> None:
         )
         if task_format_guidance:
             print(f"[TaskSpec] format_guidance={task_format_guidance}")
+    elif math_step_user_guidance:
+        print(f"[TaskSpec] math_step_guidance={math_step_user_guidance}")
     else:
         tasks_path = Path(args.tasks_file)
         if not tasks_path.exists():
@@ -852,6 +889,7 @@ def main() -> None:
                 think_word_limit=args.think_word_limit,
                 task_family=task_family,
                 task_format_guidance=task_format_guidance,
+                math_step_user_guidance=math_step_user_guidance,
                 task=task,
                 eval_fn=eval_fn,
                 temperature=args.temperature,
@@ -964,8 +1002,10 @@ def main() -> None:
             "shuffle": bool(args.shuffle) if args.longproc_task else None,
             "task_family": task_family,
             "task_format_guidance": task_format_guidance if args.longproc_task else None,
+            "math_step_user_guidance": math_step_user_guidance if not args.longproc_task else None,
             "system_prompt_file": args.system_prompt_file,
             "no_task_format_guidance": bool(args.no_task_format_guidance),
+            "no_math_step_format_guidance": bool(args.no_math_step_format_guidance),
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
             "branch_mode": args.branch_mode,
