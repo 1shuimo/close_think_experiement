@@ -261,6 +261,55 @@ print("branch_B_expected_hit_rate =", (sum(hits) / len(hits)) if hits else None)
 PY
 ```
 
+### 8.6 20题总测（不做改错，只看准确率）
+题集：`tasks_math_mix20_accuracy.jsonl`（8 easy + 5 medium + 4 AIME + 3 AMO）
+
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --tasks-file tasks_math_mix20_accuracy.jsonl \
+  --prompt-mode enhanced \
+  --system-prompt-file prompts/system_enhanced_v1.txt \
+  --inject-text "$(cat prompts/inject_think_v1.txt)" \
+  --checkpoint-mode think_end \
+  --checkpoint-delay 0 \
+  --corrupt-mode none \
+  --max-prefix-tokens 4500 \
+  --max-new-after 1800 \
+  --branch-mode ab \
+  --save-task-texts \
+  --output-dir suite_math_mix20_accuracy_32b
+```
+
+说明：这组不改错，准确率请看 `summary_all_models.json` 里的 `branch_A.expected_hit_rate`。
+
+### 8.7 5题改错逻辑测试
+题集：`tasks_math_mix5_corrupt.jsonl`（1 AMO + 1 AIME + 2 medium + 1 easy）
+
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --tasks-file tasks_math_mix5_corrupt.jsonl \
+  --prompt-mode enhanced \
+  --system-prompt-file prompts/system_enhanced_v1.txt \
+  --inject-text "$(cat prompts/inject_think_v1.txt)" \
+  --checkpoint-mode think_end_mid \
+  --checkpoint-mid-min-tokens 60 \
+  --checkpoint-mid-max-tokens 140 \
+  --checkpoint-mid-avoid-final-regex '(?i)\\bfinal\\s*:|\\bfinal answer\\b' \
+  --checkpoint-delay 0 \
+  --corrupt-mode anchor_number_shift \
+  --corrupt-anchor-regex '(?i)step\\s*\\d+' \
+  --corrupt-after-first-think \
+  --corrupt-prefer-sign-flip \
+  --max-prefix-tokens 3500 \
+  --max-new-after 1000 \
+  --branch-mode ab \
+  --save-task-texts \
+  --print-full-output \
+  --output-dir suite_math_mix5_corrupt_32b
+```
+
 ## 9. 输出文件说明
 
 每次运行会生成：
