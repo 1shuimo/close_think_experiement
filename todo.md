@@ -111,6 +111,31 @@ python test_close_suite.py \
   --output-dir suite_math_step5_branch_compare
 ```
 
+更难数学题（Aya + Hyperbola）：
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --tasks-file tasks_math_hard_steps.jsonl \
+  --prompt-mode enhanced \
+  --system-prompt-file prompts/system_enhanced_v1.txt \
+  --inject-text "$(cat prompts/inject_think_v1.txt)" \
+  --checkpoint-mode think_end_mid \
+  --checkpoint-mid-min-tokens 60 \
+  --checkpoint-mid-max-tokens 180 \
+  --checkpoint-mid-avoid-final-regex '(?i)\\bfinal\\s*:|\\bfinal answer\\b' \
+  --checkpoint-delay 0 \
+  --corrupt-mode anchor_number_shift \
+  --corrupt-anchor-regex '(?i)step\\s*\\d+' \
+  --corrupt-after-first-think \
+  --corrupt-prefer-sign-flip \
+  --max-prefix-tokens 5000 \
+  --max-new-after 1600 \
+  --branch-mode ab \
+  --save-task-texts \
+  --print-full-output \
+  --output-dir suite_math_hard_mid_32b
+```
+
 ## 3. 主实验矩阵（同一任务先比三组）
 
 ### 3.1 baseline

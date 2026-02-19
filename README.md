@@ -220,6 +220,31 @@ python test_close_suite.py \
 - 这个配置对应“先生成到第一次 `</think>` 后，再在正文中段随机截断，然后改错，再做 A/B 分路续写”。
 - 改错限定在第一次 `</think>` 之后；会优先尝试翻转 `+/-`，找不到再做数字扰动。
 
+### 8.5 更难数学题（Aya + Hyperbola，两题）
+```bash
+python test_close_suite.py \
+  --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
+  --tasks-file tasks_math_hard_steps.jsonl \
+  --prompt-mode enhanced \
+  --system-prompt-file prompts/system_enhanced_v1.txt \
+  --inject-text "$(cat prompts/inject_think_v1.txt)" \
+  --checkpoint-mode think_end_mid \
+  --checkpoint-mid-min-tokens 60 \
+  --checkpoint-mid-max-tokens 180 \
+  --checkpoint-mid-avoid-final-regex '(?i)\\bfinal\\s*:|\\bfinal answer\\b' \
+  --checkpoint-delay 0 \
+  --corrupt-mode anchor_number_shift \
+  --corrupt-anchor-regex '(?i)step\\s*\\d+' \
+  --corrupt-after-first-think \
+  --corrupt-prefer-sign-flip \
+  --max-prefix-tokens 5000 \
+  --max-new-after 1600 \
+  --branch-mode ab \
+  --save-task-texts \
+  --print-full-output \
+  --output-dir suite_math_hard_mid_32b
+```
+
 ## 9. 输出文件说明
 
 每次运行会生成：
