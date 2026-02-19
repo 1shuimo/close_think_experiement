@@ -1,4 +1,5 @@
 import argparse
+import gc
 import json
 import re
 import random
@@ -464,9 +465,24 @@ def run_task_ab(
             "metrics": eval_a,
             "longproc_eval": None,
         }
+        # Release branch A KV/logits before branch B to reduce peak VRAM.
+        del past_a
+        del logits_a
+        del gen_a_out
+        del gen_a
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
 
     past_b = clone_past_key_values(past_base)
     logits_b = logits_base.clone()
+    # Base KV is no longer needed after cloning B branch seed.
+    del past_base
+    del logits_base
+    del full_ids_base
+    del edited_ids_t
+    del prompt_ids
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     inject_ids = tokenizer.encode(inject_text, add_special_tokens=False)
     inject_ids_t = torch.tensor([inject_ids], dtype=torch.long, device=device)
     out_inj = model(inject_ids_t, past_key_values=past_b, use_cache=True)
@@ -501,10 +517,16 @@ def run_task_ab(
         cont_try = tokenizer.decode(gen_b, skip_special_tokens=False)
         if len(gen_b) == 0:
             retry_reasons.append(f"attempt_{attempt}:{gen_b_stop_reason}:empty_generation")
+            del past_b_try
+            del logits_b_try
             continue
         if inject_opens_think and ("</think>" not in cont_try):
             retry_reasons.append(f"attempt_{attempt}:{gen_b_stop_reason}:unclosed_think")
+            del past_b_try
+            del logits_b_try
             continue
+        del past_b_try
+        del logits_b_try
         break
 
     cont_b_raw = tokenizer.decode(gen_b, skip_special_tokens=False)
@@ -826,6 +848,10 @@ def main() -> None:
             )
             rec["model_path"] = model_path
             model_records.append(rec)
+            # Keep model loaded, but force GC between tasks to avoid KV leftovers.
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
             if args.print_full_output:
                 print("\n---------------- FULL OUTPUT ----------------")
