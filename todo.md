@@ -111,7 +111,7 @@ python test_close_suite.py \
   --output-dir suite_math_step5_branch_compare
 ```
 
-更难数学题（Aya + Hyperbola）：
+更难数学题（4题：Aya + Hyperbola + Complex + Token Game）：
 ```bash
 python test_close_suite.py \
   --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
@@ -134,6 +134,22 @@ python test_close_suite.py \
   --save-task-texts \
   --print-full-output \
   --output-dir suite_math_hard_mid_32b
+```
+
+统计这组题的 `expected_hit`：
+```bash
+python - <<'PY'
+import json, pathlib
+p = pathlib.Path("suite_math_hard_mid_32b/_scratch-ssd_guoeng_huggingface_models_Qwen3-32B.results.jsonl")
+rows = [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+hits = []
+for r in rows:
+    h = r.get("branch_B", {}).get("metrics", {}).get("expected_hit")
+    if h is not None:
+        hits.append(bool(h))
+    print(r.get("task_id"), "expected_hit=", h)
+print("branch_B_expected_hit_rate =", (sum(hits) / len(hits)) if hits else None)
+PY
 ```
 
 ## 3. 主实验矩阵（同一任务先比三组）

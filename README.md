@@ -220,7 +220,7 @@ python test_close_suite.py \
 - 这个配置对应“先生成到第一次 `</think>` 后，再在正文中段随机截断，然后改错，再做 A/B 分路续写”。
 - 改错限定在第一次 `</think>` 之后；会优先尝试翻转 `+/-`，找不到再做数字扰动。
 
-### 8.5 更难数学题（Aya + Hyperbola，两题）
+### 8.5 更难数学题（4题：Aya + Hyperbola + Complex + Token Game）
 ```bash
 python test_close_suite.py \
   --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \
@@ -243,6 +243,22 @@ python test_close_suite.py \
   --save-task-texts \
   --print-full-output \
   --output-dir suite_math_hard_mid_32b
+```
+
+跑完后统计这 4 题的 `expected_hit` 正确率：
+```bash
+python - <<'PY'
+import json, pathlib
+p = pathlib.Path("suite_math_hard_mid_32b/_scratch-ssd_guoeng_huggingface_models_Qwen3-32B.results.jsonl")
+rows = [json.loads(x) for x in p.read_text(encoding="utf-8").splitlines() if x.strip()]
+hits = []
+for r in rows:
+    h = r.get("branch_B", {}).get("metrics", {}).get("expected_hit")
+    if h is not None:
+        hits.append(bool(h))
+    print(r.get("task_id"), "expected_hit=", h)
+print("branch_B_expected_hit_rate =", (sum(hits) / len(hits)) if hits else None)
+PY
 ```
 
 ## 9. 输出文件说明
