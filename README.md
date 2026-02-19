@@ -136,8 +136,10 @@ bash run_longproc_32b.sh \
 - `--auto-close-unclosed-think`
 - `--apply-cross-think-cover`
 - `--print-full-output`
+- `--modes baseline,enhanced,enhanced_cover`（可选跑子集）
 
 说明：默认不会把每题全文打印到终端，只会保存到文件。要终端直接看全文和改错信息，请加 `--print-full-output`。
+说明：如果只想跑 baseline + enhanced_cover，可加 `--modes baseline,enhanced_cover`。
 说明：`tom_tracking` 默认锚点是 `- Step 3:`（带短横线），因此注入点通常在后半段结构化列表中；如果你想更早插入，可显式传 `--checkpoint-regex '(?i)step\\s*3:'`。
 说明：默认不会自动补齐未闭合 `<think>`，用于保留真实行为观测；如需补齐可加 `--auto-close-unclosed-think`。
 说明：如果你希望“先等第一次 think 闭合，再在正文中段截断”，用 `--checkpoint-mode think_end_mid --checkpoint-mid-min-tokens 80 --checkpoint-mid-max-tokens 220`。

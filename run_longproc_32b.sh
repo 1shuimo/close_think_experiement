@@ -29,6 +29,7 @@ OUT_ROOT="${OUT_ROOT:-suite_longproc_32b}"
 OUT_SUFFIX="${OUT_SUFFIX:-}"
 BRANCH_MODE="${BRANCH_MODE:-ab}"
 PRINT_FULL_OUTPUT="${PRINT_FULL_OUTPUT:-0}"
+MODES="${MODES:-baseline,enhanced,enhanced_cover}"
 PROMPT_BASE_FILE="${PROMPT_BASE_FILE:-prompts/system_base_v1.txt}"
 PROMPT_ENH_FILE="${PROMPT_ENH_FILE:-prompts/system_enhanced_v1.txt}"
 INJECT_TEXT_FILE="${INJECT_TEXT_FILE:-prompts/inject_think_v1.txt}"
@@ -131,6 +132,10 @@ while [[ $# -gt 0 ]]; do
       PRINT_FULL_OUTPUT=1
       shift 1
       ;;
+    --modes)
+      MODES="$2"
+      shift 2
+      ;;
     -h|--help)
       cat <<'USAGE'
 Usage: bash run_longproc_32b.sh [options]
@@ -158,6 +163,7 @@ Usage: bash run_longproc_32b.sh [options]
   --apply-cross-think-cover
   --no-apply-cross-think-cover
   --print-full-output
+  --modes baseline,enhanced,enhanced_cover
 USAGE
       exit 0
       ;;
@@ -193,85 +199,113 @@ INJECT_TEXT="$(cat "${INJECT_TEXT_FILE}")"
 
 mkdir -p "${OUT_ROOT}"
 
-echo "[LongProc A] baseline"
-python test_close_suite.py \
-  --model-paths "${MODEL_32B}" \
-  --longproc-task "${TASK}" \
-  --longproc-data-path "${LONGPROC_DATA_PATH}" \
-  --longproc-code-path "${LONGPROC_CODE_PATH}" \
-  --n-samples "${N_SAMPLES}" \
-  --prompt-mode baseline \
-  --system-prompt-file "${PROMPT_BASE_FILE}" \
-  --checkpoint-mode "${CHECKPOINT_MODE}" \
-  --checkpoint-regex "${CHECKPOINT_REGEX}" \
-  --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
-  --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
-  --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
-  --corrupt-mode "${CORRUPT_MODE}" \
-  --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
-  --checkpoint-delay "${CHECKPOINT_DELAY}" \
-  --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
-  --max-new-after "${MAX_NEW_AFTER}" \
-  --branch-mode "${BRANCH_MODE}" \
-  --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
-  --b-retry-times "${B_RETRY_TIMES}" \
-  --output-dir "${OUT_ROOT}/baseline" \
-  --save-task-texts \
-  "${EXTRA_ARGS[@]}"
+RUN_BASELINE=0
+RUN_ENHANCED=0
+RUN_ENHANCED_COVER=0
+IFS=',' read -r -a MODE_ARR <<< "${MODES}"
+for mode in "${MODE_ARR[@]}"; do
+  m="$(echo "${mode}" | tr -d '[:space:]')"
+  case "${m}" in
+    baseline) RUN_BASELINE=1 ;;
+    enhanced) RUN_ENHANCED=1 ;;
+    enhanced_cover) RUN_ENHANCED_COVER=1 ;;
+    "") ;;
+    *)
+      echo "Unknown mode in --modes: ${m}" >&2
+      exit 1
+      ;;
+  esac
+done
+if [[ "${RUN_BASELINE}" == "0" && "${RUN_ENHANCED}" == "0" && "${RUN_ENHANCED_COVER}" == "0" ]]; then
+  echo "No valid modes selected. Use --modes baseline,enhanced,enhanced_cover" >&2
+  exit 1
+fi
 
-echo "[LongProc B] enhanced"
-python test_close_suite.py \
-  --model-paths "${MODEL_32B}" \
-  --longproc-task "${TASK}" \
-  --longproc-data-path "${LONGPROC_DATA_PATH}" \
-  --longproc-code-path "${LONGPROC_CODE_PATH}" \
-  --n-samples "${N_SAMPLES}" \
-  --prompt-mode enhanced \
-  --system-prompt-file "${PROMPT_ENH_FILE}" \
-  --inject-text "${INJECT_TEXT}" \
-  --checkpoint-mode "${CHECKPOINT_MODE}" \
-  --checkpoint-regex "${CHECKPOINT_REGEX}" \
-  --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
-  --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
-  --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
-  --corrupt-mode "${CORRUPT_MODE}" \
-  --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
-  --checkpoint-delay "${CHECKPOINT_DELAY}" \
-  --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
-  --max-new-after "${MAX_NEW_AFTER}" \
-  --branch-mode "${BRANCH_MODE}" \
-  --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
-  --b-retry-times "${B_RETRY_TIMES}" \
-  --output-dir "${OUT_ROOT}/enhanced" \
-  --save-task-texts \
-  "${EXTRA_ARGS[@]}"
+if [[ "${RUN_BASELINE}" == "1" ]]; then
+  echo "[LongProc A] baseline"
+  python test_close_suite.py \
+    --model-paths "${MODEL_32B}" \
+    --longproc-task "${TASK}" \
+    --longproc-data-path "${LONGPROC_DATA_PATH}" \
+    --longproc-code-path "${LONGPROC_CODE_PATH}" \
+    --n-samples "${N_SAMPLES}" \
+    --prompt-mode baseline \
+    --system-prompt-file "${PROMPT_BASE_FILE}" \
+    --checkpoint-mode "${CHECKPOINT_MODE}" \
+    --checkpoint-regex "${CHECKPOINT_REGEX}" \
+    --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
+    --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
+    --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
+    --corrupt-mode "${CORRUPT_MODE}" \
+    --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
+    --checkpoint-delay "${CHECKPOINT_DELAY}" \
+    --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
+    --max-new-after "${MAX_NEW_AFTER}" \
+    --branch-mode "${BRANCH_MODE}" \
+    --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
+    --b-retry-times "${B_RETRY_TIMES}" \
+    --output-dir "${OUT_ROOT}/baseline" \
+    --save-task-texts \
+    "${EXTRA_ARGS[@]}"
+fi
 
-echo "[LongProc C] enhanced + match-cover"
-python test_close_suite.py \
-  --model-paths "${MODEL_32B}" \
-  --longproc-task "${TASK}" \
-  --longproc-data-path "${LONGPROC_DATA_PATH}" \
-  --longproc-code-path "${LONGPROC_CODE_PATH}" \
-  --n-samples "${N_SAMPLES}" \
-  --prompt-mode enhanced \
-  --system-prompt-file "${PROMPT_ENH_FILE}" \
-  --inject-text "${INJECT_TEXT}" \
-  --apply-match-cover \
-  --checkpoint-mode "${CHECKPOINT_MODE}" \
-  --checkpoint-regex "${CHECKPOINT_REGEX}" \
-  --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
-  --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
-  --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
-  --corrupt-mode "${CORRUPT_MODE}" \
-  --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
-  --checkpoint-delay "${CHECKPOINT_DELAY}" \
-  --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
-  --max-new-after "${MAX_NEW_AFTER}" \
-  --branch-mode "${BRANCH_MODE}" \
-  --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
-  --b-retry-times "${B_RETRY_TIMES}" \
-  --output-dir "${OUT_ROOT}/enhanced_cover" \
-  --save-task-texts \
-  "${EXTRA_ARGS[@]}"
+if [[ "${RUN_ENHANCED}" == "1" ]]; then
+  echo "[LongProc B] enhanced"
+  python test_close_suite.py \
+    --model-paths "${MODEL_32B}" \
+    --longproc-task "${TASK}" \
+    --longproc-data-path "${LONGPROC_DATA_PATH}" \
+    --longproc-code-path "${LONGPROC_CODE_PATH}" \
+    --n-samples "${N_SAMPLES}" \
+    --prompt-mode enhanced \
+    --system-prompt-file "${PROMPT_ENH_FILE}" \
+    --inject-text "${INJECT_TEXT}" \
+    --checkpoint-mode "${CHECKPOINT_MODE}" \
+    --checkpoint-regex "${CHECKPOINT_REGEX}" \
+    --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
+    --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
+    --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
+    --corrupt-mode "${CORRUPT_MODE}" \
+    --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
+    --checkpoint-delay "${CHECKPOINT_DELAY}" \
+    --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
+    --max-new-after "${MAX_NEW_AFTER}" \
+    --branch-mode "${BRANCH_MODE}" \
+    --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
+    --b-retry-times "${B_RETRY_TIMES}" \
+    --output-dir "${OUT_ROOT}/enhanced" \
+    --save-task-texts \
+    "${EXTRA_ARGS[@]}"
+fi
+
+if [[ "${RUN_ENHANCED_COVER}" == "1" ]]; then
+  echo "[LongProc C] enhanced + match-cover"
+  python test_close_suite.py \
+    --model-paths "${MODEL_32B}" \
+    --longproc-task "${TASK}" \
+    --longproc-data-path "${LONGPROC_DATA_PATH}" \
+    --longproc-code-path "${LONGPROC_CODE_PATH}" \
+    --n-samples "${N_SAMPLES}" \
+    --prompt-mode enhanced \
+    --system-prompt-file "${PROMPT_ENH_FILE}" \
+    --inject-text "${INJECT_TEXT}" \
+    --apply-match-cover \
+    --checkpoint-mode "${CHECKPOINT_MODE}" \
+    --checkpoint-regex "${CHECKPOINT_REGEX}" \
+    --checkpoint-mid-min-tokens "${CHECKPOINT_MID_MIN_TOKENS}" \
+    --checkpoint-mid-max-tokens "${CHECKPOINT_MID_MAX_TOKENS}" \
+    --checkpoint-mid-avoid-final-regex "${CHECKPOINT_MID_AVOID_FINAL_REGEX}" \
+    --corrupt-mode "${CORRUPT_MODE}" \
+    --corrupt-anchor-regex "${CORRUPT_ANCHOR_REGEX}" \
+    --checkpoint-delay "${CHECKPOINT_DELAY}" \
+    --max-prefix-tokens "${MAX_PREFIX_TOKENS}" \
+    --max-new-after "${MAX_NEW_AFTER}" \
+    --branch-mode "${BRANCH_MODE}" \
+    --min-b-tokens-before-eos "${MIN_B_TOKENS_BEFORE_EOS}" \
+    --b-retry-times "${B_RETRY_TIMES}" \
+    --output-dir "${OUT_ROOT}/enhanced_cover" \
+    --save-task-texts \
+    "${EXTRA_ARGS[@]}"
+fi
 
 echo "Done. Outputs in ${OUT_ROOT}"
