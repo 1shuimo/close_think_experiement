@@ -330,6 +330,34 @@ def run_task_ab(
     expected_regex = task.get("expected_regex")
     eval_item = task.get("eval_item")
     reference_output = task.get("reference_output")
+    task_corrupt_note = task.get("corrupt_note")
+    task_corrupt_plan = str(task.get("corrupt_plan", "")).strip().lower()
+    task_corrupt_anchor_regex = task.get("corrupt_anchor_regex")
+    task_corrupt_after_first_think = task.get("corrupt_after_first_think")
+
+    effective_corrupt_mode = corrupt_mode
+    effective_corrupt_anchor_regex = corrupt_anchor_regex
+    effective_corrupt_after_first_think = bool(corrupt_after_first_think)
+    effective_corrupt_prefer_sign_flip = bool(corrupt_prefer_sign_flip)
+    force_sign_only = False
+
+    if task_corrupt_plan in {"sign_flip", "sign_only"}:
+        effective_corrupt_prefer_sign_flip = True
+        effective_corrupt_mode = "none"
+        force_sign_only = True
+    elif task_corrupt_plan in {"number_shift", "anchor_number_shift", "none"}:
+        effective_corrupt_prefer_sign_flip = False
+        effective_corrupt_mode = task_corrupt_plan
+    elif task_corrupt_plan in {"sign_then_number", "auto", ""}:
+        pass
+    else:
+        # Unknown per-task plan: fall back to global settings.
+        task_corrupt_plan = ""
+
+    if isinstance(task_corrupt_anchor_regex, str) and task_corrupt_anchor_regex:
+        effective_corrupt_anchor_regex = task_corrupt_anchor_regex
+    if isinstance(task_corrupt_after_first_think, bool):
+        effective_corrupt_after_first_think = task_corrupt_after_first_think
 
     used_system_prompt = compose_system_prompt(
         system_prompt,
@@ -374,10 +402,10 @@ def run_task_ab(
     target_prefix = prefix_text
     head_prefix = ""
     scope_meta: Dict[str, object] = {
-        "corrupt_after_first_think": bool(corrupt_after_first_think),
+        "corrupt_after_first_think": bool(effective_corrupt_after_first_think),
         "first_think_closed_found": False,
     }
-    if corrupt_after_first_think:
+    if effective_corrupt_after_first_think:
         head_prefix, target_prefix, found_close = _split_after_first_think_close(prefix_text)
         scope_meta["first_think_closed_found"] = bool(found_close)
         if not found_close:
@@ -386,19 +414,23 @@ def run_task_ab(
 
     edited_target = target_prefix
     corrupt_meta: Dict[str, object] = {"mode": "none", "changed": False}
-    if corrupt_prefer_sign_flip:
+    sign_meta: Optional[Dict[str, object]] = None
+    if effective_corrupt_prefer_sign_flip:
         sign_edited, sign_meta = _flip_first_plus_minus_operator(edited_target)
         if bool(sign_meta.get("changed")):
             edited_target = sign_edited
             corrupt_meta = sign_meta
 
-    if not bool(corrupt_meta.get("changed")):
-        if corrupt_mode == "number_shift":
+    if not bool(corrupt_meta.get("changed")) and force_sign_only and sign_meta is not None:
+        corrupt_meta = sign_meta
+
+    if not bool(corrupt_meta.get("changed")) and not force_sign_only:
+        if effective_corrupt_mode == "number_shift":
             edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
-        elif corrupt_mode == "anchor_number_shift":
+        elif effective_corrupt_mode == "anchor_number_shift":
             edited_target, corrupt_meta = corrupt_numbers_near_anchor(
                 edited_target,
-                anchor_regex=corrupt_anchor_regex,
+                anchor_regex=effective_corrupt_anchor_regex,
                 max_changes=corrupt_max_changes,
                 window_chars=corrupt_window_chars,
             )
@@ -407,7 +439,12 @@ def run_task_ab(
 
     edited_text = head_prefix + edited_target
     corrupt_meta.update(scope_meta)
-    corrupt_meta["corrupt_prefer_sign_flip"] = bool(corrupt_prefer_sign_flip)
+    corrupt_meta["corrupt_prefer_sign_flip"] = bool(effective_corrupt_prefer_sign_flip)
+    corrupt_meta["corrupt_mode_effective"] = effective_corrupt_mode
+    corrupt_meta["corrupt_anchor_regex_effective"] = effective_corrupt_anchor_regex
+    corrupt_meta["task_corrupt_plan"] = task_corrupt_plan or None
+    corrupt_meta["task_corrupt_note"] = task_corrupt_note
+    corrupt_meta["force_sign_only"] = bool(force_sign_only)
     corrupt_meta["corrupt_region_start"] = len(head_prefix)
     # Diagnose whether checkpoint cut inside an open <think> block.
     prefix_think_gap = _think_balance_delta(edited_text)
@@ -596,6 +633,8 @@ def run_task_ab(
         "task_id": task_id,
         "user_prompt": user_prompt,
         "expected_regex": expected_regex,
+        "task_corrupt_note": task_corrupt_note,
+        "task_corrupt_plan": task_corrupt_plan or None,
         "task_family": task_family,
         "reference_output": reference_output,
         "prompt_mode": prompt_mode,
@@ -858,6 +897,8 @@ def main() -> None:
                 print(f"model={model_path}")
                 print(f"task={rec.get('task_id')}")
                 print(f"branch_mode={rec.get('branch_mode')}")
+                print(f"task_corrupt_plan={rec.get('task_corrupt_plan')}")
+                print(f"task_corrupt_note={rec.get('task_corrupt_note')}")
                 print(f"corrupt_meta={json.dumps(rec.get('corrupt_meta', {}), ensure_ascii=False)}")
                 print(f"branch_B_retry={json.dumps(rec['branch_B'].get('retry_info', {}), ensure_ascii=False)}")
                 print(f"branch_B_stop_reason={rec['branch_B'].get('stop_reason')}")
@@ -885,6 +926,8 @@ def main() -> None:
                         {
                             "task_id": rec.get("task_id"),
                             "user_prompt": rec.get("user_prompt"),
+                            "task_corrupt_plan": rec.get("task_corrupt_plan"),
+                            "task_corrupt_note": rec.get("task_corrupt_note"),
                             "reference_output": rec.get("reference_output"),
                             "expected_regex": rec.get("expected_regex"),
                             "checkpoint_meta": rec.get("checkpoint_meta", {}),

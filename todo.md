@@ -172,6 +172,7 @@ python test_close_suite.py \
 读结果：看 `summary_all_models.json` 里的 `branch_A.expected_hit_rate`。
 
 5题改错逻辑（1 AMO + 1 AIME + 2 medium + 1 easy）：`tasks_math_mix5_corrupt.jsonl`
+该 JSONL 里已按题配置 `corrupt_plan`（符号/数字）和 `corrupt_note`（改错备注）。
 ```bash
 python test_close_suite.py \
   --model-paths /scratch-ssd/guoeng/huggingface/models/Qwen3-32B \

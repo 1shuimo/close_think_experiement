@@ -287,6 +287,9 @@ python test_close_suite.py \
 
 ### 8.7 5题改错逻辑测试
 题集：`tasks_math_mix5_corrupt.jsonl`（1 AMO + 1 AIME + 2 medium + 1 easy）
+其中每题可在 JSONL 里带：
+- `corrupt_plan`: `sign_flip` / `number_shift` / `anchor_number_shift` / `none`
+- `corrupt_note`: 备注“希望改哪里、改什么类型”
 
 ```bash
 python test_close_suite.py \
