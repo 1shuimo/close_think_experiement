@@ -247,6 +247,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Force Branch B to inject <think> immediately at the corruption point.",
     )
+    p.add_argument(
+        "--force-inject-at-sentence-end",
+        action="store_true",
+        help="When forcing inject at corruption, shift insert point to nearest sentence end after it.",
+    )
     return p.parse_args()
 
 
@@ -267,6 +272,19 @@ def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
     if not m:
         return text, "", False
     return text[: m.end()], text[m.end() :], True
+
+
+def _advance_to_sentence_end(text: str, start: int, max_lookahead: int = 220) -> int:
+    if start < 0:
+        return 0
+    if start >= len(text):
+        return len(text)
+    end = min(len(text), start + max(0, int(max_lookahead)))
+    stops = set(".!?。！？\n")
+    for i in range(start, end):
+        if text[i] in stops:
+            return i + 1
+    return start
 
 
 def _flip_first_plus_minus_operator(text: str) -> Tuple[str, Dict[str, object]]:
@@ -352,6 +370,7 @@ def run_task_ab(
     corrupt_after_first_think: bool,
     corrupt_prefer_sign_flip: bool,
     force_inject_at_corrupt: bool,
+    force_inject_at_sentence_end: bool,
     apply_match_cover_flag: bool,
     apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
@@ -503,8 +522,12 @@ def run_task_ab(
             inject_pos_local = int(inject_pos_local_raw)
             inject_pos_global = len(head_prefix) + inject_pos_local
             if 0 <= inject_pos_global <= len(edited_text):
+                raw_inject_pos_global = inject_pos_global
+                if force_inject_at_sentence_end:
+                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
                 branch_b_inject_pos = inject_pos_global
                 branch_b_force_overlap_applied = True
+                corrupt_meta["branch_b_inject_pos_raw"] = int(raw_inject_pos_global)
         except Exception:
             pass
     branch_b_prefix_text = edited_text[:branch_b_inject_pos]
@@ -513,6 +536,7 @@ def run_task_ab(
     corrupt_meta["branch_b_force_overlap_applied"] = bool(branch_b_force_overlap_applied)
     corrupt_meta["branch_b_inject_pos"] = int(branch_b_inject_pos)
     corrupt_meta["branch_b_suffix_len"] = int(len(branch_b_suffix_text))
+    corrupt_meta["force_inject_at_sentence_end"] = bool(force_inject_at_sentence_end)
 
     need_base_prefill = (branch_mode == "ab") or (branch_b_inject_pos == len(edited_text))
     past_base = None
@@ -965,6 +989,7 @@ def main() -> None:
                 corrupt_after_first_think=bool(args.corrupt_after_first_think),
                 corrupt_prefer_sign_flip=bool(args.corrupt_prefer_sign_flip),
                 force_inject_at_corrupt=bool(args.force_inject_at_corrupt),
+                force_inject_at_sentence_end=bool(args.force_inject_at_sentence_end),
                 apply_match_cover_flag=bool(args.apply_match_cover),
                 apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,
@@ -1074,6 +1099,7 @@ def main() -> None:
             "corrupt_after_first_think": bool(args.corrupt_after_first_think),
             "corrupt_prefer_sign_flip": bool(args.corrupt_prefer_sign_flip),
             "force_inject_at_corrupt": bool(args.force_inject_at_corrupt),
+            "force_inject_at_sentence_end": bool(args.force_inject_at_sentence_end),
             "apply_match_cover": bool(args.apply_match_cover),
             "apply_cross_think_cover": bool(args.apply_cross_think_cover),
             "eval_strip_think": not bool(args.no_eval_strip_think),
