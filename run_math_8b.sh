@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-MODEL_8B="${MODEL_8B:-autodl-tmp/Qwen/Qwen3-8B}"
+MODEL_8B="${MODEL_8B:-/autodl-tmp/Qwen/Qwen3-8B}"
 TASKS_FILE="${TASKS_FILE:-tasks_math_mix5_corrupt.jsonl}"
 OUTPUT_DIR="${OUTPUT_DIR:-suite_math_8b}"
 MODE="${MODE:-corrupt}"   # corrupt | clean
@@ -34,6 +34,31 @@ USAGE
     *) echo "Unknown option: $1" >&2; exit 1 ;;
   esac
 done
+
+_resolve_model_path() {
+  local p="$1"
+  if [[ -d "${p}" ]]; then
+    echo "${p}"
+    return 0
+  fi
+  local cands=("/${p}" "/root/${p}")
+  local c
+  for c in "${cands[@]}"; do
+    if [[ -d "${c}" ]]; then
+      echo "${c}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+if RESOLVED_MODEL="$(_resolve_model_path "${MODEL_8B}")"; then
+  MODEL_8B="${RESOLVED_MODEL}"
+else
+  echo "Model path not found: ${MODEL_8B}" >&2
+  echo "Try one of: /autodl-tmp/Qwen/Qwen3-8B or /root/autodl-tmp/Qwen/Qwen3-8B" >&2
+  exit 1
+fi
 
 INJECT_TEXT="$(cat "${INJECT_TEXT_FILE}")"
 

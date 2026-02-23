@@ -34,7 +34,7 @@
 - `run_longproc_8b_3tasks.sh`
 
 8B 路径默认值：
-- `autodl-tmp/Qwen/Qwen3-8B`
+- `/autodl-tmp/Qwen/Qwen3-8B`（脚本也会尝试 `/root/autodl-tmp/Qwen/Qwen3-8B`）
 
 ## 2. KV prefill / checkpoint / 分叉到底怎么做
 

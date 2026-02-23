@@ -4,7 +4,7 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "${SCRIPT_DIR}"
 
-MODEL_8B="${MODEL_8B:-autodl-tmp/Qwen/Qwen3-8B}"
+MODEL_8B="${MODEL_8B:-/autodl-tmp/Qwen/Qwen3-8B}"
 N_SAMPLES="${N_SAMPLES:-20}"
 RUN_TAG="${RUN_TAG:-$(date +%Y%m%d_%H%M%S)}"
 OUT_ROOT_BASE="${OUT_ROOT_BASE:-suite_longproc_8b_3tasks_${RUN_TAG}}"
