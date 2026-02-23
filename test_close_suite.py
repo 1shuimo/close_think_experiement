@@ -274,11 +274,89 @@ def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
     return text[: m.end()], text[m.end() :], True
 
 
+def _corrupt_step_body_number(
+    text: str,
+    *,
+    anchor_regex: Optional[str] = None,
+) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"mode": "step_body_number_shift", "changed": False, "reason": "empty_text", "inject_pos": None}
+
+    step_re = re.compile(r"^\s*Step\s+\d+\s*:", re.IGNORECASE)
+    num_re = re.compile(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])")
+    anchor_pos = None
+    if anchor_regex:
+        m_anchor = re.search(anchor_regex, text, re.IGNORECASE | re.DOTALL)
+        if m_anchor:
+            anchor_pos = m_anchor.start()
+
+    spans: List[Tuple[int, int, str]] = []
+    off = 0
+    for line in text.splitlines(keepends=True):
+        ln = line.rstrip("\r\n")
+        st = off
+        ed = off + len(ln)
+        if step_re.match(ln):
+            spans.append((st, ed, ln))
+        off += len(line)
+
+    if not spans:
+        return text, {"mode": "step_body_number_shift", "changed": False, "reason": "no_step_lines", "inject_pos": None}
+
+    ordered_spans = spans
+    if anchor_pos is not None:
+        after = [sp for sp in spans if sp[0] >= anchor_pos]
+        before = [sp for sp in spans if sp[0] < anchor_pos]
+        ordered_spans = after + before
+
+    for st, ed, ln in ordered_spans:
+        colon = ln.find(":")
+        if colon < 0:
+            continue
+        body_start_local = colon + 1
+        body = ln[body_start_local:]
+        m_num = num_re.search(body)
+        if not m_num:
+            continue
+        a = st + body_start_local + m_num.start()
+        b = st + body_start_local + m_num.end()
+        src = int(text[a:b])
+        dst = src + 1 if src >= 0 else src - 1
+        dst_s = str(dst)
+        edited = text[:a] + dst_s + text[b:]
+        return edited, {
+            "mode": "step_body_number_shift",
+            "changed": True,
+            "from": src,
+            "to": dst,
+            "edit_start": int(a),
+            "edit_end": int(a + len(dst_s)),
+            "inject_pos": int(a + len(dst_s)),
+            "step_line_start": int(st),
+            "step_line_end": int(ed),
+        }
+
+    return text, {
+        "mode": "step_body_number_shift",
+        "changed": False,
+        "reason": "no_number_in_step_body",
+        "inject_pos": None,
+    }
+
+
 def _advance_to_sentence_end(text: str, start: int, max_lookahead: int = 220) -> int:
     if start < 0:
         return 0
     if start >= len(text):
         return len(text)
+    # Prefer the end of current Step line if start is inside a "Step X:" line.
+    line_start = text.rfind("\n", 0, start) + 1
+    line_end = text.find("\n", start)
+    if line_end < 0:
+        line_end = len(text)
+    line = text[line_start:line_end]
+    if re.match(r"^\s*Step\s+\d+\s*:", line, re.IGNORECASE):
+        return line_end
     end = min(len(text), start + max(0, int(max_lookahead)))
     stops = set(".!?。！？\n")
     for i in range(start, end):
@@ -483,15 +561,43 @@ def run_task_ab(
         corrupt_meta = sign_meta
 
     if not bool(corrupt_meta.get("changed")) and not force_sign_only:
+        # For math-step style outputs, prefer corrupting numeric value in step body
+        # (not the "Step X" index) so the perturbation is semantic.
+        prefer_step_body = (
+            task_family is None
+            and bool(effective_corrupt_after_first_think)
+            and bool(re.search(r"(?im)^\s*step\s+\d+\s*:", edited_target))
+        )
         if effective_corrupt_mode == "number_shift":
-            edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
+            if prefer_step_body:
+                edited_target, corrupt_meta = _corrupt_step_body_number(
+                    edited_target,
+                    anchor_regex=effective_corrupt_anchor_regex,
+                )
+                if not bool(corrupt_meta.get("changed")):
+                    edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
+            else:
+                edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
         elif effective_corrupt_mode == "anchor_number_shift":
-            edited_target, corrupt_meta = corrupt_numbers_near_anchor(
-                edited_target,
-                anchor_regex=effective_corrupt_anchor_regex,
-                max_changes=corrupt_max_changes,
-                window_chars=corrupt_window_chars,
-            )
+            if prefer_step_body:
+                edited_target, corrupt_meta = _corrupt_step_body_number(
+                    edited_target,
+                    anchor_regex=effective_corrupt_anchor_regex,
+                )
+                if not bool(corrupt_meta.get("changed")):
+                    edited_target, corrupt_meta = corrupt_numbers_near_anchor(
+                        edited_target,
+                        anchor_regex=effective_corrupt_anchor_regex,
+                        max_changes=corrupt_max_changes,
+                        window_chars=corrupt_window_chars,
+                    )
+            else:
+                edited_target, corrupt_meta = corrupt_numbers_near_anchor(
+                    edited_target,
+                    anchor_regex=effective_corrupt_anchor_regex,
+                    max_changes=corrupt_max_changes,
+                    window_chars=corrupt_window_chars,
+                )
         else:
             edited_target, corrupt_meta = edited_target, {"mode": "none", "changed": False}
 
