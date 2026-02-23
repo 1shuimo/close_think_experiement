@@ -248,6 +248,12 @@ def parse_args() -> argparse.Namespace:
         help="Whether to auto-corrupt prefix before branch A/B.",
     )
     p.add_argument("--corrupt-anchor-regex", default="__auto__")
+    p.add_argument(
+        "--corrupt-step-select",
+        default="anchor",
+        choices=["anchor", "middle"],
+        help="For math step-body corruption: use anchor step or pick middle step.",
+    )
     p.add_argument("--corrupt-max-changes", type=int, default=2)
     p.add_argument("--corrupt-window-chars", type=int, default=240)
     p.add_argument(
@@ -293,6 +299,7 @@ def _apply_workflow_preset(args: argparse.Namespace) -> None:
         args.checkpoint_mid_min_tokens = 20
         args.checkpoint_mid_max_tokens = 30
         args.corrupt_mode = "anchor_number_shift"
+        args.corrupt_step_select = "middle"
         args.corrupt_after_first_think = True
         args.corrupt_prefer_sign_flip = True
         args.force_inject_at_corrupt = True
@@ -304,6 +311,7 @@ def _apply_workflow_preset(args: argparse.Namespace) -> None:
         args.checkpoint_mid_min_tokens = 20
         args.checkpoint_mid_max_tokens = 30
         args.corrupt_mode = "none"
+        args.corrupt_step_select = "middle"
         args.corrupt_after_first_think = False
         args.corrupt_prefer_sign_flip = False
         args.force_inject_at_corrupt = False
@@ -346,6 +354,7 @@ def _corrupt_step_body_number(
     text: str,
     *,
     anchor_regex: Optional[str] = None,
+    step_select: str = "anchor",
 ) -> Tuple[str, Dict[str, object]]:
     if not text:
         return text, {"mode": "step_body_number_shift", "changed": False, "reason": "empty_text", "inject_pos": None}
@@ -372,7 +381,19 @@ def _corrupt_step_body_number(
         return text, {"mode": "step_body_number_shift", "changed": False, "reason": "no_step_lines", "inject_pos": None}
 
     ordered_spans = spans
-    if anchor_pos is not None:
+    if step_select == "middle":
+        n = len(spans)
+        mid = n // 2
+        idx_order: List[int] = [mid]
+        for d in range(1, n):
+            r = mid + d
+            l = mid - d
+            if r < n:
+                idx_order.append(r)
+            if l >= 0:
+                idx_order.append(l)
+        ordered_spans = [spans[i] for i in idx_order]
+    elif anchor_pos is not None:
         after = [sp for sp in spans if sp[0] >= anchor_pos]
         before = [sp for sp in spans if sp[0] < anchor_pos]
         ordered_spans = after + before
@@ -513,6 +534,7 @@ def run_task_ab(
     corrupt_anchor_regex: str,
     corrupt_max_changes: int,
     corrupt_window_chars: int,
+    corrupt_step_select: str,
     corrupt_after_first_think: bool,
     corrupt_prefer_sign_flip: bool,
     force_inject_at_corrupt: bool,
@@ -647,6 +669,7 @@ def run_task_ab(
                 edited_target, corrupt_meta = _corrupt_step_body_number(
                     edited_target,
                     anchor_regex=effective_corrupt_anchor_regex,
+                    step_select=corrupt_step_select,
                 )
                 if not bool(corrupt_meta.get("changed")):
                     edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
@@ -657,6 +680,7 @@ def run_task_ab(
                 edited_target, corrupt_meta = _corrupt_step_body_number(
                     edited_target,
                     anchor_regex=effective_corrupt_anchor_regex,
+                    step_select=corrupt_step_select,
                 )
                 if not bool(corrupt_meta.get("changed")):
                     edited_target, corrupt_meta = corrupt_numbers_near_anchor(
@@ -1182,6 +1206,7 @@ def main() -> None:
                 corrupt_anchor_regex=resolved_corrupt_anchor_regex,
                 corrupt_max_changes=args.corrupt_max_changes,
                 corrupt_window_chars=args.corrupt_window_chars,
+                corrupt_step_select=args.corrupt_step_select,
                 corrupt_after_first_think=bool(args.corrupt_after_first_think),
                 corrupt_prefer_sign_flip=bool(args.corrupt_prefer_sign_flip),
                 force_inject_at_corrupt=bool(args.force_inject_at_corrupt),
@@ -1293,6 +1318,7 @@ def main() -> None:
             "corrupt_anchor_regex": resolved_corrupt_anchor_regex,
             "corrupt_max_changes": args.corrupt_max_changes,
             "corrupt_window_chars": args.corrupt_window_chars,
+            "corrupt_step_select": args.corrupt_step_select,
             "corrupt_after_first_think": bool(args.corrupt_after_first_think),
             "corrupt_prefer_sign_flip": bool(args.corrupt_prefer_sign_flip),
             "force_inject_at_corrupt": bool(args.force_inject_at_corrupt),
