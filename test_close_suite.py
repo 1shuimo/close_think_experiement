@@ -27,6 +27,18 @@ from think_branch_common import (
     think_balance_ok,
 )
 
+"""
+test_close_suite.py (focused A/B runner)
+
+当前推荐只用三种工作流（通过 --workflow 一键切换）：
+1) math_corrupt    : 数学题改错 + 分叉A/B + think注入纠错
+2) math_clean      : 数学题不改错 + 分叉A/B
+3) longproc_normal : LongProc常规评测（enhanced + match-cover，不改错）
+
+说明：
+- 为兼容旧命令，所有底层参数仍保留；若指定 --workflow!=custom，会覆盖一批默认值。
+"""
+
 
 DEFAULT_SYSTEM_PROMPT = """
 You are a careful and rigorous solver.
@@ -168,6 +180,12 @@ def auto_corrupt_anchor_regex(task_family: Optional[str]) -> str:
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Batch A/B suite for close-think experiments.")
+    p.add_argument(
+        "--workflow",
+        default="custom",
+        choices=["custom", "math_corrupt", "math_clean", "longproc_normal"],
+        help="Preset workflow for current project focus. 'custom' keeps full manual control.",
+    )
     p.add_argument("--model-paths", required=True, help="Comma-separated model paths.")
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
     p.add_argument("--tasks-file", default="tasks_math.jsonl")
@@ -253,6 +271,56 @@ def parse_args() -> argparse.Namespace:
         help="When forcing inject at corruption, shift insert point to nearest sentence end after it.",
     )
     return p.parse_args()
+
+
+def _apply_workflow_preset(args: argparse.Namespace) -> None:
+    """
+    覆盖默认参数，降低日常运行复杂度。
+    custom 模式不做任何覆盖。
+    """
+    if args.workflow == "custom":
+        return
+
+    # Shared defaults for all focused workflows.
+    args.prompt_mode = "enhanced"
+    args.branch_mode = "ab"
+    args.apply_match_cover = True
+    args.apply_cross_think_cover = False
+    args.auto_close_unclosed_think = False
+
+    if args.workflow == "math_corrupt":
+        args.checkpoint_mode = "think_end_mid"
+        args.checkpoint_mid_min_tokens = 20
+        args.checkpoint_mid_max_tokens = 30
+        args.corrupt_mode = "anchor_number_shift"
+        args.corrupt_after_first_think = True
+        args.corrupt_prefer_sign_flip = True
+        args.force_inject_at_corrupt = True
+        args.force_inject_at_sentence_end = True
+        return
+
+    if args.workflow == "math_clean":
+        args.checkpoint_mode = "think_end_mid"
+        args.checkpoint_mid_min_tokens = 20
+        args.checkpoint_mid_max_tokens = 30
+        args.corrupt_mode = "none"
+        args.corrupt_after_first_think = False
+        args.corrupt_prefer_sign_flip = False
+        args.force_inject_at_corrupt = False
+        args.force_inject_at_sentence_end = False
+        return
+
+    if args.workflow == "longproc_normal":
+        args.checkpoint_mode = "think_end_then_regex"
+        args.checkpoint_regex = "__auto__"
+        args.corrupt_anchor_regex = "__auto__"
+        args.corrupt_mode = "none"
+        args.corrupt_after_first_think = False
+        args.corrupt_prefer_sign_flip = False
+        args.force_inject_at_corrupt = False
+        args.force_inject_at_sentence_end = False
+        args.no_math_step_format_guidance = True
+        return
 
 
 def _expected_hit(text: str, expected_regex: Optional[str]) -> Optional[bool]:
@@ -456,6 +524,9 @@ def run_task_ab(
     cover_fuzzy_max_len: int,
     cover_fuzzy_ratio: float,
 ) -> Dict[str, object]:
+    # =========================
+    # 0) 任务与参数准备
+    # =========================
     task_id = task.get("id", "")
     user_prompt = task["user_prompt"]
     user_prompt = maybe_append_math_step_guidance(
@@ -515,6 +586,9 @@ def run_task_ab(
         enable_thinking=True,
     )
 
+    # =========================
+    # 1) 先生成到 checkpoint，得到可编辑前缀
+    # =========================
     ckpt = generate_until_checkpoint(
         model=model,
         tokenizer=tokenizer,
@@ -653,6 +727,9 @@ def run_task_ab(
         full_ids_base = torch.cat([prompt_ids, edited_ids_t], dim=1)
         past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
 
+    # =========================
+    # 2) Branch A：改错后直接续写
+    # =========================
     branch_a_rec: Dict[str, object] = {"skipped": True, "reason": "branch_mode=b"}
     full_a: Optional[str] = None
     if branch_mode == "ab":
@@ -705,6 +782,9 @@ def run_task_ab(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
+    # =========================
+    # 3) Branch B：在指定位置注入 think 后续写
+    # =========================
     if branch_b_inject_pos == len(edited_text):
         if past_base is None or logits_base is None:
             raise RuntimeError("Branch B requires base prefill state, but it is missing.")
@@ -805,6 +885,9 @@ def run_task_ab(
         cont_b = cont_b + closer
         full_b = full_b + closer
 
+    # =========================
+    # 4) 评估与回包
+    # =========================
     eval_b = evaluate_branch(branch_b_prefix_text, cont_b, full_b, expected_regex)
     format_re = format_regex_for_task_family(task_family)
     if format_re:
@@ -967,9 +1050,13 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
 
 def main() -> None:
     args = parse_args()
+    _apply_workflow_preset(args)
     if args.system_prompt_file:
         args.system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8")
 
+    # =========================
+    # A) 任务源准备（jsonl 或 longproc）
+    # =========================
     eval_fn: Optional[Callable] = None
     task_source: str
     task_family: Optional[str] = infer_task_family(args.longproc_task)
@@ -1036,6 +1123,9 @@ def main() -> None:
         if math_step_user_guidance:
             print(f"[TaskSpec] math_step_guidance={math_step_user_guidance}")
 
+    # =========================
+    # B) 主循环（按模型逐题跑）
+    # =========================
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -1176,6 +1266,7 @@ def main() -> None:
 
         model_summary = summarize(model_records)
         model_summary["config"] = {
+            "workflow": args.workflow,
             "longproc_task": args.longproc_task,
             "longproc_data_path": args.longproc_data_path if args.longproc_task else None,
             "longproc_code_path": args.longproc_code_path if args.longproc_task else None,

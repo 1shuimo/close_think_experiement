@@ -21,6 +21,21 @@
 - `think_branch_common.py`
 - `test_close_suite.py`
 
+## 1.1 现在推荐只用这三种运行方式
+
+`test_close_suite.py` 新增了 `--workflow` 预设，优先用这三个：
+- `math_corrupt`：数学题改错 + A/B 分叉 + 注入 think
+- `math_clean`：数学题不改错 + A/B 分叉
+- `longproc_normal`：LongProc 常规跑（enhanced + match-cover，不改错）
+
+8B 快捷脚本：
+- `run_math_8b.sh`
+- `run_longproc_8b.sh`
+- `run_longproc_8b_3tasks.sh`
+
+8B 路径默认值：
+- `autodl-tmp/Qwen/Qwen3-8B`
+
 ## 2. KV prefill / checkpoint / 分叉到底怎么做
 
 ### 2.1 KV prefill
