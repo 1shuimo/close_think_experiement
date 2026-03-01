@@ -21,6 +21,12 @@
   - AIME 改错一键入口（调用 `test_close_suite_corrupt.py`）
 - `run_live_code.py`
   - LiveCodeBench 官方 runner 对接脚本
+- `prepare_lcb_codegen_tasks.py`
+  - 从 LiveCodeBench 导出题目为本仓库可跑的 `tasks.jsonl`
+- `evaluate_lcb_from_suite.py`
+  - 把 close 分支输出转成 LCB 评分输入并执行 codegen 评测
+- `run_lcb_insert.py`
+  - LiveCodeBench 专用插入脚本（默认只跑 Branch B，不改错）
 
 ## 任务文件
 
@@ -66,6 +72,45 @@ python run_live_code.py \
   --evaluate \
   --n 10 \
   --temperature 0.2
+```
+
+LiveCodeBench 评分前去 think（可选）：
+
+```bash
+python run_live_code.py \
+  --lcb-root /path/to/LiveCodeBench \
+  --model Qwen3-32B \
+  --compute-scores \
+  --eval-all-file /path/to/eval_all.json \
+  --strip-think-before-score
+```
+
+LiveCodeBench + 中插 `<think>`（一题联调）：
+
+```bash
+# 1) 先导出 1 道 LCB 题到 close 任务格式
+python prepare_lcb_codegen_tasks.py \
+  --question-id <LCB_QUESTION_ID> \
+  --limit 1 \
+  --output-jsonl tasks_lcb_1q.jsonl
+
+# 2) 用 LCB 专用插入脚本跑 Branch B（不改错，只定位并插入）
+python run_lcb_insert.py \
+  --model-paths "$MODEL" \
+  --tasks-file tasks_lcb_1q.jsonl \
+  --output-dir suite_lcb_1q_insert \
+  --checkpoint-mode think_end_then_regex \
+  --checkpoint-regex '(?i)step\s*3' \
+  --no-step-fallback-offset-tokens 300 \
+  --save-task-texts
+
+# 3) 从 Branch B 输出提取代码并做 LCB codegen 评测
+python evaluate_lcb_from_suite.py \
+  --suite-results-jsonl suite_lcb_1q_insert/_scratch-ssd_guoeng_huggingface_models_Qwen3-32B.results.jsonl \
+  --branch b \
+  --strip-think \
+  --problems-json tasks_lcb_1q.jsonl.problems.json \
+  --output-dir suite_lcb_1q_insert/lcb_eval
 ```
 
 ## 输出结果

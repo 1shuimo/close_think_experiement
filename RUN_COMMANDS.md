@@ -155,11 +155,68 @@ python run_live_code.py \
   --end-date 2025-05-01
 ```
 
-## 8) 只看将执行什么命令（不真正执行）
+## 8) LiveCodeBench 评分前去 think（可选）
+
+```bash
+python run_live_code.py \
+  --lcb-root /path/to/LiveCodeBench \
+  --model Qwen3-32B \
+  --compute-scores \
+  --eval-all-file /path/to/eval_all.json \
+  --strip-think-before-score
+```
+
+## 9) 只看将执行什么命令（不真正执行）
 
 ```bash
 python run_live_code.py \
   --lcb-root /path/to/LiveCodeBench \
   --model Qwen3-32B \
   --dry-run
+```
+
+## 10) LiveCodeBench + 中插逻辑（一题端到端）
+
+先导出 1 道 LCB 题目为 close 任务格式：
+
+```bash
+python prepare_lcb_codegen_tasks.py \
+  --question-id <LCB_QUESTION_ID> \
+  --limit 1 \
+  --output-jsonl tasks_lcb_1q.jsonl
+```
+
+再用 LCB 专用插入脚本跑 Branch B（不改错）：
+
+```bash
+python run_lcb_insert.py \
+  --model-paths "$MODEL" \
+  --tasks-file tasks_lcb_1q.jsonl \
+  --output-dir suite_lcb_1q_insert \
+  --checkpoint-mode think_end_then_regex \
+  --checkpoint-regex '(?i)step\s*3' \
+  --no-step-fallback-offset-tokens 300 \
+  --save-task-texts
+```
+
+最后把 Branch B 输出接到 LCB codegen 评测：
+
+```bash
+python evaluate_lcb_from_suite.py \
+  --suite-results-jsonl suite_lcb_1q_insert/_scratch-ssd_guoeng_huggingface_models_Qwen3-32B.results.jsonl \
+  --branch b \
+  --strip-think \
+  --problems-json tasks_lcb_1q.jsonl.problems.json \
+  --output-dir suite_lcb_1q_insert/lcb_eval
+```
+
+如果当前环境还没装 `lcb_runner`，先做抽取验证：
+
+```bash
+python evaluate_lcb_from_suite.py \
+  --suite-results-jsonl suite_lcb_1q_insert/_scratch-ssd_guoeng_huggingface_models_Qwen3-32B.results.jsonl \
+  --branch b \
+  --strip-think \
+  --output-dir suite_lcb_1q_insert/lcb_eval \
+  --prepare-only
 ```

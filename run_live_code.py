@@ -50,6 +50,26 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--eval-all-file", default=None, help="Path to eval_all file for compute_scores.")
     p.add_argument("--start-date", default=None, help="Start date for compute_scores, e.g. 2025-01-01.")
     p.add_argument("--end-date", default=None, help="End date for compute_scores, e.g. 2025-05-01.")
+    p.add_argument(
+        "--strip-think-before-score",
+        action="store_true",
+        help="Strip <think>...</think> blocks from eval_all JSON before compute_scores.",
+    )
+    p.add_argument(
+        "--strip-think-output-file",
+        default=None,
+        help="Output file path for stripped eval_all (default: <eval_all>.strip_think.json).",
+    )
+    p.add_argument(
+        "--strip-think-key-regex",
+        default=r"(?i)(output|completion|prediction|pred|response|answer|code)",
+        help="Only strip string fields under matching keys (ignored with --strip-think-all-strings).",
+    )
+    p.add_argument(
+        "--strip-think-all-strings",
+        action="store_true",
+        help="Strip think blocks from every string field in eval_all JSON.",
+    )
 
     p.add_argument("--dry-run", action="store_true", help="Print commands only, do not execute.")
     return p.parse_args()
@@ -102,12 +122,37 @@ def main() -> None:
     if args.compute_scores:
         if not args.eval_all_file:
             raise ValueError("--compute-scores requires --eval-all-file")
+        eval_all_for_score = args.eval_all_file
+
+        if args.strip_think_before_score:
+            strip_out = args.strip_think_output_file
+            if not strip_out:
+                p = Path(args.eval_all_file)
+                strip_out = str(p.with_name(p.stem + ".strip_think" + p.suffix))
+            strip_cmd = [
+                args.python_bin,
+                str((Path(__file__).resolve().parent / "lcb_postprocess_strip_think.py")),
+                "--input",
+                args.eval_all_file,
+                "--output",
+                strip_out,
+                "--key-regex",
+                args.strip_think_key_regex,
+            ]
+            if args.strip_think_all_strings:
+                strip_cmd.append("--strip-all-strings")
+            print("[run_live_code] strip_think command:")
+            print(" ".join(strip_cmd))
+            if not args.dry_run:
+                subprocess.run(strip_cmd, check=True)
+            eval_all_for_score = strip_out
+
         score_cmd = [
             args.python_bin,
             "-m",
             "lcb_runner.evaluation.compute_scores",
             "--eval_all_file",
-            args.eval_all_file,
+            eval_all_for_score,
         ]
         if args.start_date:
             score_cmd.extend(["--start_date", args.start_date])
