@@ -94,6 +94,22 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
     p.add_argument("--think-word-limit", type=int, default=60)
+    p.add_argument(
+        "--enable-think-word-limit",
+        action="store_true",
+        help="Enable soft think length hint in enhanced system prompt.",
+    )
+    p.add_argument(
+        "--enable-first-think-max-words",
+        action="store_true",
+        help="Enable hard truncation for the first <think> block.",
+    )
+    p.add_argument(
+        "--first-think-max-words",
+        type=int,
+        default=120,
+        help="Hard cap on first <think> words in prefix (0 disables).",
+    )
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
@@ -114,6 +130,18 @@ def parse_args() -> argparse.Namespace:
         help="In think_end_mid mode, stop early if this regex appears (set empty string to disable).",
     )
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
+    p.add_argument(
+        "--step-wait-extra-tokens",
+        type=int,
+        default=1200,
+        help="If no Step line appears before inject point, continue prefix generation by this many tokens.",
+    )
+    p.add_argument(
+        "--no-step-fallback-offset-tokens",
+        type=int,
+        default=300,
+        help="If no Step line is found after first think, corrupt near this token offset (<=0 disables).",
+    )
     p.add_argument("--max-new-after", type=int, default=1200)
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
     p.add_argument("--min-b-tokens-before-eos", type=int, default=64)
@@ -215,6 +243,170 @@ def _collect_step_lines(text: str) -> List[Tuple[int, int, str, int]]:
             spans.append((st, ed, ln, int(m_step.group(1))))
         off += len(line)
     return spans
+
+
+def _has_step_marker(text: str) -> bool:
+    return re.search(r"(?im)^\s*step\s+\d+\s*:", text or "") is not None
+
+
+def _truncate_first_think_words(text: str, max_words: int) -> Tuple[str, Dict[str, object]]:
+    limit = max(0, int(max_words))
+    if limit <= 0:
+        return text, {"applied": False, "reason": "disabled"}
+
+    m_open = re.search(r"<think>", text or "", re.IGNORECASE)
+    if not m_open:
+        return text, {"applied": False, "reason": "no_first_think_open"}
+
+    start = m_open.end()
+    m_close_rel = re.search(r"</think>", (text or "")[start:], re.IGNORECASE)
+    if m_close_rel:
+        close_start = start + m_close_rel.start()
+        close_end = start + m_close_rel.end()
+        body = text[start:close_start]
+        suffix = text[close_end:]
+        close_found = True
+    else:
+        body = text[start:]
+        suffix = ""
+        close_found = False
+
+    words = re.findall(r"\S+", body)
+    if len(words) <= limit and close_found:
+        return text, {
+            "applied": False,
+            "reason": "within_limit",
+            "orig_words": len(words),
+            "limit_words": limit,
+        }
+
+    kept = " ".join(words[:limit]).strip()
+    if kept:
+        kept = "\n" + kept + "\n"
+    new_text = text[: m_open.start()] + "<think>" + kept + "</think>" + suffix
+    return new_text, {
+        "applied": True,
+        "reason": "truncated",
+        "orig_words": len(words),
+        "new_words": len(words[:limit]),
+        "limit_words": limit,
+        "close_found": close_found,
+    }
+
+
+def _extend_prefix_for_step(
+    *,
+    model,
+    tokenizer,
+    device,
+    prompt_ids: torch.Tensor,
+    prefix_text: str,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float,
+    seed: int,
+    chunk_size: int,
+) -> Tuple[str, Dict[str, object]]:
+    extra = max(0, int(max_new_tokens))
+    if extra <= 0:
+        return prefix_text, {"applied": False, "reason": "disabled", "new_tokens": 0, "step_found": _has_step_marker(prefix_text)}
+
+    prefix_ids = tokenizer.encode(prefix_text, add_special_tokens=False)
+    prefix_ids_t = torch.tensor([prefix_ids], dtype=torch.long, device=device)
+    full_ids = torch.cat([prompt_ids, prefix_ids_t], dim=1)
+    past, logits = prefill_kv(model, full_ids, chunk_size=chunk_size)
+    out = generate_from_state(
+        model=model,
+        tokenizer=tokenizer,
+        past_key_values=past,
+        logits=logits,
+        max_new_tokens=extra,
+        temperature=temperature,
+        top_p=top_p,
+        seed=seed,
+        return_meta=True,
+        print_stream=False,
+    )
+    gen_ids = out["generated_ids"]
+    ext_text = tokenizer.decode(gen_ids, skip_special_tokens=False)
+    new_prefix = prefix_text + ext_text
+    return new_prefix, {
+        "applied": True,
+        "reason": "extended_for_step",
+        "new_tokens": len(gen_ids),
+        "stop_reason": str(out.get("stop_reason", "unknown")),
+        "step_found": _has_step_marker(new_prefix),
+    }
+
+
+def _char_pos_from_token_offset(text: str, tokenizer, token_offset: int) -> Tuple[int, int]:
+    if not text:
+        return 0, 0
+    ids = tokenizer.encode(text, add_special_tokens=False)
+    n = len(ids)
+    if n <= 0:
+        return 0, 0
+    k = min(max(0, int(token_offset)), n)
+    if k <= 0:
+        return 0, n
+    prefix = tokenizer.decode(ids[:k], skip_special_tokens=False)
+    return min(len(text), len(prefix)), n
+
+
+def _corrupt_number_near_token_offset(
+    text: str,
+    *,
+    tokenizer,
+    token_offset: int,
+    window_chars: int = 260,
+) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"mode": "no_step_fallback_number_shift", "changed": False, "reason": "empty_text", "inject_pos": None}
+
+    center_char, total_tokens = _char_pos_from_token_offset(text, tokenizer, token_offset)
+    num_re = re.compile(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])")
+    matches = list(num_re.finditer(text))
+    if not matches:
+        return text, {
+            "mode": "no_step_fallback_number_shift",
+            "changed": False,
+            "reason": "no_number_found",
+            "target_token_offset": int(token_offset),
+            "target_char_offset": int(center_char),
+            "total_tokens": int(total_tokens),
+            "inject_pos": None,
+        }
+
+    w = max(0, int(window_chars))
+    candidates = []
+    for m in matches:
+        mid = (m.start() + m.end()) // 2
+        dist = abs(mid - center_char)
+        if w == 0 or dist <= w:
+            candidates.append((dist, m.start(), m))
+    if not candidates:
+        candidates = [(abs(((m.start() + m.end()) // 2) - center_char), m.start(), m) for m in matches]
+    candidates.sort(key=lambda x: (x[0], x[1]))
+    chosen = candidates[0][2]
+
+    src = int(chosen.group(1))
+    dst = src + 1 if src >= 0 else src - 1
+    dst_s = str(dst)
+    a, b = chosen.start(1), chosen.end(1)
+    edited = text[:a] + dst_s + text[b:]
+    return edited, {
+        "mode": "no_step_fallback_number_shift",
+        "changed": True,
+        "from": src,
+        "to": dst,
+        "edit_start": int(a),
+        "edit_end": int(a + len(dst_s)),
+        "inject_pos": int(a + len(dst_s)),
+        "target_token_offset": int(token_offset),
+        "target_char_offset": int(center_char),
+        "total_tokens": int(total_tokens),
+        "window_chars": int(w),
+    }
 
 
 def _corrupt_step_body_number(
@@ -335,13 +527,14 @@ def _flip_first_plus_minus_operator(
     *,
     min_step_no: int = 0,
     anchor_regex: Optional[str] = None,
+    step_only: bool = False,
 ) -> Tuple[str, Dict[str, object]]:
     min_step = max(0, int(min_step_no))
     if not text:
         return text, {"mode": "sign_flip", "changed": False, "reason": "empty_text", "inject_pos": None}
 
-    # If requested, only scan step lines at/after min_step.
-    if min_step > 0:
+    # If requested, only scan step lines (optionally at/after min_step).
+    if step_only or min_step > 0:
         spans = [sp for sp in _collect_step_lines(text) if sp[3] >= min_step]
         if not spans:
             return text, {
@@ -349,6 +542,7 @@ def _flip_first_plus_minus_operator(
                 "changed": False,
                 "reason": "no_eligible_step_lines",
                 "min_step_no": min_step,
+                "step_only": bool(step_only),
                 "inject_pos": None,
             }
         if anchor_regex:
@@ -366,7 +560,9 @@ def _flip_first_plus_minus_operator(
             body_start = st + colon + 1
             body_end = ed
             body_text = text[body_start:body_end]
-            edited_body, meta = _flip_first_plus_minus_operator(body_text, min_step_no=0, anchor_regex=None)
+            edited_body, meta = _flip_first_plus_minus_operator(
+                body_text, min_step_no=0, anchor_regex=None, step_only=False
+            )
             if not bool(meta.get("changed")):
                 continue
             edited = text[:body_start] + edited_body + text[body_end:]
@@ -383,6 +579,7 @@ def _flip_first_plus_minus_operator(
                 "step_line_end": int(ed),
                 "step_no": int(step_no),
                 "min_step_no": min_step,
+                "step_only": bool(step_only),
             }
             return edited, meta_out
 
@@ -391,6 +588,7 @@ def _flip_first_plus_minus_operator(
             "changed": False,
             "reason": "no_operator_found",
             "min_step_no": min_step,
+            "step_only": bool(step_only),
             "inject_pos": None,
         }
 
@@ -468,6 +666,9 @@ def run_task_ab(
     system_prompt: str,
     prompt_mode: str,
     think_word_limit: int,
+    enable_think_word_limit: bool,
+    enable_first_think_max_words: bool,
+    first_think_max_words: int,
     math_step_user_guidance: str,
     task: Dict[str, object],
     temperature: float,
@@ -480,6 +681,8 @@ def run_task_ab(
     checkpoint_mid_max_tokens: int,
     checkpoint_mid_avoid_final_regex: Optional[str],
     max_prefix_tokens: int,
+    step_wait_extra_tokens: int,
+    no_step_fallback_offset_tokens: int,
     max_new_after: int,
     branch_mode: str,
     min_b_tokens_before_eos: int,
@@ -556,6 +759,7 @@ def run_task_ab(
         system_prompt,
         prompt_mode=prompt_mode,
         think_word_limit=think_word_limit,
+        enable_think_word_limit=enable_think_word_limit,
     )
 
     prompt_ids = build_prompt_ids(
@@ -586,7 +790,49 @@ def run_task_ab(
 
     prefix_ids = ckpt["generated_ids"]
     prefix_text = ckpt.get("generated_text") or tokenizer.decode(prefix_ids, skip_special_tokens=False)
+    prefix_think_limit_meta = {"applied": False, "reason": "disabled"}
+    if bool(enable_first_think_max_words) and int(first_think_max_words) > 0:
+        prefix_text, prefix_think_limit_meta = _truncate_first_think_words(
+            prefix_text, int(first_think_max_words)
+        )
 
+    # Fallback: if checkpoint misses step anchor (often due long first think),
+    # append extra prefix generation until step marker appears or extra budget is used.
+    prefix_step_wait_meta = {
+        "applied": False,
+        "reason": "not_needed",
+        "step_found_before": _has_step_marker(prefix_text),
+        "step_found_after": _has_step_marker(prefix_text),
+        "new_tokens": 0,
+    }
+    if (
+        checkpoint_mode == "think_end_then_regex"
+        and bool(effective_corrupt_after_first_think)
+        and (not _has_step_marker(prefix_text))
+        and int(step_wait_extra_tokens) > 0
+    ):
+        prefix_text, ext_meta = _extend_prefix_for_step(
+            model=model,
+            tokenizer=tokenizer,
+            device=device,
+            prompt_ids=prompt_ids,
+            prefix_text=prefix_text,
+            max_new_tokens=int(step_wait_extra_tokens),
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed + 43,
+            chunk_size=chunk_size,
+        )
+        prefix_step_wait_meta = {
+            "applied": True,
+            "reason": ext_meta.get("reason"),
+            "step_found_before": False,
+            "step_found_after": bool(ext_meta.get("step_found")),
+            "new_tokens": int(ext_meta.get("new_tokens", 0)),
+            "stop_reason": ext_meta.get("stop_reason"),
+        }
+
+    prefix_tokens_effective = len(tokenizer.encode(prefix_text, add_special_tokens=False))
     target_prefix = prefix_text
     head_prefix = ""
     scope_meta: Dict[str, object] = {
@@ -608,6 +854,8 @@ def run_task_ab(
     sign_meta: Optional[Dict[str, object]] = None
     number_meta: Optional[Dict[str, object]] = None
     sign_changed = False
+    step_lines_exist_initial = _has_step_marker(edited_target)
+    step_only_for_corrupt = bool(effective_corrupt_after_first_think)
 
     prefer_sign_first = bool(effective_corrupt_prefer_sign_flip) or effective_corrupt_mode in {
         "sign_flip",
@@ -619,6 +867,7 @@ def run_task_ab(
             edited_target,
             min_step_no=effective_corrupt_min_step,
             anchor_regex=effective_corrupt_anchor_regex,
+            step_only=step_only_for_corrupt,
         )
         sign_changed = bool(sign_meta.get("changed"))
         if sign_changed:
@@ -633,7 +882,38 @@ def run_task_ab(
     if not bool(corrupt_meta.get("changed")) and force_sign_only and sign_meta is not None:
         corrupt_meta = sign_meta
 
+    no_step_fallback_meta: Optional[Dict[str, object]] = None
+    if (
+        step_only_for_corrupt
+        and (not step_lines_exist_initial)
+        and int(no_step_fallback_offset_tokens) > 0
+    ):
+        edited_target, no_step_fallback_meta = _corrupt_number_near_token_offset(
+            edited_target,
+            tokenizer=tokenizer,
+            token_offset=int(no_step_fallback_offset_tokens),
+            window_chars=max(120, int(corrupt_window_chars)),
+        )
+        if bool(no_step_fallback_meta.get("changed")):
+            if not bool(corrupt_meta.get("changed")):
+                corrupt_meta = no_step_fallback_meta
+            else:
+                corrupt_meta["no_step_fallback"] = no_step_fallback_meta
+    if step_only_for_corrupt and (not step_lines_exist_initial) and no_step_fallback_meta is None:
+        no_step_fallback_meta = {
+            "mode": "step_scoped_corrupt_guard",
+            "changed": False,
+            "reason": "no_step_lines_after_first_think",
+            "min_step_no": effective_corrupt_min_step,
+            "target_token_offset": int(no_step_fallback_offset_tokens),
+            "inject_pos": None,
+        }
+        if not bool(corrupt_meta.get("changed")):
+            corrupt_meta = no_step_fallback_meta
+
     need_number_edit = (not bool(corrupt_meta.get("changed")) and not force_sign_only) or require_number_after_sign
+    if step_only_for_corrupt and (not step_lines_exist_initial):
+        need_number_edit = False
     if need_number_edit:
         number_mode = effective_corrupt_mode
         if number_mode in {"sign_then_number", "sign_and_number"}:
@@ -651,7 +931,7 @@ def run_task_ab(
                     min_step_no=effective_corrupt_min_step,
                 )
                 if not bool(number_meta.get("changed")):
-                    if effective_corrupt_min_step > 0:
+                    if effective_corrupt_min_step > 0 or step_only_for_corrupt:
                         number_meta = {
                             "mode": "number_shift",
                             "changed": False,
@@ -672,7 +952,7 @@ def run_task_ab(
                     min_step_no=effective_corrupt_min_step,
                 )
                 if not bool(number_meta.get("changed")):
-                    if effective_corrupt_min_step > 0:
+                    if effective_corrupt_min_step > 0 or step_only_for_corrupt:
                         number_meta = {
                             "mode": "anchor_number_shift",
                             "changed": False,
@@ -962,8 +1242,10 @@ def run_task_ab(
                 ckpt.get("checkpoint_mid_early_stop_on_final", False)
             ),
         },
+        "prefix_think_limit_meta": prefix_think_limit_meta,
+        "prefix_step_wait_meta": prefix_step_wait_meta,
         "prefix_seen_first_think_end": bool(ckpt["seen_first_think_end"]),
-        "prefix_tokens": len(prefix_ids),
+        "prefix_tokens": int(prefix_tokens_effective),
         "corrupt_meta": corrupt_meta,
         "branch_mode": branch_mode,
         "branch_A": branch_a_rec,
@@ -1056,11 +1338,12 @@ def _summarize_corrupt_meta(corrupt_meta: Dict[str, object]) -> Dict[str, object
         out["reason"] = corrupt_meta.get("reason")
         return out
 
-    if mode in {"step_body_number_shift", "number_shift", "anchor_fallback_number_shift"}:
+    if mode in {"step_body_number_shift", "number_shift", "anchor_fallback_number_shift", "no_step_fallback_number_shift"}:
         out["from"] = corrupt_meta.get("from")
         out["to"] = corrupt_meta.get("to")
         out["edit_start"] = corrupt_meta.get("edit_start")
         out["edit_end"] = corrupt_meta.get("edit_end")
+        out["target_token_offset"] = corrupt_meta.get("target_token_offset")
         return out
 
     if mode == "anchor_number_shift":
@@ -1194,6 +1477,9 @@ def main() -> None:
                 system_prompt=args.system_prompt,
                 prompt_mode=args.prompt_mode,
                 think_word_limit=args.think_word_limit,
+                enable_think_word_limit=bool(args.enable_think_word_limit),
+                enable_first_think_max_words=bool(args.enable_first_think_max_words),
+                first_think_max_words=args.first_think_max_words,
                 math_step_user_guidance=math_step_user_guidance,
                 task=task,
                 temperature=args.temperature,
@@ -1206,6 +1492,8 @@ def main() -> None:
                 checkpoint_mid_max_tokens=args.checkpoint_mid_max_tokens,
                 checkpoint_mid_avoid_final_regex=resolved_checkpoint_mid_avoid_final_regex,
                 max_prefix_tokens=args.max_prefix_tokens,
+                step_wait_extra_tokens=args.step_wait_extra_tokens,
+                no_step_fallback_offset_tokens=args.no_step_fallback_offset_tokens,
                 max_new_after=args.max_new_after,
                 branch_mode=args.branch_mode,
                 min_b_tokens_before_eos=args.min_b_tokens_before_eos,
@@ -1276,6 +1564,8 @@ def main() -> None:
                             "reference_output": rec.get("reference_output"),
                             "expected_regex": rec.get("expected_regex"),
                             "checkpoint_meta": rec.get("checkpoint_meta", {}),
+                            "prefix_think_limit_meta": rec.get("prefix_think_limit_meta", {}),
+                            "prefix_step_wait_meta": rec.get("prefix_step_wait_meta", {}),
                             "corrupt_meta": rec.get("corrupt_meta", {}),
                             "branch_mode": rec.get("branch_mode"),
                             "branch_A_metrics": rec["branch_A"].get("metrics"),
@@ -1335,6 +1625,9 @@ def main() -> None:
             "no_math_step_format_guidance": bool(args.no_math_step_format_guidance),
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
+            "enable_think_word_limit": bool(args.enable_think_word_limit),
+            "enable_first_think_max_words": bool(args.enable_first_think_max_words),
+            "first_think_max_words": args.first_think_max_words,
             "branch_mode": args.branch_mode,
             "min_b_tokens_before_eos": args.min_b_tokens_before_eos,
             "b_retry_times": args.b_retry_times,
@@ -1344,6 +1637,8 @@ def main() -> None:
             "checkpoint_mid_min_tokens": args.checkpoint_mid_min_tokens,
             "checkpoint_mid_max_tokens": args.checkpoint_mid_max_tokens,
             "checkpoint_mid_avoid_final_regex": resolved_checkpoint_mid_avoid_final_regex,
+            "step_wait_extra_tokens": args.step_wait_extra_tokens,
+            "no_step_fallback_offset_tokens": args.no_step_fallback_offset_tokens,
             "corrupt_mode": args.corrupt_mode,
             "corrupt_anchor_regex": resolved_corrupt_anchor_regex,
             "corrupt_max_changes": args.corrupt_max_changes,

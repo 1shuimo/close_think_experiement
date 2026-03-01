@@ -102,6 +102,23 @@ python run_live_code.py \
 - `--corrupt-min-step N`
   - 仅在 `Step N` 及之后改错。  
   - 例如 `--corrupt-min-step 2` 表示跳过 `Step 0/1`，从 `Step 2+` 开始改。
+- `--enable-first-think-max-words`
+  - 开启后才会启用 `--first-think-max-words` 这条硬截断。
+  - 默认关闭。
+- `--first-think-max-words N`
+  - 仅在开启 `--enable-first-think-max-words` 时生效。
+  - 对第一段 `<think>` 做硬截断（并强制补 `</think>`），避免第一段过长占满 prefix。
+- `--step-wait-extra-tokens N`
+  - 在 `think_end_then_regex + --corrupt-after-first-think` 下，如果还没看到 `Step` 行，会继续生成前缀最多 `N` token 再尝试改错/插入。
+- `--no-step-fallback-offset-tokens N`
+  - 如果依然没有 `Step` 行，会在首个 `</think>` 后约 `N` token 位置做数字改动，并把注入点放在该改动处。
+  - 默认 `300`；设为 `0` 或负数可关闭这个 fallback。
+- `--enable-think-word-limit`
+  - 开启后才会启用 `--think-word-limit` 这条软约束。
+  - 默认关闭（等价于“先注释掉 think-word-limit 逻辑”）。
+- `--think-word-limit N`
+  - 仅在开启 `--enable-think-word-limit` 时生效；用于 system prompt 软提示。
+  - 这是软约束，不是硬截断；硬截断请用 `--first-think-max-words`。
 
 ## 结果文件（更易读）
 
@@ -144,6 +161,10 @@ python run_aime_corrupt.py \
   --output-dir suite_aime2_hard2_corrupt \
   --checkpoint-mode think_end_then_regex \
   --checkpoint-regex '(?i)step\s*3' \
+  --enable-first-think-max-words \
+  --first-think-max-words 120 \
+  --step-wait-extra-tokens 2000 \
+  --no-step-fallback-offset-tokens 300 \
   --corrupt-mode sign_and_number \
   --corrupt-min-step 2 \
   --corrupt-after-first-think \
@@ -151,4 +172,10 @@ python run_aime_corrupt.py \
   --force-inject-at-sentence-end \
   --apply-match-cover \
   --save-task-texts
+```
+
+如需再打开软限制，可额外加：
+
+```bash
+--enable-think-word-limit --think-word-limit 60
 ```

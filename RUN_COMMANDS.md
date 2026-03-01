@@ -20,6 +20,12 @@ python run_aime_corrupt.py \
   --model-paths "$MODEL" \
   --tasks-file tasks_math_hard_steps.jsonl \
   --output-dir suite_math_hard_4q_corrupt \
+  --checkpoint-mode think_end_then_regex \
+  --checkpoint-regex '(?i)step\s*3' \
+  --enable-first-think-max-words \
+  --first-think-max-words 120 \
+  --step-wait-extra-tokens 2000 \
+  --no-step-fallback-offset-tokens 300 \
   --corrupt-mode anchor_number_shift \
   --corrupt-after-first-think \
   --corrupt-prefer-sign-flip \
@@ -28,6 +34,18 @@ python run_aime_corrupt.py \
   --apply-match-cover \
   --save-task-texts \
   --print-full-output
+```
+
+可选：如果要重新打开软提示约束，再加
+
+```bash
+--enable-think-word-limit --think-word-limit 60
+```
+
+可选：如果要关闭首段 think 的硬截断，去掉
+
+```bash
+--enable-first-think-max-words
 ```
 
 ## 2) AIME 四题对照（只插入，不改错）

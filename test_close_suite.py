@@ -89,6 +89,11 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
     p.add_argument("--think-word-limit", type=int, default=60)
+    p.add_argument(
+        "--enable-think-word-limit",
+        action="store_true",
+        help="Enable soft think length hint in enhanced system prompt.",
+    )
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
@@ -171,6 +176,7 @@ def run_task_ab(
     system_prompt: str,
     prompt_mode: str,
     think_word_limit: int,
+    enable_think_word_limit: bool,
     math_step_user_guidance: str,
     task: Dict[str, object],
     temperature: float,
@@ -206,6 +212,7 @@ def run_task_ab(
         system_prompt,
         prompt_mode=prompt_mode,
         think_word_limit=think_word_limit,
+        enable_think_word_limit=enable_think_word_limit,
     )
 
     prompt_ids = build_prompt_ids(
@@ -555,6 +562,7 @@ def main() -> None:
                 system_prompt=args.system_prompt,
                 prompt_mode=args.prompt_mode,
                 think_word_limit=args.think_word_limit,
+                enable_think_word_limit=bool(args.enable_think_word_limit),
                 math_step_user_guidance=math_step_user_guidance,
                 task=task,
                 temperature=args.temperature,
@@ -654,6 +662,7 @@ def main() -> None:
             "no_math_step_format_guidance": bool(args.no_math_step_format_guidance),
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
+            "enable_think_word_limit": bool(args.enable_think_word_limit),
             "branch_mode": args.branch_mode,
             "min_b_tokens_before_eos": args.min_b_tokens_before_eos,
             "b_retry_times": args.b_retry_times,

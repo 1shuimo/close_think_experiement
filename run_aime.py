@@ -42,6 +42,8 @@ def parse_args() -> argparse.Namespace:
     )
 
     p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
+    p.add_argument("--think-word-limit", type=int, default=60)
+    p.add_argument("--enable-think-word-limit", action="store_true")
     p.add_argument("--checkpoint-mode", default="think_end_mid", choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"])
     p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--checkpoint-delay", type=int, default=0)
@@ -89,6 +91,8 @@ def main() -> None:
         inject_text,
         "--prompt-mode",
         args.prompt_mode,
+        "--think-word-limit",
+        str(args.think_word_limit),
         "--checkpoint-mode",
         args.checkpoint_mode,
         "--checkpoint-regex",
@@ -117,6 +121,8 @@ def main() -> None:
 
     if args.apply_match_cover:
         cmd.append("--apply-match-cover")
+    if args.enable_think_word_limit:
+        cmd.append("--enable-think-word-limit")
     if args.apply_cross_think_cover:
         cmd.append("--apply-cross-think-cover")
     if args.save_task_texts:

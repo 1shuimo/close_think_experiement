@@ -48,17 +48,24 @@ def compose_system_prompt(
     *,
     prompt_mode: str = "baseline",
     think_word_limit: int = 60,
+    enable_think_word_limit: bool = False,
 ) -> str:
     if prompt_mode == "baseline":
         return base_prompt.strip()
     if prompt_mode != "enhanced":
         raise ValueError(f"Unsupported prompt_mode: {prompt_mode}")
 
+    limit_line = (
+        f"2) Keep <think> concise (about {think_word_limit} words max)."
+        if enable_think_word_limit
+        else "2) Keep <think> concise."
+    )
+
     appendix = f"""
 
 Add-on protocol for uncertainty handling:
 1) If uncertainty appears, enter <think> with first-person local reasoning.
-2) Keep <think> concise (about {think_word_limit} words max).
+{limit_line}
 3) End reasoning with </think> explicitly.
 4) After </think>, continue exactly from the interrupted position.
 5) Do not repeat the immediate previous text; do not restart the answer.
@@ -247,6 +254,7 @@ def generate_until_checkpoint(
     # Keep only a text tail for regex checks to avoid O(n^2) joins/searches.
     regex_window_chars = max(512, int(regex_window_chars))
     recent_text_tail = ""
+    post_first_think_regex_tail = ""
     post_think_tail = ""
     regex_obj = re.compile(checkpoint_regex, re.IGNORECASE | re.DOTALL) if checkpoint_regex else None
     mid_final_obj = (
@@ -285,6 +293,9 @@ def generate_until_checkpoint(
             first_think_end_token_pos = len(generated_ids)
             tokens_after_first_think = 0
             just_seen_first_think_end = True
+            if checkpoint_mode == "think_end_then_regex":
+                # For think_end_then_regex, regex match should only consider text after first </think>.
+                post_first_think_regex_tail = ""
             if need_mid_final_text:
                 # Build this once when the first </think> is observed.
                 full_text_now = "".join(generated_text_parts)
@@ -298,6 +309,13 @@ def generate_until_checkpoint(
         if need_mid_final_text and seen_first_think_end and (not just_seen_first_think_end):
             # Track only the tail after first </think> for final-regex detection.
             post_think_tail = (post_think_tail + piece)[-regex_window_chars:]
+        if (
+            checkpoint_mode == "think_end_then_regex"
+            and need_regex_text
+            and seen_first_think_end
+            and (not just_seen_first_think_end)
+        ):
+            post_first_think_regex_tail = (post_first_think_regex_tail + piece)[-regex_window_chars:]
 
         if not seen_anchor:
             if seen_first_think_end and first_think_end_token_pos >= 0:
@@ -311,7 +329,7 @@ def generate_until_checkpoint(
                     seen_anchor = True
                     counter_after_anchor = 0
             elif checkpoint_mode == "think_end_then_regex":
-                if seen_first_think_end and regex_obj and regex_obj.search(recent_text_tail):
+                if seen_first_think_end and regex_obj and regex_obj.search(post_first_think_regex_tail):
                     seen_anchor = True
                     counter_after_anchor = 0
             elif checkpoint_mode == "think_end_mid":
