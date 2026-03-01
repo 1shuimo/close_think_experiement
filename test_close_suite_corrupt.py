@@ -353,6 +353,31 @@ def _char_pos_from_token_offset(text: str, tokenizer, token_offset: int) -> Tupl
     return min(len(text), len(prefix)), n
 
 
+def _nearest_sentence_end_near(text: str, pos: int, radius: int = 220) -> int:
+    if not text:
+        return 0
+    p = max(0, min(int(pos), len(text)))
+    r = max(0, int(radius))
+    lo = max(0, p - r)
+    hi = min(len(text), p + r)
+    stops = set(".!?。！？;；")
+
+    best_idx: Optional[int] = None
+    best_dist: Optional[int] = None
+    for i in range(lo, hi):
+        if text[i] not in stops:
+            continue
+        d = abs(i - p)
+        if best_idx is None or d < best_dist or (d == best_dist and i >= p):
+            best_idx = i
+            best_dist = d
+    if best_idx is not None:
+        return best_idx + 1
+
+    # Fallback: prefer next sentence end direction when nearby punctuation is absent.
+    return _advance_to_sentence_end(text, p, max_lookahead=r if r > 0 else 220)
+
+
 def _corrupt_number_near_token_offset(
     text: str,
     *,
@@ -364,6 +389,11 @@ def _corrupt_number_near_token_offset(
         return text, {"mode": "no_step_fallback_number_shift", "changed": False, "reason": "empty_text", "inject_pos": None}
 
     center_char, total_tokens = _char_pos_from_token_offset(text, tokenizer, token_offset)
+    sentence_anchor_char = _nearest_sentence_end_near(
+        text,
+        center_char,
+        radius=max(120, int(window_chars)),
+    )
     num_re = re.compile(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])")
     matches = list(num_re.finditer(text))
     if not matches:
@@ -373,6 +403,7 @@ def _corrupt_number_near_token_offset(
             "reason": "no_number_found",
             "target_token_offset": int(token_offset),
             "target_char_offset": int(center_char),
+            "sentence_anchor_char_offset": int(sentence_anchor_char),
             "total_tokens": int(total_tokens),
             "inject_pos": None,
         }
@@ -381,11 +412,14 @@ def _corrupt_number_near_token_offset(
     candidates = []
     for m in matches:
         mid = (m.start() + m.end()) // 2
-        dist = abs(mid - center_char)
+        dist = abs(mid - sentence_anchor_char)
         if w == 0 or dist <= w:
             candidates.append((dist, m.start(), m))
     if not candidates:
-        candidates = [(abs(((m.start() + m.end()) // 2) - center_char), m.start(), m) for m in matches]
+        candidates = [
+            (abs(((m.start() + m.end()) // 2) - sentence_anchor_char), m.start(), m)
+            for m in matches
+        ]
     candidates.sort(key=lambda x: (x[0], x[1]))
     chosen = candidates[0][2]
 
@@ -394,6 +428,9 @@ def _corrupt_number_near_token_offset(
     dst_s = str(dst)
     a, b = chosen.start(1), chosen.end(1)
     edited = text[:a] + dst_s + text[b:]
+    delta = len(dst_s) - (b - a)
+    inject_pos = sentence_anchor_char + (delta if a < sentence_anchor_char else 0)
+    inject_pos = max(0, min(len(edited), inject_pos))
     return edited, {
         "mode": "no_step_fallback_number_shift",
         "changed": True,
@@ -401,9 +438,11 @@ def _corrupt_number_near_token_offset(
         "to": dst,
         "edit_start": int(a),
         "edit_end": int(a + len(dst_s)),
-        "inject_pos": int(a + len(dst_s)),
+        "inject_pos": int(inject_pos),
+        "inject_pos_strategy": "nearest_sentence_end",
         "target_token_offset": int(token_offset),
         "target_char_offset": int(center_char),
+        "sentence_anchor_char_offset": int(sentence_anchor_char),
         "total_tokens": int(total_tokens),
         "window_chars": int(w),
     }

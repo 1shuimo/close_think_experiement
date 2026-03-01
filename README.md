@@ -111,7 +111,7 @@ python run_live_code.py \
 - `--step-wait-extra-tokens N`
   - 在 `think_end_then_regex + --corrupt-after-first-think` 下，如果还没看到 `Step` 行，会继续生成前缀最多 `N` token 再尝试改错/插入。
 - `--no-step-fallback-offset-tokens N`
-  - 如果依然没有 `Step` 行，会在首个 `</think>` 后约 `N` token 位置做数字改动，并把注入点放在该改动处。
+  - 如果依然没有 `Step` 行，会在首个 `</think>` 后约 `N` token 先定位，再对齐到附近句末标点（如 `.` `。` `;`）作为注入点，并在附近做数字改动。
   - 默认 `300`；设为 `0` 或负数可关闭这个 fallback。
 - `--enable-think-word-limit`
   - 开启后才会启用 `--think-word-limit` 这条软约束。
