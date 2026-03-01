@@ -99,8 +99,9 @@ python run_lcb_insert.py \
   --model-paths "$MODEL" \
   --tasks-file tasks_lcb_1q.jsonl \
   --output-dir suite_lcb_1q_insert \
-  --checkpoint-mode think_end_then_regex \
-  --checkpoint-regex '(?i)step\s*3' \
+  --checkpoint-mode think_end_mid \
+  --checkpoint-mid-min-tokens 220 \
+  --checkpoint-mid-max-tokens 320 \
   --no-step-fallback-offset-tokens 300 \
   --save-task-texts
 
