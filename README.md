@@ -80,3 +80,75 @@ python run_live_code.py \
 
 - 目前主流程已移除 LongProc 相关分支和参数。
 - 如果需要保留历史 LongProc 结果目录，可继续保留在仓库中，但不再是当前脚本的运行路径。
+
+## 为什么用 `(?i)step\s*3`
+
+- `(?i)`：大小写不敏感，`Step` / `step` 都能匹配。
+- `step\s*3`：把 checkpoint 放在模型已经输出到 `Step 3` 附近之后。
+- 目的：避免注入点太早落在 `Step 0/1`，给“先写步骤、再插入 `<think>`”留足上下文。
+
+如果你希望更晚再插入，可以改成 `(?i)step\s*4` 或 `(?i)step\s*5`。
+
+## 新增改错能力
+
+`run_aime_corrupt.py` / `test_close_suite_corrupt.py` 现支持：
+
+- `--corrupt-mode sign_flip`
+  - 仅做符号翻转（`+/-`，以及比较符 fallback：`<= >= == != < >`）。
+- `--corrupt-mode sign_then_number`
+  - 先尝试符号翻转，失败再做数字改动。
+- `--corrupt-mode sign_and_number`
+  - 同一题优先做“符号 + 数字”两次改动（若符号不可改，会至少尝试数字）。
+- `--corrupt-min-step N`
+  - 仅在 `Step N` 及之后改错。  
+  - 例如 `--corrupt-min-step 2` 表示跳过 `Step 0/1`，从 `Step 2+` 开始改。
+
+## 结果文件（更易读）
+
+除原有 `*.results.jsonl` / `*.summary.json` 外，改错脚本会自动额外生成：
+
+- `*.branch_b_view.jsonl`
+  - 每题保留 `task_id`、`corrupt_summary`、`branch_B.full_text`，便于程序筛选。
+- `*.branch_b_view.md`
+  - 人类可读版：每题先显示“改了什么”，再显示 Branch B 全文。
+
+当开启 `--save-task-texts` 时，每题目录还会新增：
+
+- `branch_B.view.md`
+  - 单题可读版（改错摘要 + Branch B 全文）。
+
+## 2 AIME + 2 Hard 数据集
+
+已提供混合任务文件：
+
+- `tasks_aime2_hard2.jsonl`
+  - `aime2025_i_01`
+  - `aime2025_i_02`
+  - `hard_aya_walk`
+  - `hard_hyperbola_rhombus`
+- `tasks_aime2_hard2_signnum_step2.jsonl`
+  - 在上面 4 题基础上，预写入：
+    - `corrupt_plan=sign_and_number`
+    - `corrupt_min_step=2`
+    - `corrupt_after_first_think=true`
+
+## 推荐命令（四题、符号+数字、Step2 以后改）
+
+```bash
+cd /path/to/close_think_experiement
+MODEL=/scratch-ssd/guoeng/huggingface/models/Qwen3-32B
+
+python run_aime_corrupt.py \
+  --model-paths "$MODEL" \
+  --tasks-file tasks_aime2_hard2.jsonl \
+  --output-dir suite_aime2_hard2_corrupt \
+  --checkpoint-mode think_end_then_regex \
+  --checkpoint-regex '(?i)step\s*3' \
+  --corrupt-mode sign_and_number \
+  --corrupt-min-step 2 \
+  --corrupt-after-first-think \
+  --force-inject-at-corrupt \
+  --force-inject-at-sentence-end \
+  --apply-match-cover \
+  --save-task-texts
+```

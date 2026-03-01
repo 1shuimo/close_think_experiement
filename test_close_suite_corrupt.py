@@ -132,7 +132,14 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--corrupt-mode",
         default="number_shift",
-        choices=["number_shift", "anchor_number_shift", "none"],
+        choices=[
+            "number_shift",
+            "anchor_number_shift",
+            "sign_flip",
+            "sign_then_number",
+            "sign_and_number",
+            "none",
+        ],
         help="Whether to auto-corrupt prefix before branch A/B.",
     )
     p.add_argument("--corrupt-anchor-regex", default="__auto__")
@@ -144,6 +151,12 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument("--corrupt-max-changes", type=int, default=2)
     p.add_argument("--corrupt-window-chars", type=int, default=240)
+    p.add_argument(
+        "--corrupt-min-step",
+        type=int,
+        default=0,
+        help="Only corrupt at or after Step N (e.g. 2 skips Step 0/1).",
+    )
     p.add_argument(
         "--corrupt-after-first-think",
         action="store_true",
@@ -189,16 +202,31 @@ def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
     return text[: m.end()], text[m.end() :], True
 
 
+def _collect_step_lines(text: str) -> List[Tuple[int, int, str, int]]:
+    step_re = re.compile(r"^\s*Step\s+(\d+)\s*:", re.IGNORECASE)
+    spans: List[Tuple[int, int, str, int]] = []
+    off = 0
+    for line in text.splitlines(keepends=True):
+        ln = line.rstrip("\r\n")
+        st = off
+        ed = off + len(ln)
+        m_step = step_re.match(ln)
+        if m_step:
+            spans.append((st, ed, ln, int(m_step.group(1))))
+        off += len(line)
+    return spans
+
+
 def _corrupt_step_body_number(
     text: str,
     *,
     anchor_regex: Optional[str] = None,
     step_select: str = "anchor",
+    min_step_no: int = 0,
 ) -> Tuple[str, Dict[str, object]]:
     if not text:
         return text, {"mode": "step_body_number_shift", "changed": False, "reason": "empty_text", "inject_pos": None}
 
-    step_re = re.compile(r"^\s*Step\s+\d+\s*:", re.IGNORECASE)
     num_re = re.compile(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])")
     anchor_pos = None
     if anchor_regex:
@@ -206,18 +234,18 @@ def _corrupt_step_body_number(
         if m_anchor:
             anchor_pos = m_anchor.start()
 
-    spans: List[Tuple[int, int, str]] = []
-    off = 0
-    for line in text.splitlines(keepends=True):
-        ln = line.rstrip("\r\n")
-        st = off
-        ed = off + len(ln)
-        if step_re.match(ln):
-            spans.append((st, ed, ln))
-        off += len(line)
+    spans = _collect_step_lines(text)
+    min_step = max(0, int(min_step_no))
+    spans = [sp for sp in spans if sp[3] >= min_step]
 
     if not spans:
-        return text, {"mode": "step_body_number_shift", "changed": False, "reason": "no_step_lines", "inject_pos": None}
+        return text, {
+            "mode": "step_body_number_shift",
+            "changed": False,
+            "reason": "no_eligible_step_lines",
+            "min_step_no": min_step,
+            "inject_pos": None,
+        }
 
     ordered_spans = spans
     if step_select == "middle":
@@ -237,7 +265,7 @@ def _corrupt_step_body_number(
         before = [sp for sp in spans if sp[0] < anchor_pos]
         ordered_spans = after + before
 
-    for st, ed, ln in ordered_spans:
+    for st, ed, ln, step_no in ordered_spans:
         colon = ln.find(":")
         if colon < 0:
             continue
@@ -262,12 +290,15 @@ def _corrupt_step_body_number(
             "inject_pos": int(a + len(dst_s)),
             "step_line_start": int(st),
             "step_line_end": int(ed),
+            "step_no": int(step_no),
+            "min_step_no": min_step,
         }
 
     return text, {
         "mode": "step_body_number_shift",
         "changed": False,
         "reason": "no_number_in_step_body",
+        "min_step_no": min_step,
         "inject_pos": None,
     }
 
@@ -284,19 +315,85 @@ def _advance_to_sentence_end(text: str, start: int, max_lookahead: int = 220) ->
         line_end = len(text)
     line = text[line_start:line_end]
     if re.match(r"^\s*Step\s+\d+\s*:", line, re.IGNORECASE):
+        if line_end < len(text) and text[line_end] == "\n":
+            return line_end + 1
         return line_end
 
     end = min(len(text), start + max(0, int(max_lookahead)))
-    stops = set(".!?。！？\n")
+    stops = set(".!?。！？;；")
     for i in range(start, end):
         if text[i] in stops:
             return i + 1
+    nl = text.find("\n", start, end)
+    if nl >= 0:
+        return nl + 1
     return start
 
 
-def _flip_first_plus_minus_operator(text: str) -> Tuple[str, Dict[str, object]]:
+def _flip_first_plus_minus_operator(
+    text: str,
+    *,
+    min_step_no: int = 0,
+    anchor_regex: Optional[str] = None,
+) -> Tuple[str, Dict[str, object]]:
+    min_step = max(0, int(min_step_no))
     if not text:
         return text, {"mode": "sign_flip", "changed": False, "reason": "empty_text", "inject_pos": None}
+
+    # If requested, only scan step lines at/after min_step.
+    if min_step > 0:
+        spans = [sp for sp in _collect_step_lines(text) if sp[3] >= min_step]
+        if not spans:
+            return text, {
+                "mode": "sign_flip",
+                "changed": False,
+                "reason": "no_eligible_step_lines",
+                "min_step_no": min_step,
+                "inject_pos": None,
+            }
+        if anchor_regex:
+            m_anchor = re.search(anchor_regex, text, re.IGNORECASE | re.DOTALL)
+            if m_anchor:
+                anchor_pos = m_anchor.start()
+                after = [sp for sp in spans if sp[0] >= anchor_pos]
+                before = [sp for sp in spans if sp[0] < anchor_pos]
+                spans = after + before
+
+        for st, ed, ln, step_no in spans:
+            colon = ln.find(":")
+            if colon < 0:
+                continue
+            body_start = st + colon + 1
+            body_end = ed
+            body_text = text[body_start:body_end]
+            edited_body, meta = _flip_first_plus_minus_operator(body_text, min_step_no=0, anchor_regex=None)
+            if not bool(meta.get("changed")):
+                continue
+            edited = text[:body_start] + edited_body + text[body_end:]
+            pos_local = int(meta.get("pos", 0))
+            inject_local = int(meta.get("inject_pos", pos_local))
+            meta_out = {
+                "mode": "sign_flip",
+                "changed": True,
+                "from": meta.get("from"),
+                "to": meta.get("to"),
+                "pos": int(body_start + pos_local),
+                "inject_pos": int(body_start + inject_local),
+                "step_line_start": int(st),
+                "step_line_end": int(ed),
+                "step_no": int(step_no),
+                "min_step_no": min_step,
+            }
+            return edited, meta_out
+
+        return text, {
+            "mode": "sign_flip",
+            "changed": False,
+            "reason": "no_operator_found",
+            "min_step_no": min_step,
+            "inject_pos": None,
+        }
+
     for i, ch in enumerate(text):
         if ch not in "+-":
             continue
@@ -321,6 +418,30 @@ def _flip_first_plus_minus_operator(text: str) -> Tuple[str, Dict[str, object]]:
                 "pos": i,
                 "inject_pos": i + 1,
             }
+
+    # Fallback: flip one relation operator when +/- is unavailable.
+    rel_patterns = [
+        (r"<=", ">="),
+        (r">=", "<="),
+        (r"==", "!="),
+        (r"!=", "=="),
+        (r"(?<![<>=!])<(?![=])", ">"),
+        (r"(?<![<>=!])>(?![=])", "<"),
+    ]
+    for pat, repl in rel_patterns:
+        m = re.search(pat, text)
+        if not m:
+            continue
+        edited = text[: m.start()] + repl + text[m.end() :]
+        return edited, {
+            "mode": "sign_flip",
+            "changed": True,
+            "from": text[m.start() : m.end()],
+            "to": repl,
+            "pos": int(m.start()),
+            "inject_pos": int(m.start() + len(repl)),
+        }
+
     return text, {"mode": "sign_flip", "changed": False, "reason": "no_operator_found", "inject_pos": None}
 
 
@@ -370,6 +491,7 @@ def run_task_ab(
     corrupt_anchor_regex: str,
     corrupt_max_changes: int,
     corrupt_window_chars: int,
+    corrupt_min_step: int,
     corrupt_step_select: str,
     corrupt_after_first_think: bool,
     corrupt_prefer_sign_flip: bool,
@@ -391,21 +513,31 @@ def run_task_ab(
     task_corrupt_plan = str(task.get("corrupt_plan", "")).strip().lower()
     task_corrupt_anchor_regex = task.get("corrupt_anchor_regex")
     task_corrupt_after_first_think = task.get("corrupt_after_first_think")
+    task_corrupt_min_step = task.get("corrupt_min_step")
 
     effective_corrupt_mode = corrupt_mode
     effective_corrupt_anchor_regex = corrupt_anchor_regex
     effective_corrupt_after_first_think = bool(corrupt_after_first_think)
+    effective_corrupt_min_step = max(0, int(corrupt_min_step))
     effective_corrupt_prefer_sign_flip = bool(corrupt_prefer_sign_flip)
     force_sign_only = False
+    require_number_after_sign = False
 
     if task_corrupt_plan in {"sign_flip", "sign_only"}:
         effective_corrupt_prefer_sign_flip = True
-        effective_corrupt_mode = "none"
+        effective_corrupt_mode = "sign_flip"
         force_sign_only = True
-    elif task_corrupt_plan in {"number_shift", "anchor_number_shift", "none"}:
+    elif task_corrupt_plan in {
+        "number_shift",
+        "anchor_number_shift",
+        "sign_flip",
+        "sign_then_number",
+        "sign_and_number",
+        "none",
+    }:
         effective_corrupt_prefer_sign_flip = False
         effective_corrupt_mode = task_corrupt_plan
-    elif task_corrupt_plan in {"sign_then_number", "auto", ""}:
+    elif task_corrupt_plan in {"auto", ""}:
         pass
     else:
         task_corrupt_plan = ""
@@ -414,6 +546,11 @@ def run_task_ab(
         effective_corrupt_anchor_regex = task_corrupt_anchor_regex
     if isinstance(task_corrupt_after_first_think, bool):
         effective_corrupt_after_first_think = task_corrupt_after_first_think
+    if task_corrupt_min_step is not None:
+        try:
+            effective_corrupt_min_step = max(0, int(task_corrupt_min_step))
+        except Exception:
+            pass
 
     used_system_prompt = compose_system_prompt(
         system_prompt,
@@ -460,80 +597,155 @@ def run_task_ab(
         head_prefix, target_prefix, found_close = _split_after_first_think_close(prefix_text)
         scope_meta["first_think_closed_found"] = bool(found_close)
         if not found_close:
-            head_prefix = ""
-            target_prefix = prefix_text
+            # User requested "after first </think>" corruption:
+            # if not found, do NOT corrupt inside the unfinished think.
+            head_prefix = prefix_text
+            target_prefix = ""
+            scope_meta["first_think_forced_close_before_inject"] = True
 
     edited_target = target_prefix
     corrupt_meta: Dict[str, object] = {"mode": "none", "changed": False}
     sign_meta: Optional[Dict[str, object]] = None
+    number_meta: Optional[Dict[str, object]] = None
+    sign_changed = False
 
-    if effective_corrupt_prefer_sign_flip:
-        sign_edited, sign_meta = _flip_first_plus_minus_operator(edited_target)
-        if bool(sign_meta.get("changed")):
+    prefer_sign_first = bool(effective_corrupt_prefer_sign_flip) or effective_corrupt_mode in {
+        "sign_flip",
+        "sign_then_number",
+        "sign_and_number",
+    }
+    if prefer_sign_first:
+        sign_edited, sign_meta = _flip_first_plus_minus_operator(
+            edited_target,
+            min_step_no=effective_corrupt_min_step,
+            anchor_regex=effective_corrupt_anchor_regex,
+        )
+        sign_changed = bool(sign_meta.get("changed"))
+        if sign_changed:
             edited_target = sign_edited
             corrupt_meta = sign_meta
+
+    if effective_corrupt_mode == "sign_flip":
+        force_sign_only = True
+    if effective_corrupt_mode == "sign_and_number":
+        require_number_after_sign = True
 
     if not bool(corrupt_meta.get("changed")) and force_sign_only and sign_meta is not None:
         corrupt_meta = sign_meta
 
-    if not bool(corrupt_meta.get("changed")) and not force_sign_only:
-        prefer_step_body = bool(effective_corrupt_after_first_think) and bool(
-            re.search(r"(?im)^\s*step\s+\d+\s*:", edited_target)
-        )
+    need_number_edit = (not bool(corrupt_meta.get("changed")) and not force_sign_only) or require_number_after_sign
+    if need_number_edit:
+        number_mode = effective_corrupt_mode
+        if number_mode in {"sign_then_number", "sign_and_number"}:
+            number_mode = "anchor_number_shift"
 
-        if effective_corrupt_mode == "number_shift":
+        step_lines_exist = bool(re.search(r"(?im)^\s*step\s+\d+\s*:", edited_target))
+        prefer_step_body = step_lines_exist and (effective_corrupt_min_step > 0 or bool(effective_corrupt_after_first_think))
+
+        if number_mode == "number_shift":
             if prefer_step_body:
-                edited_target, corrupt_meta = _corrupt_step_body_number(
+                edited_target, number_meta = _corrupt_step_body_number(
                     edited_target,
                     anchor_regex=effective_corrupt_anchor_regex,
                     step_select=corrupt_step_select,
+                    min_step_no=effective_corrupt_min_step,
                 )
-                if not bool(corrupt_meta.get("changed")):
-                    edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
+                if not bool(number_meta.get("changed")):
+                    if effective_corrupt_min_step > 0:
+                        number_meta = {
+                            "mode": "number_shift",
+                            "changed": False,
+                            "reason": "no_eligible_step_number_for_min_step",
+                            "min_step_no": effective_corrupt_min_step,
+                            "inject_pos": None,
+                        }
+                    else:
+                        edited_target, number_meta = corrupt_prefix_text(edited_target)
             else:
-                edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
-        elif effective_corrupt_mode == "anchor_number_shift":
+                edited_target, number_meta = corrupt_prefix_text(edited_target)
+        elif number_mode == "anchor_number_shift":
             if prefer_step_body:
-                edited_target, corrupt_meta = _corrupt_step_body_number(
+                edited_target, number_meta = _corrupt_step_body_number(
                     edited_target,
                     anchor_regex=effective_corrupt_anchor_regex,
                     step_select=corrupt_step_select,
+                    min_step_no=effective_corrupt_min_step,
                 )
-                if not bool(corrupt_meta.get("changed")):
-                    edited_target, corrupt_meta = corrupt_numbers_near_anchor(
-                        edited_target,
-                        anchor_regex=effective_corrupt_anchor_regex,
-                        max_changes=corrupt_max_changes,
-                        window_chars=corrupt_window_chars,
-                    )
+                if not bool(number_meta.get("changed")):
+                    if effective_corrupt_min_step > 0:
+                        number_meta = {
+                            "mode": "anchor_number_shift",
+                            "changed": False,
+                            "reason": "no_eligible_step_number_for_min_step",
+                            "min_step_no": effective_corrupt_min_step,
+                            "inject_pos": None,
+                        }
+                    else:
+                        edited_target, number_meta = corrupt_numbers_near_anchor(
+                            edited_target,
+                            anchor_regex=effective_corrupt_anchor_regex,
+                            max_changes=corrupt_max_changes,
+                            window_chars=corrupt_window_chars,
+                        )
             else:
-                edited_target, corrupt_meta = corrupt_numbers_near_anchor(
+                edited_target, number_meta = corrupt_numbers_near_anchor(
                     edited_target,
                     anchor_regex=effective_corrupt_anchor_regex,
                     max_changes=corrupt_max_changes,
                     window_chars=corrupt_window_chars,
                 )
+        else:
+            number_meta = {"mode": number_mode, "changed": False, "reason": "number_mode_skipped", "inject_pos": None}
+
+        if require_number_after_sign:
+            number_changed = bool(number_meta and number_meta.get("changed"))
+            if sign_changed and number_changed:
+                corrupt_meta = {
+                    "mode": "sign_and_number",
+                    "changed": True,
+                    "sign_change": sign_meta,
+                    "number_change": number_meta,
+                    "inject_pos": number_meta.get("inject_pos"),
+                }
+            elif sign_changed:
+                corrupt_meta = sign_meta if sign_meta is not None else {"mode": "sign_flip", "changed": True}
+            elif number_meta is not None:
+                corrupt_meta = number_meta
+        elif not bool(corrupt_meta.get("changed")) and number_meta is not None:
+            corrupt_meta = number_meta
 
     edited_text = head_prefix + edited_target
     corrupt_meta.update(scope_meta)
     corrupt_meta["corrupt_prefer_sign_flip"] = bool(effective_corrupt_prefer_sign_flip)
     corrupt_meta["corrupt_mode_effective"] = effective_corrupt_mode
     corrupt_meta["corrupt_anchor_regex_effective"] = effective_corrupt_anchor_regex
+    corrupt_meta["corrupt_min_step_effective"] = int(effective_corrupt_min_step)
     corrupt_meta["task_corrupt_plan"] = task_corrupt_plan or None
     corrupt_meta["task_corrupt_note"] = task_corrupt_note
     corrupt_meta["force_sign_only"] = bool(force_sign_only)
     corrupt_meta["corrupt_region_start"] = len(head_prefix)
 
+    inject_opens_think = ("<think>" in inject_text) and ("</think>" not in inject_text)
     prefix_think_gap = _think_balance_delta(edited_text)
-    if auto_close_unclosed_think and prefix_think_gap > 0:
+    forced_close_for_inject = bool(inject_opens_think and prefix_think_gap > 0)
+    if forced_close_for_inject:
         edited_text = edited_text + ("\n</think>" * prefix_think_gap) + "\n"
+    elif auto_close_unclosed_think and prefix_think_gap > 0:
+        edited_text = edited_text + ("\n</think>" * prefix_think_gap) + "\n"
+
     corrupt_meta["prefix_open_think_before_inject"] = max(0, prefix_think_gap)
     corrupt_meta["prefix_auto_closed_think"] = max(0, prefix_think_gap) if auto_close_unclosed_think else 0
+    corrupt_meta["prefix_forced_close_for_inject"] = max(0, prefix_think_gap) if forced_close_for_inject else 0
 
     branch_b_inject_pos = len(edited_text)
     branch_b_force_overlap_applied = False
     inject_pos_local_raw = corrupt_meta.get("inject_pos")
-    if force_inject_at_corrupt and bool(corrupt_meta.get("changed")) and inject_pos_local_raw is not None:
+    if (
+        force_inject_at_corrupt
+        and (not forced_close_for_inject)
+        and bool(corrupt_meta.get("changed"))
+        and inject_pos_local_raw is not None
+    ):
         try:
             inject_pos_local = int(inject_pos_local_raw)
             inject_pos_global = len(head_prefix) + inject_pos_local
@@ -554,6 +766,7 @@ def run_task_ab(
     corrupt_meta["branch_b_inject_pos"] = int(branch_b_inject_pos)
     corrupt_meta["branch_b_suffix_len"] = int(len(branch_b_suffix_text))
     corrupt_meta["force_inject_at_sentence_end"] = bool(force_inject_at_sentence_end)
+    corrupt_meta["inject_clamped_to_tail_due_unclosed_think"] = bool(forced_close_for_inject and force_inject_at_corrupt)
 
     need_base_prefill = (branch_mode == "ab") or (branch_b_inject_pos == len(edited_text))
     past_base = None
@@ -649,7 +862,6 @@ def run_task_ab(
     past_b = out_inj.past_key_values
     logits_b = out_inj.logits[:, -1, :]
 
-    inject_opens_think = ("<think>" in inject_text) and ("</think>" not in inject_text)
     effective_min_b = max(0, int(min_b_tokens_before_eos)) if inject_opens_think else 0
 
     gen_b: List[int] = []
@@ -835,6 +1047,90 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
     return s
 
 
+def _summarize_corrupt_meta(corrupt_meta: Dict[str, object]) -> Dict[str, object]:
+    mode = str(corrupt_meta.get("mode", "none"))
+    changed = bool(corrupt_meta.get("changed", False))
+    out: Dict[str, object] = {"mode": mode, "changed": changed}
+
+    if not changed:
+        out["reason"] = corrupt_meta.get("reason")
+        return out
+
+    if mode in {"step_body_number_shift", "number_shift", "anchor_fallback_number_shift"}:
+        out["from"] = corrupt_meta.get("from")
+        out["to"] = corrupt_meta.get("to")
+        out["edit_start"] = corrupt_meta.get("edit_start")
+        out["edit_end"] = corrupt_meta.get("edit_end")
+        return out
+
+    if mode == "anchor_number_shift":
+        changes = corrupt_meta.get("changes")
+        if isinstance(changes, list):
+            out["changes"] = changes
+            out["n_changes"] = len(changes)
+        out["window"] = corrupt_meta.get("window")
+        return out
+
+    if mode == "sign_flip":
+        out["from"] = corrupt_meta.get("from")
+        out["to"] = corrupt_meta.get("to")
+        out["pos"] = corrupt_meta.get("pos")
+        return out
+
+    if mode == "sign_and_number":
+        out["sign_change"] = corrupt_meta.get("sign_change")
+        out["number_change"] = corrupt_meta.get("number_change")
+        return out
+
+    out["raw"] = corrupt_meta
+    return out
+
+
+def _build_branch_b_view_record(rec: Dict[str, object]) -> Dict[str, object]:
+    branch_b = rec.get("branch_B", {}) or {}
+    metrics = branch_b.get("metrics", {}) or {}
+    corrupt_meta = rec.get("corrupt_meta", {}) or {}
+    return {
+        "task_id": rec.get("task_id"),
+        "corrupt_summary": _summarize_corrupt_meta(corrupt_meta),
+        "corrupt_meta": corrupt_meta,
+        "branch_B": {
+            "stop_reason": branch_b.get("stop_reason"),
+            "new_tokens": branch_b.get("new_tokens"),
+            "think_balanced": metrics.get("think_balanced"),
+            "expected_hit": metrics.get("expected_hit"),
+            "full_text": branch_b.get("full_text", ""),
+        },
+    }
+
+
+def _write_branch_b_view_markdown(path: Path, model_path: str, records: List[Dict[str, object]]) -> None:
+    lines: List[str] = []
+    lines.append("# Branch B View")
+    lines.append("")
+    lines.append(f"- model_path: {model_path}")
+    lines.append(f"- n_tasks: {len(records)}")
+    lines.append("")
+
+    for rec in records:
+        view = _build_branch_b_view_record(rec)
+        b = view["branch_B"]
+        cm = view["corrupt_summary"]
+        lines.append(f"## {view.get('task_id', 'task')}")
+        lines.append(f"- stop_reason: {b.get('stop_reason')}")
+        lines.append(f"- new_tokens: {b.get('new_tokens')}")
+        lines.append(f"- think_balanced: {b.get('think_balanced')}")
+        lines.append(f"- expected_hit: {b.get('expected_hit')}")
+        lines.append(f"- corrupt_summary: {json.dumps(cm, ensure_ascii=False)}")
+        lines.append("")
+        lines.append("```text")
+        lines.append(str(b.get("full_text", "")))
+        lines.append("```")
+        lines.append("")
+
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
 def main() -> None:
     args = parse_args()
     if args.system_prompt_file:
@@ -921,6 +1217,7 @@ def main() -> None:
                 corrupt_anchor_regex=resolved_corrupt_anchor_regex,
                 corrupt_max_changes=args.corrupt_max_changes,
                 corrupt_window_chars=args.corrupt_window_chars,
+                corrupt_min_step=args.corrupt_min_step,
                 corrupt_step_select=args.corrupt_step_select,
                 corrupt_after_first_think=bool(args.corrupt_after_first_think),
                 corrupt_prefer_sign_flip=bool(args.corrupt_prefer_sign_flip),
@@ -995,14 +1292,42 @@ def main() -> None:
                     ),
                     encoding="utf-8",
                 )
+                branch_b_view = _build_branch_b_view_record(rec)
+                (task_dir / "branch_B.view.md").write_text(
+                    "\n".join(
+                        [
+                            f"# {branch_b_view.get('task_id', 'task')}",
+                            "",
+                            f"- corrupt_summary: {json.dumps(branch_b_view.get('corrupt_summary', {}), ensure_ascii=False)}",
+                            f"- stop_reason: {branch_b_view['branch_B'].get('stop_reason')}",
+                            f"- new_tokens: {branch_b_view['branch_B'].get('new_tokens')}",
+                            f"- think_balanced: {branch_b_view['branch_B'].get('think_balanced')}",
+                            f"- expected_hit: {branch_b_view['branch_B'].get('expected_hit')}",
+                            "",
+                            "```text",
+                            str(branch_b_view["branch_B"].get("full_text", "")),
+                            "```",
+                            "",
+                        ]
+                    ),
+                    encoding="utf-8",
+                )
 
         safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", model_path)
         jsonl_path = output_dir / f"{safe_name}.results.jsonl"
         summary_path = output_dir / f"{safe_name}.summary.json"
+        branch_b_view_jsonl_path = output_dir / f"{safe_name}.branch_b_view.jsonl"
+        branch_b_view_md_path = output_dir / f"{safe_name}.branch_b_view.md"
 
         with jsonl_path.open("w", encoding="utf-8") as f:
             for r in model_records:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
+
+        with branch_b_view_jsonl_path.open("w", encoding="utf-8") as f:
+            for r in model_records:
+                f.write(json.dumps(_build_branch_b_view_record(r), ensure_ascii=False) + "\n")
+
+        _write_branch_b_view_markdown(branch_b_view_md_path, model_path, model_records)
 
         model_summary = summarize(model_records)
         model_summary["config"] = {
@@ -1023,6 +1348,7 @@ def main() -> None:
             "corrupt_anchor_regex": resolved_corrupt_anchor_regex,
             "corrupt_max_changes": args.corrupt_max_changes,
             "corrupt_window_chars": args.corrupt_window_chars,
+            "corrupt_min_step": args.corrupt_min_step,
             "corrupt_step_select": args.corrupt_step_select,
             "corrupt_after_first_think": bool(args.corrupt_after_first_think),
             "corrupt_prefer_sign_flip": bool(args.corrupt_prefer_sign_flip),
@@ -1041,7 +1367,13 @@ def main() -> None:
         )
         global_summary["models"][model_path] = model_summary
 
-        print(f"Saved:\n- {jsonl_path}\n- {summary_path}")
+        print(
+            "Saved:\n"
+            f"- {jsonl_path}\n"
+            f"- {summary_path}\n"
+            f"- {branch_b_view_jsonl_path}\n"
+            f"- {branch_b_view_md_path}"
+        )
 
         del model
         if torch.cuda.is_available():

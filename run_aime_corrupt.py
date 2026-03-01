@@ -40,11 +40,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
 
-    p.add_argument("--corrupt-mode", default="anchor_number_shift", choices=["number_shift", "anchor_number_shift", "none"])
+    p.add_argument(
+        "--corrupt-mode",
+        default="anchor_number_shift",
+        choices=["number_shift", "anchor_number_shift", "sign_flip", "sign_then_number", "sign_and_number", "none"],
+    )
     p.add_argument("--corrupt-anchor-regex", default="(?i)step\\s*\\d+")
     p.add_argument("--corrupt-step-select", default="middle", choices=["anchor", "middle"])
     p.add_argument("--corrupt-max-changes", type=int, default=2)
     p.add_argument("--corrupt-window-chars", type=int, default=240)
+    p.add_argument("--corrupt-min-step", type=int, default=0)
     p.add_argument("--corrupt-after-first-think", action="store_true")
     p.add_argument("--corrupt-prefer-sign-flip", action="store_true")
     p.add_argument("--force-inject-at-corrupt", action="store_true")
@@ -90,6 +95,7 @@ def main() -> None:
         "--corrupt-step-select", args.corrupt_step_select,
         "--corrupt-max-changes", str(args.corrupt_max_changes),
         "--corrupt-window-chars", str(args.corrupt_window_chars),
+        "--corrupt-min-step", str(args.corrupt_min_step),
     ]
 
     if args.corrupt_after_first_think:
