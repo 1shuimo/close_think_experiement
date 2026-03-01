@@ -60,6 +60,24 @@ python run_aime_corrupt.py \
   --save-task-texts
 ```
 
+## 2.1) AIME25 单分支插入评测（Step优先 + Token兜底，不改错）
+
+```bash
+python run_aime_corrupt.py \
+  --model-paths "$MODEL" \
+  --tasks-file tasks_aime2025.jsonl \
+  --output-dir corrupt_exp_v1 \
+  --branch-mode b \
+  --locator-only \
+  --corrupt-mode none \
+  --corrupt-min-step 2 \
+  --corrupt-after-first-think \
+  --checkpoint-mode think_end_then_regex \
+  --checkpoint-regex '(?i)step\s*3' \
+  --no-step-fallback-offset-tokens 300 \
+  --save-task-texts
+```
+
 ## 3) AIME2025 全量 30 题（只插入）
 
 任务文件：`tasks_aime2025.jsonl`

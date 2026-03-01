@@ -95,6 +95,9 @@ python run_live_code.py \
 
 - `--corrupt-mode sign_flip`
   - 仅做符号翻转（`+/-`，以及比较符 fallback：`<= >= == != < >`）。
+- `--locator-only`
+  - 只做插入点定位，不做任何改错（数字/符号都不改）。
+  - 规则：`Step优先`（受 `--corrupt-min-step` 控制）→ `Token兜底`（`--no-step-fallback-offset-tokens`）。
 - `--corrupt-mode sign_then_number`
   - 先尝试符号翻转，失败再做数字改动。
 - `--corrupt-mode sign_and_number`
@@ -112,6 +115,7 @@ python run_live_code.py \
   - 在 `think_end_then_regex + --corrupt-after-first-think` 下，如果还没看到 `Step` 行，会继续生成前缀最多 `N` token 再尝试改错/插入。
 - `--no-step-fallback-offset-tokens N`
   - 如果依然没有 `Step` 行，会在首个 `</think>` 后约 `N` token 先定位，再对齐到附近句末标点（如 `.` `。` `;`）作为注入点，并在附近做数字改动。
+  - 若首个 `</think>` 本身都没出现，会先在该锚点强制闭合第一段 think，再按原流程继续（改错与注入）。
   - 默认 `300`；设为 `0` 或负数可关闭这个 fallback。
 - `--enable-think-word-limit`
   - 开启后才会启用 `--think-word-limit` 这条软约束。
@@ -179,3 +183,25 @@ python run_aime_corrupt.py \
 ```bash
 --enable-think-word-limit --think-word-limit 60
 ```
+
+只做“单分支插入评测（不改错）”建议命令：
+
+```bash
+python run_aime_corrupt.py \
+  --model-paths "$MODEL" \
+  --tasks-file tasks_aime2025.jsonl \
+  --output-dir corrupt_exp_v1 \
+  --branch-mode b \
+  --locator-only \
+  --corrupt-mode none \
+  --corrupt-min-step 2 \
+  --corrupt-after-first-think \
+  --checkpoint-mode think_end_then_regex \
+  --checkpoint-regex '(?i)step\s*3' \
+  --no-step-fallback-offset-tokens 300 \
+  --save-task-texts
+```
+
+评测命中逻辑：看 `branch_B.metrics.expected_hit`（是否命中题目 `expected_regex`）。
+- 该值现在基于“先去掉所有 `<think>...</think>` 片段”后的文本计算。
+- 原始未清洗文本命中可看 `branch_B.metrics.expected_hit_raw`。

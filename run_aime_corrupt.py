@@ -51,6 +51,7 @@ def parse_args() -> argparse.Namespace:
         default="anchor_number_shift",
         choices=["number_shift", "anchor_number_shift", "sign_flip", "sign_then_number", "sign_and_number", "none"],
     )
+    p.add_argument("--locator-only", action="store_true")
     p.add_argument("--corrupt-anchor-regex", default="(?i)step\\s*\\d+")
     p.add_argument("--corrupt-step-select", default="middle", choices=["anchor", "middle"])
     p.add_argument("--corrupt-max-changes", type=int, default=2)
@@ -110,6 +111,8 @@ def main() -> None:
 
     if args.corrupt_after_first_think:
         cmd.append("--corrupt-after-first-think")
+    if args.locator_only:
+        cmd.append("--locator-only")
     if args.enable_think_word_limit:
         cmd.append("--enable-think-word-limit")
     if args.enable_first_think_max_words:

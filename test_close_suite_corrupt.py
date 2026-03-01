@@ -170,6 +170,11 @@ def parse_args() -> argparse.Namespace:
         ],
         help="Whether to auto-corrupt prefix before branch A/B.",
     )
+    p.add_argument(
+        "--locator-only",
+        action="store_true",
+        help="Only locate insert position (step-first, token-fallback) without editing text.",
+    )
     p.add_argument("--corrupt-anchor-regex", default="__auto__")
     p.add_argument(
         "--corrupt-step-select",
@@ -221,6 +226,37 @@ def _think_balance_delta(text: str) -> int:
     opens = len(re.findall(r"<think>", text))
     closes = len(re.findall(r"</think>", text))
     return opens - closes
+
+
+def _strip_all_think_blocks(text: str) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"removed_blocks": 0, "unclosed_tail_trimmed": False}
+
+    s = text
+    removed = 0
+    unclosed_tail_trimmed = False
+    while True:
+        m_open = re.search(r"<think>", s, re.IGNORECASE)
+        if not m_open:
+            break
+        m_close_rel = re.search(r"</think>", s[m_open.end() :], re.IGNORECASE)
+        if not m_close_rel:
+            s = s[: m_open.start()]
+            unclosed_tail_trimmed = True
+            removed += 1
+            break
+        close_end = m_open.end() + m_close_rel.end()
+        s = s[: m_open.start()] + s[close_end:]
+        removed += 1
+
+    # Clean any stray literal tags that are left without pair structure.
+    s2 = re.sub(r"</?think>", "", s, flags=re.IGNORECASE)
+    stray_tags_removed = int(bool(s != s2))
+    return s2, {
+        "removed_blocks": int(removed),
+        "unclosed_tail_trimmed": bool(unclosed_tail_trimmed),
+        "stray_tags_removed": int(stray_tags_removed),
+    }
 
 
 def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
@@ -378,6 +414,46 @@ def _nearest_sentence_end_near(text: str, pos: int, radius: int = 220) -> int:
     return _advance_to_sentence_end(text, p, max_lookahead=r if r > 0 else 220)
 
 
+def _force_close_unclosed_first_think_near_offset(
+    text: str,
+    *,
+    tokenizer,
+    token_offset: int,
+    window_chars: int = 220,
+) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"applied": False, "reason": "empty_text"}
+
+    if re.search(r"</think>", text, re.IGNORECASE):
+        return text, {"applied": False, "reason": "already_closed"}
+
+    m_open = re.search(r"<think>", text, re.IGNORECASE)
+    if not m_open:
+        return text, {"applied": False, "reason": "no_think_open"}
+
+    body = text[m_open.end() :]
+    center_rel, total_tokens = _char_pos_from_token_offset(body, tokenizer, token_offset)
+    anchor_rel = _nearest_sentence_end_near(
+        body,
+        center_rel,
+        radius=max(120, int(window_chars)),
+    )
+    close_abs = m_open.end() + anchor_rel
+    close_abs = max(m_open.end(), min(len(text), close_abs))
+
+    close_tag = "\n</think>\n"
+    forced = text[:close_abs] + close_tag + text[close_abs:]
+    return forced, {
+        "applied": True,
+        "reason": "forced_close_at_fallback_anchor",
+        "target_token_offset": int(token_offset),
+        "target_char_offset_in_think": int(center_rel),
+        "total_tokens_in_think": int(total_tokens),
+        "close_pos_before_insert": int(close_abs),
+        "close_pos_after_insert": int(close_abs + len(close_tag)),
+    }
+
+
 def _corrupt_number_near_token_offset(
     text: str,
     *,
@@ -445,6 +521,66 @@ def _corrupt_number_near_token_offset(
         "sentence_anchor_char_offset": int(sentence_anchor_char),
         "total_tokens": int(total_tokens),
         "window_chars": int(w),
+    }
+
+
+def _locate_insert_pos_no_edit(
+    text: str,
+    *,
+    tokenizer,
+    min_step_no: int,
+    fallback_token_offset: int,
+    window_chars: int,
+) -> Dict[str, object]:
+    if not text:
+        return {"mode": "locator_only", "changed": False, "reason": "empty_text", "inject_pos": None}
+
+    min_step = max(0, int(min_step_no))
+    step_spans = [sp for sp in _collect_step_lines(text) if sp[3] >= min_step]
+    if step_spans:
+        st, ed, ln, step_no = step_spans[0]
+        colon = ln.find(":")
+        if colon >= 0:
+            body_start = st + colon + 1
+            inject_local = _advance_to_sentence_end(text, body_start)
+        else:
+            inject_local = ed
+        inject_local = max(0, min(len(text), int(inject_local)))
+        return {
+            "mode": "locator_only_step",
+            "changed": True,
+            "inject_pos": int(inject_local),
+            "step_no": int(step_no),
+            "min_step_no": int(min_step),
+            "reason": "step_found",
+        }
+
+    fb = int(fallback_token_offset)
+    if fb > 0:
+        center_char, total_tokens = _char_pos_from_token_offset(text, tokenizer, fb)
+        anchor_char = _nearest_sentence_end_near(
+            text,
+            center_char,
+            radius=max(120, int(window_chars)),
+        )
+        inject_local = max(0, min(len(text), int(anchor_char)))
+        return {
+            "mode": "locator_only_token",
+            "changed": True,
+            "inject_pos": int(inject_local),
+            "target_token_offset": int(fb),
+            "target_char_offset": int(center_char),
+            "sentence_anchor_char_offset": int(anchor_char),
+            "total_tokens": int(total_tokens),
+            "reason": "fallback_token_anchor",
+        }
+
+    return {
+        "mode": "locator_only",
+        "changed": False,
+        "inject_pos": None,
+        "reason": "no_step_and_fallback_disabled",
+        "min_step_no": int(min_step),
     }
 
 
@@ -689,11 +825,14 @@ def evaluate_branch(
     expected_regex: Optional[str],
 ) -> Dict[str, object]:
     overlap = longest_suffix_prefix_overlap(edited_prefix_text, continuation_text, max_k=300)
+    stripped_text, strip_meta = _strip_all_think_blocks(full_text)
     return {
         "think_balanced": think_balance_ok(full_text),
         "overlap_prefix_to_continuation": overlap,
         "repetition_flag": overlap >= 40,
-        "expected_hit": _expected_hit(full_text, expected_regex),
+        "expected_hit_raw": _expected_hit(full_text, expected_regex),
+        "expected_hit": _expected_hit(stripped_text, expected_regex),
+        "eval_strip_meta": strip_meta,
     }
 
 
@@ -730,6 +869,7 @@ def run_task_ab(
     chunk_size: int,
     inject_text: str,
     corrupt_mode: str,
+    locator_only: bool,
     corrupt_anchor_regex: str,
     corrupt_max_changes: int,
     corrupt_window_chars: int,
@@ -756,6 +896,7 @@ def run_task_ab(
     task_corrupt_anchor_regex = task.get("corrupt_anchor_regex")
     task_corrupt_after_first_think = task.get("corrupt_after_first_think")
     task_corrupt_min_step = task.get("corrupt_min_step")
+    task_locator_only = task.get("locator_only")
 
     effective_corrupt_mode = corrupt_mode
     effective_corrupt_anchor_regex = corrupt_anchor_regex
@@ -793,6 +934,9 @@ def run_task_ab(
             effective_corrupt_min_step = max(0, int(task_corrupt_min_step))
         except Exception:
             pass
+    effective_locator_only = bool(locator_only)
+    if isinstance(task_locator_only, bool):
+        effective_locator_only = task_locator_only
 
     used_system_prompt = compose_system_prompt(
         system_prompt,
@@ -871,22 +1015,46 @@ def run_task_ab(
             "stop_reason": ext_meta.get("stop_reason"),
         }
 
-    prefix_tokens_effective = len(tokenizer.encode(prefix_text, add_special_tokens=False))
     target_prefix = prefix_text
     head_prefix = ""
+    effective_no_step_fallback_offset_tokens = int(no_step_fallback_offset_tokens)
     scope_meta: Dict[str, object] = {
         "corrupt_after_first_think": bool(effective_corrupt_after_first_think),
         "first_think_closed_found": False,
+        "no_step_fallback_offset_tokens_effective": int(effective_no_step_fallback_offset_tokens),
     }
     if effective_corrupt_after_first_think:
         head_prefix, target_prefix, found_close = _split_after_first_think_close(prefix_text)
         scope_meta["first_think_closed_found"] = bool(found_close)
         if not found_close:
-            # User requested "after first </think>" corruption:
-            # if not found, do NOT corrupt inside the unfinished think.
-            head_prefix = prefix_text
-            target_prefix = ""
-            scope_meta["first_think_forced_close_before_inject"] = True
+            # If the first </think> never appears, force-close near fallback offset
+            # so the rest of the pipeline still follows the "after first think" path.
+            if int(no_step_fallback_offset_tokens) > 0:
+                forced_text, forced_meta = _force_close_unclosed_first_think_near_offset(
+                    prefix_text,
+                    tokenizer=tokenizer,
+                    token_offset=int(no_step_fallback_offset_tokens),
+                    window_chars=max(120, int(corrupt_window_chars)),
+                )
+                scope_meta["first_think_force_close_meta"] = forced_meta
+                if bool(forced_meta.get("applied")):
+                    prefix_text = forced_text
+                    head_prefix, target_prefix, found_close2 = _split_after_first_think_close(prefix_text)
+                    scope_meta["first_think_closed_found"] = bool(found_close2)
+                    scope_meta["first_think_forced_close_before_inject"] = bool(found_close2)
+                    scope_meta["first_think_force_close_applied"] = bool(found_close2)
+                    if found_close2:
+                        # target_prefix now starts right after forced close anchor,
+                        # so fallback offset should start near the new segment head.
+                        effective_no_step_fallback_offset_tokens = 1
+                        scope_meta["no_step_fallback_offset_tokens_effective"] = 1
+            if not bool(scope_meta.get("first_think_closed_found")):
+                # Keep original behavior if force-close did not apply.
+                head_prefix = prefix_text
+                target_prefix = ""
+                scope_meta["first_think_forced_close_before_inject"] = True
+
+    prefix_tokens_effective = len(tokenizer.encode(prefix_text, add_special_tokens=False))
 
     edited_target = target_prefix
     corrupt_meta: Dict[str, object] = {"mode": "none", "changed": False}
@@ -896,11 +1064,24 @@ def run_task_ab(
     step_lines_exist_initial = _has_step_marker(edited_target)
     step_only_for_corrupt = bool(effective_corrupt_after_first_think)
 
-    prefer_sign_first = bool(effective_corrupt_prefer_sign_flip) or effective_corrupt_mode in {
+    if effective_locator_only:
+        locator_meta = _locate_insert_pos_no_edit(
+            edited_target,
+            tokenizer=tokenizer,
+            min_step_no=effective_corrupt_min_step,
+            fallback_token_offset=int(effective_no_step_fallback_offset_tokens),
+            window_chars=max(120, int(corrupt_window_chars)),
+        )
+        if bool(locator_meta.get("changed")):
+            corrupt_meta = locator_meta
+        else:
+            corrupt_meta = locator_meta
+
+    prefer_sign_first = (not effective_locator_only) and (bool(effective_corrupt_prefer_sign_flip) or effective_corrupt_mode in {
         "sign_flip",
         "sign_then_number",
         "sign_and_number",
-    }
+    })
     if prefer_sign_first:
         sign_edited, sign_meta = _flip_first_plus_minus_operator(
             edited_target,
@@ -913,9 +1094,9 @@ def run_task_ab(
             edited_target = sign_edited
             corrupt_meta = sign_meta
 
-    if effective_corrupt_mode == "sign_flip":
+    if (not effective_locator_only) and effective_corrupt_mode == "sign_flip":
         force_sign_only = True
-    if effective_corrupt_mode == "sign_and_number":
+    if (not effective_locator_only) and effective_corrupt_mode == "sign_and_number":
         require_number_after_sign = True
 
     if not bool(corrupt_meta.get("changed")) and force_sign_only and sign_meta is not None:
@@ -923,14 +1104,16 @@ def run_task_ab(
 
     no_step_fallback_meta: Optional[Dict[str, object]] = None
     if (
+        (not effective_locator_only)
+        and
         step_only_for_corrupt
         and (not step_lines_exist_initial)
-        and int(no_step_fallback_offset_tokens) > 0
+        and int(effective_no_step_fallback_offset_tokens) > 0
     ):
         edited_target, no_step_fallback_meta = _corrupt_number_near_token_offset(
             edited_target,
             tokenizer=tokenizer,
-            token_offset=int(no_step_fallback_offset_tokens),
+            token_offset=int(effective_no_step_fallback_offset_tokens),
             window_chars=max(120, int(corrupt_window_chars)),
         )
         if bool(no_step_fallback_meta.get("changed")):
@@ -938,19 +1121,19 @@ def run_task_ab(
                 corrupt_meta = no_step_fallback_meta
             else:
                 corrupt_meta["no_step_fallback"] = no_step_fallback_meta
-    if step_only_for_corrupt and (not step_lines_exist_initial) and no_step_fallback_meta is None:
+    if (not effective_locator_only) and step_only_for_corrupt and (not step_lines_exist_initial) and no_step_fallback_meta is None:
         no_step_fallback_meta = {
             "mode": "step_scoped_corrupt_guard",
             "changed": False,
             "reason": "no_step_lines_after_first_think",
             "min_step_no": effective_corrupt_min_step,
-            "target_token_offset": int(no_step_fallback_offset_tokens),
+            "target_token_offset": int(effective_no_step_fallback_offset_tokens),
             "inject_pos": None,
         }
         if not bool(corrupt_meta.get("changed")):
             corrupt_meta = no_step_fallback_meta
 
-    need_number_edit = (not bool(corrupt_meta.get("changed")) and not force_sign_only) or require_number_after_sign
+    need_number_edit = ((not bool(corrupt_meta.get("changed")) and not force_sign_only) or require_number_after_sign) and (not effective_locator_only)
     if step_only_for_corrupt and (not step_lines_exist_initial):
         need_number_edit = False
     if need_number_edit:
@@ -1037,6 +1220,7 @@ def run_task_ab(
     corrupt_meta.update(scope_meta)
     corrupt_meta["corrupt_prefer_sign_flip"] = bool(effective_corrupt_prefer_sign_flip)
     corrupt_meta["corrupt_mode_effective"] = effective_corrupt_mode
+    corrupt_meta["locator_only_effective"] = bool(effective_locator_only)
     corrupt_meta["corrupt_anchor_regex_effective"] = effective_corrupt_anchor_regex
     corrupt_meta["corrupt_min_step_effective"] = int(effective_corrupt_min_step)
     corrupt_meta["task_corrupt_plan"] = task_corrupt_plan or None
@@ -1059,8 +1243,9 @@ def run_task_ab(
     branch_b_inject_pos = len(edited_text)
     branch_b_force_overlap_applied = False
     inject_pos_local_raw = corrupt_meta.get("inject_pos")
+    force_inject_effective = bool(force_inject_at_corrupt or effective_locator_only)
     if (
-        force_inject_at_corrupt
+        force_inject_effective
         and (not forced_close_for_inject)
         and bool(corrupt_meta.get("changed"))
         and inject_pos_local_raw is not None
@@ -1081,6 +1266,7 @@ def run_task_ab(
     branch_b_prefix_text = edited_text[:branch_b_inject_pos]
     branch_b_suffix_text = edited_text[branch_b_inject_pos:]
     corrupt_meta["force_inject_at_corrupt"] = bool(force_inject_at_corrupt)
+    corrupt_meta["force_inject_at_corrupt_effective"] = bool(force_inject_effective)
     corrupt_meta["branch_b_force_overlap_applied"] = bool(branch_b_force_overlap_applied)
     corrupt_meta["branch_b_inject_pos"] = int(branch_b_inject_pos)
     corrupt_meta["branch_b_suffix_len"] = int(len(branch_b_suffix_text))
@@ -1399,6 +1585,13 @@ def _summarize_corrupt_meta(corrupt_meta: Dict[str, object]) -> Dict[str, object
         out["pos"] = corrupt_meta.get("pos")
         return out
 
+    if mode in {"locator_only_step", "locator_only_token", "locator_only"}:
+        out["reason"] = corrupt_meta.get("reason")
+        out["inject_pos"] = corrupt_meta.get("inject_pos")
+        out["step_no"] = corrupt_meta.get("step_no")
+        out["target_token_offset"] = corrupt_meta.get("target_token_offset")
+        return out
+
     if mode == "sign_and_number":
         out["sign_change"] = corrupt_meta.get("sign_change")
         out["number_change"] = corrupt_meta.get("number_change")
@@ -1541,6 +1734,7 @@ def main() -> None:
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
                 corrupt_mode=args.corrupt_mode,
+                locator_only=bool(args.locator_only),
                 corrupt_anchor_regex=resolved_corrupt_anchor_regex,
                 corrupt_max_changes=args.corrupt_max_changes,
                 corrupt_window_chars=args.corrupt_window_chars,
@@ -1679,6 +1873,7 @@ def main() -> None:
             "step_wait_extra_tokens": args.step_wait_extra_tokens,
             "no_step_fallback_offset_tokens": args.no_step_fallback_offset_tokens,
             "corrupt_mode": args.corrupt_mode,
+            "locator_only": bool(args.locator_only),
             "corrupt_anchor_regex": resolved_corrupt_anchor_regex,
             "corrupt_max_changes": args.corrupt_max_changes,
             "corrupt_window_chars": args.corrupt_window_chars,

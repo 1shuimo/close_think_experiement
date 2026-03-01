@@ -153,6 +153,36 @@ def _think_balance_delta(text: str) -> int:
     return opens - closes
 
 
+def _strip_all_think_blocks(text: str) -> Dict[str, object]:
+    if not text:
+        return {"text": text, "removed_blocks": 0, "unclosed_tail_trimmed": False, "stray_tags_removed": 0}
+
+    s = text
+    removed = 0
+    unclosed_tail_trimmed = False
+    while True:
+        m_open = re.search(r"<think>", s, re.IGNORECASE)
+        if not m_open:
+            break
+        m_close_rel = re.search(r"</think>", s[m_open.end() :], re.IGNORECASE)
+        if not m_close_rel:
+            s = s[: m_open.start()]
+            unclosed_tail_trimmed = True
+            removed += 1
+            break
+        close_end = m_open.end() + m_close_rel.end()
+        s = s[: m_open.start()] + s[close_end:]
+        removed += 1
+
+    s2 = re.sub(r"</?think>", "", s, flags=re.IGNORECASE)
+    return {
+        "text": s2,
+        "removed_blocks": int(removed),
+        "unclosed_tail_trimmed": bool(unclosed_tail_trimmed),
+        "stray_tags_removed": int(bool(s != s2)),
+    }
+
+
 def evaluate_branch(
     prefix_text: str,
     continuation_text: str,
@@ -160,11 +190,19 @@ def evaluate_branch(
     expected_regex: Optional[str],
 ) -> Dict[str, object]:
     overlap = longest_suffix_prefix_overlap(prefix_text, continuation_text, max_k=300)
+    stripped = _strip_all_think_blocks(full_text)
+    stripped_text = str(stripped.get("text", ""))
     return {
         "think_balanced": think_balance_ok(full_text),
         "overlap_prefix_to_continuation": overlap,
         "repetition_flag": overlap >= 40,
-        "expected_hit": _expected_hit(full_text, expected_regex),
+        "expected_hit_raw": _expected_hit(full_text, expected_regex),
+        "expected_hit": _expected_hit(stripped_text, expected_regex),
+        "eval_strip_meta": {
+            "removed_blocks": stripped.get("removed_blocks"),
+            "unclosed_tail_trimmed": stripped.get("unclosed_tail_trimmed"),
+            "stray_tags_removed": stripped.get("stray_tags_removed"),
+        },
     }
 
 
