@@ -222,6 +222,7 @@ def generate_until_checkpoint(
     checkpoint_mid_min_tokens: int = 80,
     checkpoint_mid_max_tokens: int = 220,
     checkpoint_mid_avoid_final_regex: Optional[str] = r"(?i)\bfinal\s*:|\bfinal answer\b",
+    regex_window_chars: int = 8192,
     chunk_size: int = 2048,
     print_stream: bool = False,
 ) -> Dict[str, object]:
@@ -236,7 +237,6 @@ def generate_until_checkpoint(
 
     seen_first_think_end = False
     first_think_end_token_pos = -1
-    first_think_end_char_pos = -1
     seen_anchor = False
     counter_after_anchor = 0
     tokens_after_first_think = 0
@@ -244,7 +244,10 @@ def generate_until_checkpoint(
     mid_early_stop_on_final = False
     generated_ids: List[int] = []
     generated_text_parts: List[str] = []
-    generated_text_len = 0
+    # Keep only a text tail for regex checks to avoid O(n^2) joins/searches.
+    regex_window_chars = max(512, int(regex_window_chars))
+    recent_text_tail = ""
+    post_think_tail = ""
     regex_obj = re.compile(checkpoint_regex, re.IGNORECASE | re.DOTALL) if checkpoint_regex else None
     mid_final_obj = (
         re.compile(checkpoint_mid_avoid_final_regex, re.IGNORECASE | re.DOTALL)
@@ -252,6 +255,9 @@ def generate_until_checkpoint(
         else None
     )
     mid_rng = random.Random(seed + 131)
+    need_regex_text = checkpoint_mode in {"regex", "think_end_then_regex"}
+    need_mid_final_text = checkpoint_mode == "think_end_mid" and mid_final_obj is not None
+    need_incremental_text = print_stream or need_regex_text or need_mid_final_text
 
     for _ in range(max_new_tokens):
         next_token = top_p_sample(logits, temperature, top_p, gen)
@@ -264,20 +270,36 @@ def generate_until_checkpoint(
         logits = out.logits[:, -1, :]
 
         generated_ids.append(tid)
-        piece = tokenizer.decode(next_token[0], skip_special_tokens=False)
-        generated_text_parts.append(piece)
-        generated_text_len += len(piece)
-        if print_stream:
-            print(piece, end="", flush=True)
+        piece = ""
+        if need_incremental_text:
+            piece = tokenizer.decode(next_token[0], skip_special_tokens=False)
+            generated_text_parts.append(piece)
+            if print_stream:
+                print(piece, end="", flush=True)
+            if need_regex_text:
+                recent_text_tail = (recent_text_tail + piece)[-regex_window_chars:]
 
+        just_seen_first_think_end = False
         if (not seen_first_think_end) and _ends_with_subseq(generated_ids, think_end_ids):
             seen_first_think_end = True
             first_think_end_token_pos = len(generated_ids)
-            first_think_end_char_pos = generated_text_len
             tokens_after_first_think = 0
+            just_seen_first_think_end = True
+            if need_mid_final_text:
+                # Build this once when the first </think> is observed.
+                full_text_now = "".join(generated_text_parts)
+                idx = full_text_now.find("</think>")
+                if idx >= 0:
+                    post_think_tail = full_text_now[idx + len("</think>") :]
+                else:
+                    post_think_tail = ""
+                post_think_tail = post_think_tail[-regex_window_chars:]
+
+        if need_mid_final_text and seen_first_think_end and (not just_seen_first_think_end):
+            # Track only the tail after first </think> for final-regex detection.
+            post_think_tail = (post_think_tail + piece)[-regex_window_chars:]
 
         if not seen_anchor:
-            joined_text = "".join(generated_text_parts)
             if seen_first_think_end and first_think_end_token_pos >= 0:
                 tokens_after_first_think = len(generated_ids) - first_think_end_token_pos
             if checkpoint_mode == "think_end":
@@ -285,11 +307,11 @@ def generate_until_checkpoint(
                     seen_anchor = True
                     counter_after_anchor = 0
             elif checkpoint_mode == "regex":
-                if regex_obj and regex_obj.search(joined_text):
+                if regex_obj and regex_obj.search(recent_text_tail):
                     seen_anchor = True
                     counter_after_anchor = 0
             elif checkpoint_mode == "think_end_then_regex":
-                if seen_first_think_end and regex_obj and regex_obj.search(joined_text):
+                if seen_first_think_end and regex_obj and regex_obj.search(recent_text_tail):
                     seen_anchor = True
                     counter_after_anchor = 0
             elif checkpoint_mode == "think_end_mid":
@@ -299,12 +321,7 @@ def generate_until_checkpoint(
                     if mid_target_tokens is None:
                         mid_target_tokens = mid_rng.randint(lo, hi)
                     hit_mid_target = tokens_after_first_think >= int(mid_target_tokens)
-                    post_think_text = (
-                        joined_text[first_think_end_char_pos:]
-                        if first_think_end_char_pos >= 0
-                        else joined_text
-                    )
-                    hit_final = bool(mid_final_obj and mid_final_obj.search(post_think_text))
+                    hit_final = bool(mid_final_obj and mid_final_obj.search(post_think_tail))
                     if hit_mid_target or hit_final:
                         seen_anchor = True
                         counter_after_anchor = 0
@@ -317,7 +334,11 @@ def generate_until_checkpoint(
             if counter_after_anchor >= delay_tokens_after_first_think_end:
                 break
 
-    generated_text = "".join(generated_text_parts)
+    # Decode once at the end when stream/regex text is not required.
+    if need_incremental_text:
+        generated_text = "".join(generated_text_parts)
+    else:
+        generated_text = tokenizer.decode(generated_ids, skip_special_tokens=False)
     return {
         "generated_ids": generated_ids,
         "generated_text": generated_text,
@@ -333,6 +354,7 @@ def generate_until_checkpoint(
         "checkpoint_mid_target_tokens": int(mid_target_tokens) if mid_target_tokens is not None else None,
         "checkpoint_mid_avoid_final_regex": checkpoint_mid_avoid_final_regex,
         "checkpoint_mid_early_stop_on_final": bool(mid_early_stop_on_final),
+        "regex_window_chars": int(regex_window_chars),
     }
 
 
