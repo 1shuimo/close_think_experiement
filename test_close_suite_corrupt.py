@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-A/B insertion runner (AIME/jsonl only)
+A/B insertion + corruption runner (AIME/jsonl only)
 
 目标：
-- 仅保留“中途插入 <think>”评测链路。
+- 保留改错/扰动能力，供改错实验使用。
 - 移除所有 LongProc 相关逻辑。
 - 输入来源固定为 jsonl 任务文件。
 """
@@ -13,7 +13,7 @@ import gc
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import torch
 
@@ -23,6 +23,8 @@ from think_branch_common import (
     build_prompt_ids,
     clone_past_key_values,
     compose_system_prompt,
+    corrupt_numbers_near_anchor,
+    corrupt_prefix_text,
     generate_from_state,
     generate_until_checkpoint,
     load_model,
@@ -58,8 +60,11 @@ def _safe_name(s: str) -> str:
 
 
 def auto_checkpoint_regex() -> str:
-    # AIME/数学默认锚点
     return r"(?i)step\s*3"
+
+
+def auto_corrupt_anchor_regex() -> str:
+    return auto_checkpoint_regex()
 
 
 def maybe_append_math_step_guidance(user_prompt: str, math_step_user_guidance: str) -> str:
@@ -72,13 +77,13 @@ def maybe_append_math_step_guidance(user_prompt: str, math_step_user_guidance: s
 
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(
-        description="A/B insertion runner for jsonl tasks (no LongProc)."
+        description="A/B insertion runner with corruption support for jsonl tasks (no LongProc)."
     )
     p.add_argument("--model-paths", required=True, help="Comma-separated model paths.")
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
 
     p.add_argument("--tasks-file", default="tasks_aime2025.jsonl")
-    p.add_argument("--output-dir", default="suite_outputs")
+    p.add_argument("--output-dir", default="suite_outputs_corrupt")
 
     p.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
     p.add_argument("--system-prompt-file", default=None, help="Load system prompt text from file.")
@@ -113,11 +118,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
     p.add_argument("--min-b-tokens-before-eos", type=int, default=64)
     p.add_argument("--b-retry-times", type=int, default=2, help="Retry branch B if empty or unclosed think.")
-    p.add_argument(
-        "--auto-close-unclosed-think",
-        action="store_true",
-        help="Force close unmatched <think> tags in prefix/final output.",
-    )
+    p.add_argument("--auto-close-unclosed-think", action="store_true", help="Force close unmatched <think> tags in prefix/final output.")
     p.add_argument("--inject-text", default=DEFAULT_INJECT_TEXT)
 
     p.add_argument("--apply-match-cover", action="store_true")
@@ -125,10 +126,43 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--cover-fuzzy-min-len", type=int, default=24)
     p.add_argument("--cover-fuzzy-max-len", type=int, default=160)
     p.add_argument("--cover-fuzzy-ratio", type=float, default=0.92)
+    p.add_argument("--apply-cross-think-cover", action="store_true", help="Trim overlap between pre-think body tail and post-think body head in branch B.")
+
+    # 改错相关参数
     p.add_argument(
-        "--apply-cross-think-cover",
+        "--corrupt-mode",
+        default="number_shift",
+        choices=["number_shift", "anchor_number_shift", "none"],
+        help="Whether to auto-corrupt prefix before branch A/B.",
+    )
+    p.add_argument("--corrupt-anchor-regex", default="__auto__")
+    p.add_argument(
+        "--corrupt-step-select",
+        default="anchor",
+        choices=["anchor", "middle"],
+        help="For math step-body corruption: use anchor step or pick middle step.",
+    )
+    p.add_argument("--corrupt-max-changes", type=int, default=2)
+    p.add_argument("--corrupt-window-chars", type=int, default=240)
+    p.add_argument(
+        "--corrupt-after-first-think",
         action="store_true",
-        help="Trim overlap between pre-think body tail and post-think body head in branch B.",
+        help="Apply corruption only to text after the first </think> in prefix.",
+    )
+    p.add_argument(
+        "--corrupt-prefer-sign-flip",
+        action="store_true",
+        help="Try flipping + / - first; fallback to numeric corruption if no operator found.",
+    )
+    p.add_argument(
+        "--force-inject-at-corrupt",
+        action="store_true",
+        help="Force Branch B to inject <think> immediately at the corruption point.",
+    )
+    p.add_argument(
+        "--force-inject-at-sentence-end",
+        action="store_true",
+        help="When forcing inject at corruption, shift insert point to nearest sentence end after it.",
     )
 
     p.add_argument("--save-task-texts", action="store_true", help="Save per-task branch full outputs to txt files.")
@@ -148,13 +182,155 @@ def _think_balance_delta(text: str) -> int:
     return opens - closes
 
 
+def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
+    m = re.search(r"</think>", text, re.IGNORECASE)
+    if not m:
+        return text, "", False
+    return text[: m.end()], text[m.end() :], True
+
+
+def _corrupt_step_body_number(
+    text: str,
+    *,
+    anchor_regex: Optional[str] = None,
+    step_select: str = "anchor",
+) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"mode": "step_body_number_shift", "changed": False, "reason": "empty_text", "inject_pos": None}
+
+    step_re = re.compile(r"^\s*Step\s+\d+\s*:", re.IGNORECASE)
+    num_re = re.compile(r"(?<![A-Za-z0-9_.-])(-?\d+)(?![A-Za-z0-9_.-])")
+    anchor_pos = None
+    if anchor_regex:
+        m_anchor = re.search(anchor_regex, text, re.IGNORECASE | re.DOTALL)
+        if m_anchor:
+            anchor_pos = m_anchor.start()
+
+    spans: List[Tuple[int, int, str]] = []
+    off = 0
+    for line in text.splitlines(keepends=True):
+        ln = line.rstrip("\r\n")
+        st = off
+        ed = off + len(ln)
+        if step_re.match(ln):
+            spans.append((st, ed, ln))
+        off += len(line)
+
+    if not spans:
+        return text, {"mode": "step_body_number_shift", "changed": False, "reason": "no_step_lines", "inject_pos": None}
+
+    ordered_spans = spans
+    if step_select == "middle":
+        n = len(spans)
+        mid = n // 2
+        idx_order: List[int] = [mid]
+        for d in range(1, n):
+            r = mid + d
+            l = mid - d
+            if r < n:
+                idx_order.append(r)
+            if l >= 0:
+                idx_order.append(l)
+        ordered_spans = [spans[i] for i in idx_order]
+    elif anchor_pos is not None:
+        after = [sp for sp in spans if sp[0] >= anchor_pos]
+        before = [sp for sp in spans if sp[0] < anchor_pos]
+        ordered_spans = after + before
+
+    for st, ed, ln in ordered_spans:
+        colon = ln.find(":")
+        if colon < 0:
+            continue
+        body_start_local = colon + 1
+        body = ln[body_start_local:]
+        m_num = num_re.search(body)
+        if not m_num:
+            continue
+        a = st + body_start_local + m_num.start()
+        b = st + body_start_local + m_num.end()
+        src = int(text[a:b])
+        dst = src + 1 if src >= 0 else src - 1
+        dst_s = str(dst)
+        edited = text[:a] + dst_s + text[b:]
+        return edited, {
+            "mode": "step_body_number_shift",
+            "changed": True,
+            "from": src,
+            "to": dst,
+            "edit_start": int(a),
+            "edit_end": int(a + len(dst_s)),
+            "inject_pos": int(a + len(dst_s)),
+            "step_line_start": int(st),
+            "step_line_end": int(ed),
+        }
+
+    return text, {
+        "mode": "step_body_number_shift",
+        "changed": False,
+        "reason": "no_number_in_step_body",
+        "inject_pos": None,
+    }
+
+
+def _advance_to_sentence_end(text: str, start: int, max_lookahead: int = 220) -> int:
+    if start < 0:
+        return 0
+    if start >= len(text):
+        return len(text)
+
+    line_start = text.rfind("\n", 0, start) + 1
+    line_end = text.find("\n", start)
+    if line_end < 0:
+        line_end = len(text)
+    line = text[line_start:line_end]
+    if re.match(r"^\s*Step\s+\d+\s*:", line, re.IGNORECASE):
+        return line_end
+
+    end = min(len(text), start + max(0, int(max_lookahead)))
+    stops = set(".!?。！？\n")
+    for i in range(start, end):
+        if text[i] in stops:
+            return i + 1
+    return start
+
+
+def _flip_first_plus_minus_operator(text: str) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"mode": "sign_flip", "changed": False, "reason": "empty_text", "inject_pos": None}
+    for i, ch in enumerate(text):
+        if ch not in "+-":
+            continue
+        j = i - 1
+        while j >= 0 and text[j].isspace():
+            j -= 1
+        k = i + 1
+        while k < len(text) and text[k].isspace():
+            k += 1
+        if j < 0 or k >= len(text):
+            continue
+        left = text[j]
+        right = text[k]
+        if (left.isalnum() or left in ")]}") and (right.isalnum() or right in "([{"):
+            repl = "-" if ch == "+" else "+"
+            edited = text[:i] + repl + text[i + 1 :]
+            return edited, {
+                "mode": "sign_flip",
+                "changed": True,
+                "from": ch,
+                "to": repl,
+                "pos": i,
+                "inject_pos": i + 1,
+            }
+    return text, {"mode": "sign_flip", "changed": False, "reason": "no_operator_found", "inject_pos": None}
+
+
 def evaluate_branch(
-    prefix_text: str,
+    edited_prefix_text: str,
     continuation_text: str,
     full_text: str,
     expected_regex: Optional[str],
 ) -> Dict[str, object]:
-    overlap = longest_suffix_prefix_overlap(prefix_text, continuation_text, max_k=300)
+    overlap = longest_suffix_prefix_overlap(edited_prefix_text, continuation_text, max_k=300)
     return {
         "think_balanced": think_balance_ok(full_text),
         "overlap_prefix_to_continuation": overlap,
@@ -190,6 +366,15 @@ def run_task_ab(
     auto_close_unclosed_think: bool,
     chunk_size: int,
     inject_text: str,
+    corrupt_mode: str,
+    corrupt_anchor_regex: str,
+    corrupt_max_changes: int,
+    corrupt_window_chars: int,
+    corrupt_step_select: str,
+    corrupt_after_first_think: bool,
+    corrupt_prefer_sign_flip: bool,
+    force_inject_at_corrupt: bool,
+    force_inject_at_sentence_end: bool,
     apply_match_cover_flag: bool,
     apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
@@ -201,6 +386,34 @@ def run_task_ab(
     user_prompt = maybe_append_math_step_guidance(task["user_prompt"], math_step_user_guidance)
     expected_regex = task.get("expected_regex")
     reference_output = task.get("reference_output")
+
+    task_corrupt_note = task.get("corrupt_note")
+    task_corrupt_plan = str(task.get("corrupt_plan", "")).strip().lower()
+    task_corrupt_anchor_regex = task.get("corrupt_anchor_regex")
+    task_corrupt_after_first_think = task.get("corrupt_after_first_think")
+
+    effective_corrupt_mode = corrupt_mode
+    effective_corrupt_anchor_regex = corrupt_anchor_regex
+    effective_corrupt_after_first_think = bool(corrupt_after_first_think)
+    effective_corrupt_prefer_sign_flip = bool(corrupt_prefer_sign_flip)
+    force_sign_only = False
+
+    if task_corrupt_plan in {"sign_flip", "sign_only"}:
+        effective_corrupt_prefer_sign_flip = True
+        effective_corrupt_mode = "none"
+        force_sign_only = True
+    elif task_corrupt_plan in {"number_shift", "anchor_number_shift", "none"}:
+        effective_corrupt_prefer_sign_flip = False
+        effective_corrupt_mode = task_corrupt_plan
+    elif task_corrupt_plan in {"sign_then_number", "auto", ""}:
+        pass
+    else:
+        task_corrupt_plan = ""
+
+    if isinstance(task_corrupt_anchor_regex, str) and task_corrupt_anchor_regex:
+        effective_corrupt_anchor_regex = task_corrupt_anchor_regex
+    if isinstance(task_corrupt_after_first_think, bool):
+        effective_corrupt_after_first_think = task_corrupt_after_first_think
 
     used_system_prompt = compose_system_prompt(
         system_prompt,
@@ -216,7 +429,6 @@ def run_task_ab(
         enable_thinking=True,
     )
 
-    # 1) 生成到 checkpoint，得到注入前缀。
     ckpt = generate_until_checkpoint(
         model=model,
         tokenizer=tokenizer,
@@ -238,18 +450,128 @@ def run_task_ab(
     prefix_ids = ckpt["generated_ids"]
     prefix_text = ckpt.get("generated_text") or tokenizer.decode(prefix_ids, skip_special_tokens=False)
 
-    prefix_think_gap = _think_balance_delta(prefix_text)
+    target_prefix = prefix_text
+    head_prefix = ""
+    scope_meta: Dict[str, object] = {
+        "corrupt_after_first_think": bool(effective_corrupt_after_first_think),
+        "first_think_closed_found": False,
+    }
+    if effective_corrupt_after_first_think:
+        head_prefix, target_prefix, found_close = _split_after_first_think_close(prefix_text)
+        scope_meta["first_think_closed_found"] = bool(found_close)
+        if not found_close:
+            head_prefix = ""
+            target_prefix = prefix_text
+
+    edited_target = target_prefix
+    corrupt_meta: Dict[str, object] = {"mode": "none", "changed": False}
+    sign_meta: Optional[Dict[str, object]] = None
+
+    if effective_corrupt_prefer_sign_flip:
+        sign_edited, sign_meta = _flip_first_plus_minus_operator(edited_target)
+        if bool(sign_meta.get("changed")):
+            edited_target = sign_edited
+            corrupt_meta = sign_meta
+
+    if not bool(corrupt_meta.get("changed")) and force_sign_only and sign_meta is not None:
+        corrupt_meta = sign_meta
+
+    if not bool(corrupt_meta.get("changed")) and not force_sign_only:
+        prefer_step_body = bool(effective_corrupt_after_first_think) and bool(
+            re.search(r"(?im)^\s*step\s+\d+\s*:", edited_target)
+        )
+
+        if effective_corrupt_mode == "number_shift":
+            if prefer_step_body:
+                edited_target, corrupt_meta = _corrupt_step_body_number(
+                    edited_target,
+                    anchor_regex=effective_corrupt_anchor_regex,
+                    step_select=corrupt_step_select,
+                )
+                if not bool(corrupt_meta.get("changed")):
+                    edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
+            else:
+                edited_target, corrupt_meta = corrupt_prefix_text(edited_target)
+        elif effective_corrupt_mode == "anchor_number_shift":
+            if prefer_step_body:
+                edited_target, corrupt_meta = _corrupt_step_body_number(
+                    edited_target,
+                    anchor_regex=effective_corrupt_anchor_regex,
+                    step_select=corrupt_step_select,
+                )
+                if not bool(corrupt_meta.get("changed")):
+                    edited_target, corrupt_meta = corrupt_numbers_near_anchor(
+                        edited_target,
+                        anchor_regex=effective_corrupt_anchor_regex,
+                        max_changes=corrupt_max_changes,
+                        window_chars=corrupt_window_chars,
+                    )
+            else:
+                edited_target, corrupt_meta = corrupt_numbers_near_anchor(
+                    edited_target,
+                    anchor_regex=effective_corrupt_anchor_regex,
+                    max_changes=corrupt_max_changes,
+                    window_chars=corrupt_window_chars,
+                )
+
+    edited_text = head_prefix + edited_target
+    corrupt_meta.update(scope_meta)
+    corrupt_meta["corrupt_prefer_sign_flip"] = bool(effective_corrupt_prefer_sign_flip)
+    corrupt_meta["corrupt_mode_effective"] = effective_corrupt_mode
+    corrupt_meta["corrupt_anchor_regex_effective"] = effective_corrupt_anchor_regex
+    corrupt_meta["task_corrupt_plan"] = task_corrupt_plan or None
+    corrupt_meta["task_corrupt_note"] = task_corrupt_note
+    corrupt_meta["force_sign_only"] = bool(force_sign_only)
+    corrupt_meta["corrupt_region_start"] = len(head_prefix)
+
+    prefix_think_gap = _think_balance_delta(edited_text)
     if auto_close_unclosed_think and prefix_think_gap > 0:
-        prefix_text = prefix_text + ("\n</think>" * prefix_think_gap) + "\n"
+        edited_text = edited_text + ("\n</think>" * prefix_think_gap) + "\n"
+    corrupt_meta["prefix_open_think_before_inject"] = max(0, prefix_think_gap)
+    corrupt_meta["prefix_auto_closed_think"] = max(0, prefix_think_gap) if auto_close_unclosed_think else 0
 
-    prefix_ids_local = tokenizer.encode(prefix_text, add_special_tokens=False)
-    prefix_ids_t = torch.tensor([prefix_ids_local], dtype=torch.long, device=device)
-    full_ids_base = torch.cat([prompt_ids, prefix_ids_t], dim=1)
-    past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
+    branch_b_inject_pos = len(edited_text)
+    branch_b_force_overlap_applied = False
+    inject_pos_local_raw = corrupt_meta.get("inject_pos")
+    if force_inject_at_corrupt and bool(corrupt_meta.get("changed")) and inject_pos_local_raw is not None:
+        try:
+            inject_pos_local = int(inject_pos_local_raw)
+            inject_pos_global = len(head_prefix) + inject_pos_local
+            if 0 <= inject_pos_global <= len(edited_text):
+                raw_inject_pos_global = inject_pos_global
+                if force_inject_at_sentence_end:
+                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
+                branch_b_inject_pos = inject_pos_global
+                branch_b_force_overlap_applied = True
+                corrupt_meta["branch_b_inject_pos_raw"] = int(raw_inject_pos_global)
+        except Exception:
+            pass
 
-    # 2) Branch A：直接续写。
+    branch_b_prefix_text = edited_text[:branch_b_inject_pos]
+    branch_b_suffix_text = edited_text[branch_b_inject_pos:]
+    corrupt_meta["force_inject_at_corrupt"] = bool(force_inject_at_corrupt)
+    corrupt_meta["branch_b_force_overlap_applied"] = bool(branch_b_force_overlap_applied)
+    corrupt_meta["branch_b_inject_pos"] = int(branch_b_inject_pos)
+    corrupt_meta["branch_b_suffix_len"] = int(len(branch_b_suffix_text))
+    corrupt_meta["force_inject_at_sentence_end"] = bool(force_inject_at_sentence_end)
+
+    need_base_prefill = (branch_mode == "ab") or (branch_b_inject_pos == len(edited_text))
+    past_base = None
+    logits_base = None
+    full_ids_base = None
+
+    if need_base_prefill:
+        edited_ids = tokenizer.encode(edited_text, add_special_tokens=False)
+        edited_ids_t = torch.tensor([edited_ids], dtype=torch.long, device=device)
+        full_ids_base = torch.cat([prompt_ids, edited_ids_t], dim=1)
+        past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
+        del edited_ids_t
+
     branch_a_rec: Dict[str, object] = {"skipped": True, "reason": "branch_mode=b"}
     if branch_mode == "ab":
+        if past_base is None or logits_base is None:
+            raise RuntimeError("Branch A requires base prefill state, but it is missing.")
+
         past_a = clone_past_key_values(past_base)
         logits_a = logits_base.clone()
         gen_a_out = generate_from_state(
@@ -269,7 +591,7 @@ def run_task_ab(
 
         if apply_match_cover_flag:
             cont_a, cover_meta_a = apply_match_cover(
-                prefix_text,
+                edited_text,
                 cont_a_raw,
                 min_exact_overlap=cover_min_exact_overlap,
                 fuzzy_min_len=cover_fuzzy_min_len,
@@ -279,8 +601,8 @@ def run_task_ab(
         else:
             cont_a, cover_meta_a = cont_a_raw, {"mode": "disabled", "trimmed_chars": 0}
 
-        full_a = prefix_text + cont_a
-        eval_a = evaluate_branch(prefix_text, cont_a, full_a, expected_regex)
+        full_a = edited_text + cont_a
+        eval_a = evaluate_branch(edited_text, cont_a, full_a, expected_regex)
         branch_a_rec = {
             "continuation_text_raw": cont_a_raw,
             "continuation_text": cont_a,
@@ -298,9 +620,28 @@ def run_task_ab(
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    # 3) Branch B：注入 <think> 后续写。
-    past_b = clone_past_key_values(past_base)
-    logits_b = logits_base.clone()
+    if branch_b_inject_pos == len(edited_text):
+        if past_base is None or logits_base is None:
+            raise RuntimeError("Branch B requires base prefill state, but it is missing.")
+        past_b = clone_past_key_values(past_base)
+        logits_b = logits_base.clone()
+    else:
+        branch_b_ids = tokenizer.encode(branch_b_prefix_text, add_special_tokens=False)
+        branch_b_ids_t = torch.tensor([branch_b_ids], dtype=torch.long, device=device)
+        full_ids_b = torch.cat([prompt_ids, branch_b_ids_t], dim=1)
+        past_b, logits_b = prefill_kv(model, full_ids_b, chunk_size=chunk_size)
+        del branch_b_ids_t
+        del full_ids_b
+
+    if past_base is not None:
+        del past_base
+    if logits_base is not None:
+        del logits_base
+    if full_ids_base is not None:
+        del full_ids_base
+    del prompt_ids
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     inject_ids = tokenizer.encode(inject_text, add_special_tokens=False)
     inject_ids_t = torch.tensor([inject_ids], dtype=torch.long, device=device)
@@ -355,7 +696,7 @@ def run_task_ab(
     cont_b_raw = tokenizer.decode(gen_b, skip_special_tokens=False)
     if apply_match_cover_flag:
         cont_b, cover_meta_b = apply_match_cover(
-            prefix_text + inject_text,
+            branch_b_prefix_text + inject_text,
             cont_b_raw,
             min_exact_overlap=cover_min_exact_overlap,
             fuzzy_min_len=cover_fuzzy_min_len,
@@ -367,7 +708,7 @@ def run_task_ab(
 
     if apply_cross_think_cover_flag:
         cont_b, cross_cover_meta_b = apply_cross_think_match_cover(
-            prefix_text,
+            branch_b_prefix_text,
             cont_b,
             min_exact_overlap=max(16, cover_min_exact_overlap // 2),
             fuzzy_min_len=max(12, cover_fuzzy_min_len // 2),
@@ -377,19 +718,21 @@ def run_task_ab(
     else:
         cross_cover_meta_b = {"mode": "disabled", "trimmed_chars": 0}
 
-    full_b = prefix_text + inject_text + cont_b
+    full_b = branch_b_prefix_text + inject_text + cont_b
     full_b_think_gap = _think_balance_delta(full_b)
     if auto_close_unclosed_think and full_b_think_gap > 0:
         closer = ("\n</think>" * full_b_think_gap) + "\n"
         cont_b = cont_b + closer
         full_b = full_b + closer
 
-    eval_b = evaluate_branch(prefix_text, cont_b, full_b, expected_regex)
+    eval_b = evaluate_branch(branch_b_prefix_text, cont_b, full_b, expected_regex)
 
     return {
         "task_id": task_id,
         "user_prompt": user_prompt,
         "expected_regex": expected_regex,
+        "task_corrupt_note": task_corrupt_note,
+        "task_corrupt_plan": task_corrupt_plan or None,
         "reference_output": reference_output,
         "prompt_mode": prompt_mode,
         "system_prompt_used": used_system_prompt,
@@ -408,17 +751,12 @@ def run_task_ab(
             ),
         },
         "prefix_seen_first_think_end": bool(ckpt["seen_first_think_end"]),
-        "prefix_tokens": len(prefix_ids_local),
-        "insert_meta": {
-            "inject_text": inject_text,
-            "inject_opens_think": bool(inject_opens_think),
-            "prefix_open_think_before_inject": max(0, prefix_think_gap),
-            "prefix_auto_closed_think": max(0, prefix_think_gap) if auto_close_unclosed_think else 0,
-        },
+        "prefix_tokens": len(prefix_ids),
+        "corrupt_meta": corrupt_meta,
         "branch_mode": branch_mode,
         "branch_A": branch_a_rec,
         "branch_B": {
-            "prefix_text": prefix_text,
+            "prefix_text": branch_b_prefix_text,
             "continuation_text_raw": cont_b_raw,
             "continuation_text": cont_b,
             "full_text": full_b,
@@ -427,6 +765,7 @@ def run_task_ab(
             "retry_info": {
                 "retry_times": max(0, int(b_retry_times)),
                 "min_tokens_before_eos": effective_min_b,
+                "prefix_open_think_before_inject": max(0, prefix_think_gap),
                 "retry_reasons": retry_reasons,
                 "forced_close_think": max(0, full_b_think_gap) if auto_close_unclosed_think else 0,
             },
@@ -462,7 +801,6 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             m = branch_obj.get("metrics")
             if not isinstance(m, dict):
                 continue
-
             think_ok.append(bool(m["think_balanced"]))
             rep_flags.append(bool(m["repetition_flag"]))
             overlaps.append(int(m["overlap_prefix_to_continuation"]))
@@ -522,6 +860,11 @@ def main() -> None:
     else:
         resolved_checkpoint_regex = None
 
+    if args.corrupt_anchor_regex == "__auto__":
+        resolved_corrupt_anchor_regex = auto_corrupt_anchor_regex()
+    else:
+        resolved_corrupt_anchor_regex = args.corrupt_anchor_regex
+
     resolved_checkpoint_mid_avoid_final_regex: Optional[str] = (
         args.checkpoint_mid_avoid_final_regex if args.checkpoint_mid_avoid_final_regex else None
     )
@@ -574,6 +917,15 @@ def main() -> None:
                 auto_close_unclosed_think=bool(args.auto_close_unclosed_think),
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
+                corrupt_mode=args.corrupt_mode,
+                corrupt_anchor_regex=resolved_corrupt_anchor_regex,
+                corrupt_max_changes=args.corrupt_max_changes,
+                corrupt_window_chars=args.corrupt_window_chars,
+                corrupt_step_select=args.corrupt_step_select,
+                corrupt_after_first_think=bool(args.corrupt_after_first_think),
+                corrupt_prefer_sign_flip=bool(args.corrupt_prefer_sign_flip),
+                force_inject_at_corrupt=bool(args.force_inject_at_corrupt),
+                force_inject_at_sentence_end=bool(args.force_inject_at_sentence_end),
                 apply_match_cover_flag=bool(args.apply_match_cover),
                 apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,
@@ -593,7 +945,9 @@ def main() -> None:
                 print(f"model={model_path}")
                 print(f"task={rec.get('task_id')}")
                 print(f"branch_mode={rec.get('branch_mode')}")
-                print(f"insert_meta={json.dumps(rec.get('insert_meta', {}), ensure_ascii=False)}")
+                print(f"task_corrupt_plan={rec.get('task_corrupt_plan')}")
+                print(f"task_corrupt_note={rec.get('task_corrupt_note')}")
+                print(f"corrupt_meta={json.dumps(rec.get('corrupt_meta', {}), ensure_ascii=False)}")
                 print(f"branch_B_retry={json.dumps(rec['branch_B'].get('retry_info', {}), ensure_ascii=False)}")
                 print(f"branch_B_stop_reason={rec['branch_B'].get('stop_reason')}")
                 print(f"branch_B_cross_think_cover={json.dumps(rec['branch_B'].get('cross_think_cover', {}), ensure_ascii=False)}")
@@ -620,10 +974,12 @@ def main() -> None:
                         {
                             "task_id": rec.get("task_id"),
                             "user_prompt": rec.get("user_prompt"),
+                            "task_corrupt_plan": rec.get("task_corrupt_plan"),
+                            "task_corrupt_note": rec.get("task_corrupt_note"),
                             "reference_output": rec.get("reference_output"),
                             "expected_regex": rec.get("expected_regex"),
                             "checkpoint_meta": rec.get("checkpoint_meta", {}),
-                            "insert_meta": rec.get("insert_meta", {}),
+                            "corrupt_meta": rec.get("corrupt_meta", {}),
                             "branch_mode": rec.get("branch_mode"),
                             "branch_A_metrics": rec["branch_A"].get("metrics"),
                             "branch_B_metrics": rec["branch_B"]["metrics"],
@@ -663,6 +1019,15 @@ def main() -> None:
             "checkpoint_mid_min_tokens": args.checkpoint_mid_min_tokens,
             "checkpoint_mid_max_tokens": args.checkpoint_mid_max_tokens,
             "checkpoint_mid_avoid_final_regex": resolved_checkpoint_mid_avoid_final_regex,
+            "corrupt_mode": args.corrupt_mode,
+            "corrupt_anchor_regex": resolved_corrupt_anchor_regex,
+            "corrupt_max_changes": args.corrupt_max_changes,
+            "corrupt_window_chars": args.corrupt_window_chars,
+            "corrupt_step_select": args.corrupt_step_select,
+            "corrupt_after_first_think": bool(args.corrupt_after_first_think),
+            "corrupt_prefer_sign_flip": bool(args.corrupt_prefer_sign_flip),
+            "force_inject_at_corrupt": bool(args.force_inject_at_corrupt),
+            "force_inject_at_sentence_end": bool(args.force_inject_at_sentence_end),
             "apply_match_cover": bool(args.apply_match_cover),
             "apply_cross_think_cover": bool(args.apply_cross_think_cover),
             "cover_min_exact_overlap": args.cover_min_exact_overlap,
