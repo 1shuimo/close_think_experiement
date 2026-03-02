@@ -57,7 +57,19 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--corrupt-max-changes", type=int, default=2)
     p.add_argument("--corrupt-window-chars", type=int, default=240)
     p.add_argument("--corrupt-min-step", type=int, default=0)
-    p.add_argument("--corrupt-after-first-think", action="store_true")
+    p.add_argument(
+        "--corrupt-after-first-think",
+        dest="corrupt_after_first_think",
+        action="store_true",
+        default=True,
+        help="Enable step-first / token-fallback corruption scope after first </think> (default: enabled).",
+    )
+    p.add_argument(
+        "--no-corrupt-after-first-think",
+        dest="corrupt_after_first_think",
+        action="store_false",
+        help="Disable after-first-think scoping and allow corruption on full prefix.",
+    )
     p.add_argument("--corrupt-prefer-sign-flip", action="store_true")
     p.add_argument("--force-inject-at-corrupt", action="store_true")
     p.add_argument("--force-inject-at-sentence-end", action="store_true")
