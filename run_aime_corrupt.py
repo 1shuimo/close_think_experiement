@@ -56,7 +56,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--corrupt-step-select", default="middle", choices=["anchor", "middle"])
     p.add_argument("--corrupt-max-changes", type=int, default=2)
     p.add_argument("--corrupt-window-chars", type=int, default=240)
-    p.add_argument("--corrupt-min-step", type=int, default=0)
+    p.add_argument("--corrupt-min-step", type=int, default=2)
     p.add_argument(
         "--corrupt-after-first-think",
         dest="corrupt_after_first_think",
