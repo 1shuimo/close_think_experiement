@@ -1,0 +1,245 @@
+# aime2025_i_12
+
+- corrupt_summary: {"mode": "anchor_fallback_number_shift", "changed": true, "from": 9, "to": 10, "edit_start": 180, "edit_end": 182, "target_token_offset": null}
+- stop_reason: max_new_tokens
+- new_tokens: 1200
+- think_balanced: False
+- expected_hit: False
+
+```text
+<think>
+Okay, let's try to solve this problem step by step. The question is asking for the number of non-congruent triangles with integer side lengths that have one side of length 10 and one angle that is twice another angle. Hmm, okay. So first, I need to recall some triangle properties and maybe some trigonometric laws like the Law of Sines or Cosines.
+
+Let me start by considering the triangle with sides a, b, c, where one of them is 9. Let's say, without loss of generality, that side a is 9. But actually, the problem says "one side of length 9," so maybe I need to consider different positions of the 9 in the triangle. But since triangles are considered up to congruence, maybe I can fix the side of length 9 as a specific side, say side BC, and then consider the angles opposite to the other sides. Wait, but angles being in a ratio of 2:1 complicates things.
+
+The key here is that one angle is twice another. Let's denote the angles. Let me think. Suppose in triangle ABC, angle A is twice angle B, or angle B is twice angle C, etc. There are different possibilities for which angle is twice which. So maybe I need to consider different cases based on which angle is twice another.
+
+Let me recall that in a triangle, the sum of angles is 180 degrees. So if one angle is twice another, let's say angle A = 2 angle B. Then angle C would be 180 - angle A - angle B = 180 - 3 angle B. So angle C = 180 - 3B. But angles must be positive, so 180 - 3B > 0 => B < 60 degrees. Similarly, angle A = 2B < 120 degrees. So angle B is between 0 and 60, angle A between 0 and 120, angle C between 120 and 180? Wait, no. Wait, angle C is 180 - 3B. Since B is positive, angle C is less than 180. But if B is small, angle C could be large. For example, if B approaches 0, angle C approaches 180. But in reality, angles can't be zero, so there's a lower bound. But maybe I need to find relations between the sides using the Law of Sines.
+
+Law of Sines says that a/sin A = b/sin B = c/sin C. So if angle A is twice angle B, then a/sin(2B) = b/sin B. Let's compute that. Sin(2B) is 2 sin B cos B. So a/(2 sin B cos B) = b/sin B => a/(2 cos B) = b => a = 2b cos B. So that's a relation between sides a and b. But since we have integer sides, maybe we can express this in terms of the sides.
+
+But we also have the side of length 9. Let me think. Suppose that the side opposite angle A is a, opposite angle B is b, and opposite angle C is c. So if angle A is twice angle B, then a = 2b cos B. But how do I relate this to the sides? Also, since we have integer sides, maybe I can find relations between the sides using trigonometric identities.
+
+Alternatively, maybe I can use the Law of Cosines. For example, if angle A is twice angle B, then perhaps there's a relation between the sides. But this might get complicated. Let me think of specific cases.
+
+Let me consider different cases where one angle is twice another. There are three possibilities for which angle is twice which:
+
+1. Angle A = 2 angle B
+2. Angle B = 2 angle A
+3. Angle A = 2 angle C
+4. Angle C = 2 angle A
+5. Angle B = 2 angle C
+6. Angle C = 2 angle B
+
+But since the triangle is determined up to congruence, maybe some of these cases are similar. Let me try to handle each case.
+
+First, let's take case 1: angle A = 2 angle B. Then, as before, angle C = 180 - 3B. Using Law of Sines:
+
+a / sin(2B) = b / sin B = c / sin(180 - 3B) = c / sin(3B)
+
+So from a / sin(2B) = b / sin B, we get a = 2b cos B (as before). Also, from b / sin B = c / sin(3B), so c = b * sin(3B)/sin B.
+
+Let me compute sin(3B). Using the identity sin(3B) = 3 sin B - 4 sin^3 B. But maybe another approach. Alternatively, sin(3B) = sin(2B + B) = sin 2B cos B + cos 2B sin B. Which is 2 sin B cos^2 B + (1 - 2 sin^2 B) sin B. Hmm, maybe not helpful. Alternatively, express in terms of cos B. Let me think.
+
+Alternatively, since we have a relation between a and b, maybe we can express c in terms of b and cos B. Let me see. From a = 2b cos B, so cos B = a/(2b). Then, using the Law of Cosines on angle B. Wait, angle B is opposite side b. So Law of Cosines: b² = a² + c² - 2ac cos B. But cos B is a/(2b). So substituting:
+
+b² = a² + c² - 2ac*(a/(2b)) => b² = a² + c² - (a² c)/b.
+
+Hmm, this seems complicated. Maybe there's another way. Let me try using the Law of Sines again. Since c = b * sin(3B)/sin B. Let me compute sin(3B)/sin B. Using the identity:
+
+sin(3B)/sin B = 3 - 4 sin² B. Wait, no. Let me compute it properly. Let me use the identity for sin(3B):
+
+sin(3B) = 3 sin B - 4 sin³ B. Therefore, sin(3B)/sin B = 3 - 4 sin² B. So c = b*(3 - 4 sin² B). But how does this help? Maybe express sin² B in terms of cos B. Since sin² B = 1 - cos² B. So:
+
+c = b*(3 - 4(1 - cos² B)) = b*(3 - 4 + 4 cos² B) = b*(-1 + 4 cos² B). But from earlier, cos B = a/(2b). Therefore:
+
+c = b*(-1 + 4*(a/(2b))²) = b*(-1 + 4*(a²/(4b²))) = b*(-1 + a²/b²) = -b + a²/b.
+
+So c = (a² - b²)/b. Therefore, c = a²/b - b. Since c must be a positive real number, this gives a condition that a²/b - b > 0 => a² > b² => a > b. Which makes sense because angle A is twice angle B, so side a should be longer than side b.
+
+So, in this case, we have c = (a² - b²)/b. Also, since the sides must be integers, and we have a side of length 9. Now, the problem states that the triangle has one side of length 9. So either a, b, or c is 9. Let's consider each possibility.
+
+Case 1a: a = 9. Then, since a = 9, and angle A is twice angle B. Then, c = (9² - b²)/b = (81 - b²)/b. Also, since the triangle must satisfy the triangle inequalities. The sides are a=9, b, c=(81 - b²)/b. Let's check triangle inequalities:
+
+1. a + b > c: 9 + b > (81 - b²)/b => Multiply both sides by b (assuming b > 0): 9b + b² > 81 - b² => 9b + b² + b² - 81 > 0 => 2b² + 9b - 81 > 0. Let's solve 2b² +9b -81 >0. The quadratic equation 2b² +9b -81=0. Discriminant D=81 + 4*2*81=81(1 + 8)=81*9=729. sqrt(D)=27. So roots are (-9 ±27)/4. Positive root is (18)/4=4.5. So for b > 4.5, the inequality holds. Since b is integer, b ≥5.
+
+2. a + c > b: 9 + c > b. Since c = (81 - b²)/b, so 9 + (81 - b²)/b > b. Multiply by b: 9b +81 -b² > b² => 9b +81 > 2b² => 2b² -9b -81 <0. Solve 2b² -9b -81=0. Discriminant D=81 + 4*2*81= same as before, 729. Roots (9 ±27)/4. Positive root is (36)/4=9. So inequality holds for b between the roots. Since the quadratic opens upwards, the inequality 2b² -9b -81 <0 holds for b between -something and 9. Since b is positive, the valid range is 0 < b <9. Since b is integer ≥5 (from previous condition), then b can be 5,6,7,8.
+
+3. b + c > a: b + c >9. c = (81 -b²)/b. So b + (81 -b²)/b >9. Multiply by b: b² +81 -b² >9b => 81 >9b => b <9. So again, b must be less than 9. So combining with previous, b can be 5,6,7,8.
+
+So for case 1a (a=9), possible b values are 5,6,7,8. Let's check each:
+
+For b=5: c=(81 -25)/5=56/5=11.2. Not integer. So invalid.
+
+b=6: c=(81 -36)/6=45/6=7.5. Not integer.
+
+b=7: c=(81 -49)/7=32/7≈4.57. Not integer.
+
+b=8: c=(81 -64)/8=17/8=2.125. Not integer.
+
+So none of these give integer c. Therefore, in case 1a (a=9, angle A=2 angle B), there are no solutions.
+
+Hmm, that's a problem. Maybe I made a mistake here. Let me check the calculation for c when a=9 and b=5. 81 -5²=81-25=56. 56/5=11.2. Correct. So no integer. So case 1a gives no triangles.
+
+Case 1b: b=9. So in this case, side b is 9, which is opposite angle B. Then, angle A is twice angle B. From earlier, a=2b cos B. Also, c=(a² -b²)/b. Since b=9, then a=2*9*cos B=18 cos B. Also, c=(a² -81)/9. Since a and c must be integers, and cos B must be rational? Because a=18 cos B must be integer. Let me denote cos B = k/18, where k is integer. Wait, but cos B must be between 0 and 1 (since angle B is between 0 and 60 degrees, as angle A is twice angle B and angle C is 180-3B, which must be positive). So k must be between 0 and 18. But also, since angle B is positive, cos B < 1. So k can be from 1 to 17? Wait, but a=18 cos B must be integer. So cos B must be rational. Let me think. Let me denote cos B = m/n in reduced terms. Then a=18*(m/n) must be integer. So n divides 18m. Since m and n are coprime, n divides 18. So possible denominators n are divisors of 18: 1,2,3,6,9,18. But cos B must be such that angle B is valid. Also, since angle B is between 0 and 60 degrees, cos B is between 0.5 and 1 (since cos 60°=0.5). Wait, cos 0°=1, cos 60°=0.5. So cos B is between 0.5 and 1. Therefore, m/n must be in (0.5, 1). So m/n > 0.5 => 2m >n. Also, since m and n are coprime, and n divides 18. Let me list possible fractions m/n with denominator dividing 18, between 0.5 and 1.
+
+Possible denominators: 1,2,3,6,9,18.
+
+For denominator 1: m/n must be between 0.5 and 1. So m=1, but 1/1=1. So cos B=1. But angle B would be 0°, which is invalid. So no.
+
+Denominator 2: fractions between 0.5 and 1. The possible fractions are 1/2 (excluded since it's 0.5), 2/2=1 (invalid). So no.
+
+Denominator 3: fractions between 0.5 and 1. 2/3 ��0.666, 3/3=1. So 2/3 is valid. So cos B=2/3. Then a=18*(2/3)=12. Then c=(a² -81)/9=(144 -81)/9=63/9=7. So c=7. So sides are a=12, b=9, c=7. Check triangle inequalities: 7+9>12? 16>12 yes. 7+12>9? 19>9 yes. 9+12>7? 21>7 yes. So valid. Also, check if angles satisfy angle A=2 angle B. Let's verify using Law of Sines. a/sin A = b/sin B. So 12/sin A =9/sin B. Also, angle A=2 angle B. So sin A=sin 2B=2 sin B cos B. Therefore, 12/(2 sin B cos B)=9/sin B => 12/(2 cos B)=9 => 6/cos B=9 => cos B=6/9=2/3. Which matches our earlier value. So this is valid. So this is a valid triangle with sides 7,9,12. But since triangles are considered up to congruence, the order doesn't matter. So this is one triangle.
+
+Next, denominator 3: any other fractions? 3/3=1 invalid. So only 2/3.
+
+Denominator 6: fractions between 0.5 and 1. Let's see. 3/6=0.5 (excluded), 4/6=2/3≈0.666, 5/6≈0.833, 6/6=1. So possible fractions are 4/6=2/3 (already considered), 5/6. Let's check 5/6. cos B=5/6. Then a=18*(5/6)=15. Then c=(a² -81)/9=(225 -81)/9=144/9=16. So sides are a=15, b=9, c=16. Check triangle inequalities: 9+15>16? 24>16 yes. 9+16>15? 25>15 yes. 15+16>9? 31>9 yes. Valid. Check angles: angle A=2 angle B. Using Law of Sines: 15/sin A =9/sin B. Since angle A=2B, sin A=sin 2B=2 sin B cos B. So 15/(2 sin B cos B)=9/sin B => 15/(2 cos B)=9 => cos B=15/(18)=5/6. Correct. So this is another valid triangle with sides 9,15,16. But since order doesn't matter, it's 9,15,16.
+
+Denominator 9: fractions between 0.5 and 1. Let's see. 5/9≈0.555, 6/9=2/3≈0.666, 7/9≈0.777, 8/9≈0.888, 9/9=1. So possible fractions are 5/9, 6/9=2/3 (already considered), 7/9, 8/9.
+
+Check 5/9: cos B=5/9. Then a=18*(5/9)=10. Then c=(10² -81)/9=(100-81)/9=19/9≈2.11. Not integer. So invalid.
+
+Check 7/9: cos B=7/9. a=18*(7/9)=14. c=(14² -81)/9=(196-81)/9=115/9≈12.78. Not integer.
+
+Check 8/9: cos B=8/9. a=18*(8/9)=16. c=(16² -81)/9=(256-81)/9=175/9≈19.44. Not integer. So only 5/9 and 7/9 and 8/9 don't give integer c. So only 5/9 gives non-integer. So no new triangles here.
+
+Denominator 18: fractions between 0.5 and 1. Let's see. 9/18=0.5 (excluded), 10/18=5/9≈0.555, 11/18≈0.611, 12/18=2/3≈0.666, 13/18≈0.722, 14/18=7/9≈0.777, 15/18=5/6≈0.833, 16/18=8/9≈0.888, 17/18≈0.944, 18/18=1. So possible fractions are 10/18=5/9 (already considered), 11/18, 12/18=2/3, 13/18, etc.
+
+Check 11/18: cos B=11/18. Then a=18*(11/18)=11. Then c=(11² -81)/9=(121-81)/9=40/9≈4.44. Not integer.
+
+Check 13/18: a=18*(13/18)=13. c=(13² -81)/9=(169-81)/9=88/9≈9.78. Not integer.
+
+Check 15/18=5/6: already considered.
+
+Check 17/18: a=17. c=(17² -81)/9=(289-81)/9=208/9≈23.11. Not integer. So no new triangles here.
+
+So for case 1b (b=9), we have two triangles: (7,9,12) and (9,15,16). Wait, but (9,15,16) is same as (15,9,16), etc. So these are two distinct triangles.
+
+Case 1c: c=9. In this case, side c is opposite angle C, which is 180-3B. So angle C=180-3B. From earlier, c=(a² -b²)/b. So setting c=9, we have (a² -b²)/b=9 => a² -b²=9b => a² =b² +9b. Also, since angle A=2 angle B, and using Law of Sines relations. Also, the triangle inequalities must hold. Also, sides a, b, c=9 must be integers. So a and b are integers, and a² =b² +9b. Let's find integer solutions for a and b.
+
+We can think of this as a² =b² +9b. Let me rearrange: a² =b² +9b. Let me complete the square for the right-hand side. b² +9b = (b + 9/2)^2 - (81/4). So a² = (b + 9/2)^2 - 81/4. Multiply both sides by 4: 4a² = (2b +9)^2 -81. Then 4a² +81 = (2b +9)^2. Let me denote x=2b+9 and y=2a. Then equation becomes y² + 81 = x². Wait, no. Wait, original equation after multiplying by 4: 4a² +81 = (2b +9)^2. Let me rearrange: (2b +9)^2 - (2a)^2 =81. Which factors as (2b +9 -2a)(2b +9 +2a)=81. Let me denote m=2b +9 -2a and n=2b +9 +2a, so that m*n=81. Also, since m and n are integers, and n > m (since 2b +9 +2a > 2b +9 -2a if a>0). Also, since 81 is positive, both m and n are positive or both negative. But since 2b +9 +2a is positive (as b and a are positive integers), m and n must be positive. So we can consider positive factor pairs of 81.
+
+The factors of 81 are (1,81), (3,27), (9,9). Also, since m < n, we can take these pairs. Let's consider each:
+
+Case 1c1: m=1, n=81. Then:
+
+m=2b +9 -2a=1
+
+n=2b +9 +2a=81
+
+Adding the two equations: 4b +18 =82 => 4b=64 => b=16. Then substituting back into one equation: 2*16 +9 -2a=1 => 32 +9 -2a=1 =>41 -2a=1 =>2a=40 =>a=20. So a=20, b=16. Check if a² =b² +9b: 20²=400, 16² +9*16=256 +144=400. Correct. So this is a valid solution. The sides are a=20, b=16, c=9. Check triangle inequalities: 16+9>20? 25>20 yes. 16+20>9? 36>9 yes. 9+20>16? 29>16 yes. Valid. Also, check if angle A=2 angle B. Let's verify using Law of Sines. a/sin A = b/sin B. Since angle A=2 angle B, sin A=sin 2B=2 sin B cos B. So 20/(2 sin B cos B)=16/sin B => 20/(2 cos B)=16 => 10/cos B=16 => cos B=10/16=5/8. Let's check if this holds. From earlier, in this case, we have a=20, b=16. From the Law of Cosines, cos B=(a² +c² -b²)/(2ac). Wait, angle B is opposite side b=16. So Law of Cosines: cos B=(a² +c² -b²)/(2ac). Wait, no: Law of Cosines for angle B is:
+
+cos B = (a² + c² - b²)/(2ac). Wait, angle B is opposite side b, so adjacent sides are a and c. So yes. So cos B=(20² +9² -16²)/(2*20*9). Let's compute numerator: 400 +81 -256= 225. So cos B=225/(2*20*9)=225/360=5/8. Which matches. So angle A is indeed twice angle B. So this is a valid triangle.
+
+Case 1c2: m=3, n=27. Then:
+
+m=2b +9 -2a=3
+
+n=2b +9 +2a=27
+
+Adding: 4b +18=30 =>4b=12 =>b=3. Then substituting into first equation: 2*3 +9 -2a=3 =>6+9 -2a=3 =>15 -2a=3 =>2a=12 =>a=6. Check a²=6²=36. b² +9b=9 +27=36. Correct. So sides are a=6, b=3, c=9. Check triangle inequalities: 3+9>6? 12>6 yes. 3+6>9? 9>9? No, 9 is not greater than 9. So this violates the triangle inequality. Therefore, invalid. So discard this solution.
+
+Case 1c3: m=9, n=9. Then:
+
+m=2b +9 -2a=9
+
+n=2b +9 +2a=9
+
+Adding: 4b +18=18 =>4b=0 =>b=0. Invalid since side lengths must be positive. So discard.
+
+Thus, in case 1c (c=9), only one valid triangle: (9,16,20). Wait, but the sides are a=20, b=16, c=9. So the triangle is 9,16,20. Which is same as 9,16,20. So that's another triangle.
+
+So for case 1 (angle A=2 angle B), we have three triangles: from case 1b (7,9,12 and 9,15,16) and case 1c (9,16,20). Wait, but case 1b gave two triangles and case 1c gave one. Let me count again:
+
+From case 1b (b=9): two triangles: (7,9,12) and (9,15,16).
+
+From case 1c (c=9): one triangle: (9,16,20).
+
+So total three triangles in case 1.
+
+Now, moving to case 2: angle B=2 angle A. Let's analyze this. Let me denote angle B=2 angle A. Then angle C=180 - angle A - angle B=180 - angle A - 2 angle A=180 -3 angle A. So angle C=180-3A. For angles to be positive, 180-3A>0 => A<60 degrees. Also, angle B=2A < 120 degrees. So similar to case 1 but with angles A and B swapped.
+
+Using Law of Sines: a/sin A = b/sin B = c/sin C. Since angle B=2A, then b/sin 2A = a/sin A => b/(2 sin A cos A) = a/sin A => b/(2 cos A)=a => b=2a cos A. Also, from angle C=180-3A, so c/sin(180-3A)=a/sin A => c/sin(3A)=a/sin A => c= a sin(3A)/sin A. As before, sin(3A)/sin A=3-4 sin² A. But perhaps using the same approach as before. Alternatively, using Law of Cosines. Let me try to find relations between sides.
+
+Alternatively, similar to case 1, we can derive expressions. Let me try using the same method as before. From b=2a cos A. Also, using Law of Cosines on angle A. Let me think. Angle A is opposite side a. Law of Cosines: a² = b² + c² - 2bc cos A. But cos A = b/(2a). So substituting:
+
+a² = b² + c² - 2bc*(b/(2a)) => a² = b² + c² - (b² c)/a. Multiply both sides by a:
+
+a³ = a b² + a c² - b² c. This seems complicated. Let me try using the Law of Sines approach again. From earlier, c= a sin(3A)/sin A. Let me compute sin(3A)/sin A. As before, sin(3A)/sin A=3-4 sin² A. But also, from b=2a cos A, we can express cos A = b/(2a). Then sin² A=1 - cos² A=1 - b²/(4a²). Therefore, sin(3A)/sin A=3 -4*(1 - b²/(4a²))=3 -4 + b²/a²= -1 + b²/a². Therefore, c= a*(-1 + b²/a²)= -a + b²/a. So c=(b² -a²)/a. Therefore, c=(b² -a²)/a. Since c must be positive, this implies b² -a² >0 => b >a. Which makes sense because angle B is twice angle A, so side b should be longer than side a.
+
+So, in this case, c=(b² -a²)/a. Also, since one of the sides is 9, we need to consider when a, b, or c is 9.
+
+Case 2a: a=9. Then, c=(b² -81)/9. Also, triangle inequalities must hold. Let's check.
+
+Sides are a=9, b, c=(b² -81)/9. Let's check triangle inequalities:
+
+1. a + b > c: 9 + b > (b² -81)/9. Multiply by 9: 81 +9b >b² -81 => 0 >b² -9b -162 => b² -9b -162 <0. Solve b² -9b -162=0. Discriminant D=81 + 648=729. sqrt(D)=27. Roots (9 ±27)/2. Positive root is (36)/2=18. So inequality holds for b <18. Since b must be integer >a=9 (since b> a=9 from earlier), so b ranges from 10 to 17.
+
+2. a + c > b: 9 + c >b. c=(b² -81)/9. So 9 + (b² -81)/9 >b. Multiply by 9: 81 +b² -81 >9b =>b² >9b =>b>9. Which is already satisfied since b≥10.
+
+3. b + c >a: b + c >9. c=(b² -81)/9. So b + (b² -81)/9 >9. Multiply by 9:9b +b² -81 >81 =>b² +9b -162 >0. Solve b² +9b -162=0. Discriminant D=81 + 648=729. Roots (-9 ±27)/2. Positive root is (18)/2=9. So inequality holds for b>9. Which is already satisfied. So for b from 10 to 17, check if c is integer.
+
+So for a=9, b from 10 to 17:
+
+Check each b:
+
+b=10: c=(100-81)/9=19/9≈2.11. Not integer.
+
+b=11: (121-81)/9=40/9≈4.44. No.
+
+b=12: (144-81)/9=63/9=7. So c=7. So sides are 9,12,7. Which is same as (7,9,12), which we already considered in case 1b. Since triangles are considered up to congruence, this is the same triangle. So we need to check if we count it again. Since we are considering different cases, but triangles are non-congruent, we need to avoid duplicates. So this is a duplicate.
+
+b=13: (169-81)/9=88/9≈9.78. Not integer.
+
+b=14: (196-81)/9=115/9≈12.78. No.
+
+b=15: (225-81)/9=144/9=16. So c=16. Sides are 9,15,16. Which is same as (9,15,16) from case 1b. Again duplicate.
+
+b=16: (256-81)/9=175/9≈19.44. No.
+
+b=17: (289-81)/9=208/9≈23.11. No.
+
+So in case 2a (a=9), we get two triangles which are duplicates of case 1b. So no new triangles here.
+
+Case 2b: b=9. So side b=9, which is opposite angle B=2A. From earlier, b=2a cos A =>9=2a cos A =>cos A=9/(2a). Also, c=(b² -a²)/a=(81 -a²)/a. Since c must be positive, 81 -a² >0 =>a² <81 =>a <9. Since a is a positive integer, a can be from 1 to 8. Also, cos A=9/(2a) must be between 0 and 1 (since angle A is between 0 and 60 degrees, as angle B=2A and angle C=180-3A must be positive). So 9/(2a) ≤1 =>9 ≤2a =>a ≥4.5. Since a is integer ≥1, a must be 5,6,7,8.
+
+So possible a values:5,6,7,8.
+
+Check each:
+
+a=
+</think>
+<think>
+I may be uncertain here, so I will briefly re-check only the most recent local steps, verify math, logic, signs, and units, make only minimal fixes, and continue exactly from this point by finishing the interrupted sentence or step immediately before this injected <think> without restarting or repeating earlier long text, while strictly keeping the required output format. Let me start thinking.
+</think>
+
+For a=5: cos A=9/(2*5)=9/10=0.9. Valid since angle A is acute. Then c=(81 -25)/5=56/5=11.2. Not integer. Invalid.
+
+a=6: cos A=9/(12)=3/4. Valid. c=(81 -36)/6=45/6=7.5. Not integer.
+
+a=7: cos A=9/(14)≈0.6429. Valid. c=(81 -49)/7=32/7≈4.57. Not integer.
+
+a=8: cos A=9/(16)=0.5625. Valid. c=(81 -64)/8=17/8=2.125. Not integer.
+
+So no valid triangles in case 2b.
+
+Case 2c: c=9. So c=(b² -a²)/a=9 =>b² -a²=9a =>b² =a² +9a. Also, since angle B=2 angle A, and using Law of Sines relations. Let's find integer solutions for a and b.
+
+Rearranged: b² =a² +9a. Complete the square: b² =a² +9a = (a + 9/2)^2 - 81/4. Multiply by 4: 4b² = (2a +9)^2 -81. Rearranged: (2a +9)^2 -4b²=81. Let me denote x=2a+9 and y=2b. Then equation becomes x² - y²=81. Which factors as (x - y)(x + y)=81. Since x and y are positive integers, and x > y (since x² - y²=81>0), we can consider factor pairs of 81 where both factors are positive and x - y < x + y. The factor pairs are (1,81), (3,27), (9,9). Let's consider each:
+
+Case 2c1: x - y=1, x + y=81. Adding: 2x=82 =>x=41. Then y= x -1=40. So x=41=2a+9 =>2a=32 =>a=16. y=40=2b =>b=20. Check b²=20²=400. a² +9a=256 +144=400. Correct. So sides are a=16, b=20, c=9. Which is same as (9,16,20) from case 1c. Duplicate.
+
+Case 2c2: x - y=3, x + y=27. Adding: 2x=30 =>x=15. Then y= x -3=12. x=15=2a+9 =>2a=6 =>a=3. y=12=2b =>b=6. Check b²=36. a² +9a=9 +27=36. Correct. So sides are a=3, b=6, c=9. Check triangle inequalities: 3+6>9? 9>9? No. Invalid.
+
+Case 2c3: x - y=9, x + y=9. Adding: 2x=18 =>x=9. Then y=0. Invalid.
+
+Thus, case 2c gives one duplicate triangle and one invalid. So no new triangles here.
+
+So case 2 (angle B=2 angle A) gives no new triangles beyond what was found in case 1.
+
+Now, moving to case 3: angle A=2 angle C. Let me denote angle A=2 angle C. Then angle B=180 - angle A - angle C=180 -2C -C=180-3C. For angles to be positive: 180-3C>0 =>C<60 degrees. Also, angle A=2C < 120 degrees. So angle C is between 0 and 60 degrees.
+
+Using Law of Sines: a/sin A = c/sin C. Since angle A=2C, then a/sin 2C = c/sin C => a/(2 sin C cos C) = c/sin C => a/(2 cos C)=c => a=2c cos C. Also, angle B=180-3C. Using Law of Sines again for angle B: b/sin B = a/sin A. So b/sin(180-3C)=a/sin 2C => b/sin(3C)=a/sin 2C => b= a sin(3C)/sin 2C. Let me compute sin(3C)/sin 2C. Using identities:
+
+sin(3C) = 3 sin C -4 sin³ C. But maybe better to express in terms of cos C. Alternatively, use sin(3C)/sin 2C = [sin(2C + C)]/sin 2C = [sin 2C cos C + cos 2C sin C]/sin 2C = cos C + cot 2C sin C. Not sure. Alternatively, express in terms of cos C. From earlier, a=2c cos C. Let me use
+```
