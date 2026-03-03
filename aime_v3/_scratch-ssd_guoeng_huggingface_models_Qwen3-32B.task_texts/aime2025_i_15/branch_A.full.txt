@@ -1,0 +1,359 @@
+<think>
+Okay, let's try to solve this problem. The question is asking for the number of three-digit positive integers N such that at least one digit is 2 and N is divisible by 11. Hmm, so I need to find all three-digit numbers divisible by 11 that have at least one digit as 2. 
+
+First, I should recall how three-digit numbers divisible by 11 are structured. A number is divisible by 11 if the difference between the sum of the digits in the odd positions and the sum of the digits in the even positions is a multiple of 11 (including zero). For a three-digit number ABC (where A is the hundreds digit, B is the tens, and C is the units), the rule would be (A + C) - B must be 0 or ±11, but since A, B, C are digits (0-9), the maximum difference would be (9+9) - 0 = 18, and the minimum would be (0+0) - 9 = -9. So the possible differences that are multiples of 11 are -11, 0, 11. But since the minimum difference is -9, -11 isn't possible. Similarly, the maximum difference is 18, so 11 is possible. Therefore, the condition simplifies to (A + C) - B = 0 or 11.
+</think>
+
+
+So for three-digit numbers divisible by 12, either A + C = B or A + C = B + 11. Wait, let me check that again. If (A + C) - B = 11, then A + C = B + 11. But since A is at least 1 (because it's a three-digit number), and B and C are between 0-9. Let's see: A is from 1-9, B and C from 0-9. So A + C can be as low as 1 + 0 = 1, and as high as 9 + 9 = 18. Then B can be from 0-9. So if A + C = B + 11, then B + 11 must be between 1 and 18. Therefore, B can be from 0 to 7 (since 0 + 11 = 11, and 7 + 11 = 18). If B is 8, then 8 + 11 = 19, which is higher than the maximum A + C (18), so B can't be 8 or 9 in this case. 
+
+So the two cases for divisibility by 11 are:
+1. A + C = B
+2. A + C = B + 11
+
+Now, I need to count all three-digit numbers ABC that satisfy either of these two conditions and have at least one digit equal to 2. 
+
+But instead of directly counting those with at least one 2, maybe it's easier to first find all three-digit numbers divisible by 11, then subtract those that don't have any 2s. Wait, but the problem says "at least one digit is 2", so inclusion-exclusion principle. But maybe it's easier to calculate total numbers divisible by 11 minus those with no 2s. But I need to confirm if that approach is valid here. Let me think.
+
+Yes, because the total number of three-digit numbers divisible by 11 is T, and the number of those with no 2s is S, then the answer would be T - S. But I need to compute T and S. Let me check if that approach is correct. Since the problem is asking for numbers that are divisible by 11 and have at least one 2, that's equivalent to total divisible by 11 minus those divisible by 11 with no 2s. So yes, that approach should work. 
+
+First, let's compute T, the total number of three-digit numbers divisible by 11. The three-digit numbers range from 100 to 999. The smallest three-digit number divisible by 11 is 110 (since 11*10=110), and the largest is 990 (since 11*90=990). Wait, but 990 is 99*10, but 11*90 is 990. Let me check how many numbers there are. The formula for the number of terms in an arithmetic sequence is ((last - first)/difference) + 1. So here, first term a = 110, last term l = 990, difference d = 11. So number of terms is ((990 - 110)/11) + 1 = (880/11) + 1 = 80 + 1 = 81. So T = 81. Wait, but let me confirm. Let me compute 999 divided by 11. 11*90 = 990, 11*91=1001 which is four digits. So the three-digit numbers divisible by 11 are from 11*10 up to 11*90, which is 81 numbers. So T is 81. 
+
+But maybe I should cross-verify this with another method. Alternatively, using the divisibility rule. Let me see. For three-digit numbers, how many satisfy A + C = B or A + C = B + 11. Let me compute that. 
+
+Case 1: A + C = B. Since A is from 1-9, C from 0-9, B from 0-9. For each A and C, B is determined as A + C. But B must be between 0-9. So A + C must be between 0-9. However, since A is at least 1, A + C is at least 1. So possible values of A + C are 1 to 9. For each possible value of s = A + C (from 1 to 9), how many (A, C) pairs are there? For example, if s=1, then A can be 1, C=0. Only 1 possibility. For s=2: A can be 1 (C=1), 2 (C=0). So 2 possibilities. Similarly, up to s=9. For s=9, A can be from 1 to 9, but C must be 9 - A. However, since C must be between 0-9, for each A from 1 to 9, if 9 - A is between 0-9. Since A is 1-9, 9 - A ranges from 0 (when A=9) to 8 (when A=1). So for s=9, there are 9 possibilities. Therefore, the total number of (A, C) pairs for case 1 is sum_{s=1}^9 (number of (A,C) pairs for each s). The number of pairs for each s is s (since for s from 1 to 9, the number of (A,C) pairs where A + C = s is s, because A can be from 1 to s, and C = s - A, but wait, no. Wait, for example, when s=2, A can be 1 (C=1) or 2 (C=0). So that's 2 possibilities. Similarly, for s=3: A can be 1 (C=2), 2 (C=1), 3 (C=0). So 3 possibilities. So in general, for s from 1 to 9, the number of (A,C) pairs is s. Therefore, the total for case 1 is sum_{s=1}^9 s = (9*10)/2 = 45. Therefore, case 1 contributes 45 numbers.
+
+Case 2: A + C = B + 11. Here, B = A + C - 11. Since B must be between 0-9, A + C - 11 must be between 0-9. Therefore, A + C must be between 11 and 20. However, since A is at most 9 and C is at most 9, the maximum A + C is 18. So A + C ranges from 11 to 18. For each s from 11 to 18, how many (A, C) pairs are there such that A + C = s? For s=11: A can be from 2 to 9 (since A is at least 1, but C = 11 - A must be at most 9. So 11 - A ≤ 9 ⇒ A ≥ 2. So A ranges from 2 to 9, but C = 11 - A must be ≥ 0. Since A ≤ 9, 11 - 9 = 2 ≥ 0. So for s=11, A can be 2 to 9, which is 8 possibilities. Wait, let me check. For s=11, A can be from 2 to 9 (since if A=2, C=9; A=3, C=8; ... A=9, C=2). So 8 possibilities. For s=12: A can be from 3 to 9 (since C=12 - A must be ≤9 ⇒ A ≥ 3). So A ranges from 3 to 9, which is 7 possibilities. Similarly, for s=13: A from 4 to 9 (6 possibilities). Continuing this way:
+
+s=11: 8
+s=12:7
+s=13:6
+s=14:5
+s=15:4
+s=16:3
+s=17:2
+s=18:1
+
+Adding these up: 8+7+6+5+4+3+2+1 = 36. Therefore, case 2 contributes 36 numbers. 
+
+Therefore, total numbers divisible by 11 is 45 + 36 = 81, which matches the earlier count. So T=81. 
+
+Now, need to compute S, the number of three-digit numbers divisible by 11 that have no digit equal to 2. Then the answer is T - S = 81 - S. 
+
+So how to compute S? Let's think. For each number divisible by 11 (either case 1 or case 2), count how many have all digits not equal to 2. 
+
+Let me handle case 1 and case 2 separately. 
+
+First, case 1: A + C = B. And digits A, B, C must not contain 2. 
+
+Constraints:
+- A ∈ {1,3,4,5,6,7,8,9} (since A can't be 2)
+- C ∈ {0,1,3,4,5,6,7,8,9} (can't be 2)
+- B ∈ {0,1,3,4,5,6,7,8,9} (can't be 2)
+Also, B = A + C. And since in case 1, B is between 1-9 (as per earlier). 
+
+So for each (A, C) pair where A + C = B, and none of A, B, C is 2. 
+
+Similarly for case 2: A + C = B + 11. Here, B = A + C - 11. Again, digits A, B, C must not be 2. 
+
+So let's compute S as S1 (case 1 numbers with no 2s) + S2 (case 2 numbers with no 2s). 
+
+Starting with S1: case 1, A + C = B, no digits are 2. 
+
+We need to count the number of (A, C) pairs where A ∈ {1,3-9} (no 2), C ∈ {0,1,3-9} (no 2), and B = A + C ∈ {0,1,3-9} (no 2). Also, since B is determined by A + C, and B must not be 2. 
+
+Earlier, in case 1, the total was 45 numbers. Now, we need to subtract those where any digit is 2. But perhaps it's easier to directly count the valid ones. 
+
+Let me think. For case 1, s ranges from 1 to 9 (A + C = s = B). For each s, count the number of (A, C) pairs where A and C are not 2, and B = s is not 2. 
+
+But note that B = s, so s cannot be 2. Therefore, s ranges from 1 to 9, excluding 2. So s ∈ {1,3,4,5,6,7,8,9}. For each such s, count the number of (A, C) pairs where A is in {1,3-9}, C is in {0,1,3-9}, A + C = s, and none of A, C, or s is 2. 
+
+Wait, but s is already not 2. So for each s in {1,3,4,5,6,7,8,9}, count the number of (A, C) pairs where A is in allowed A's (no 2), C is in allowed C's (no 2), and A + C = s. 
+
+So let's compute for each s:
+
+s=1: A + C =1. Since A ≥1, possible only A=1, C=0. Check if A and C are allowed. A=1 is allowed (not 2), C=0 is allowed. So count 1.
+
+s=3: A + C =3. Possible (A,C) pairs where A ∈ {1,3-9} and C ∈ {0,1,3-9}:
+
+Possible A can be 1, 3 (if A=3, C=0; but C=0 is allowed). Wait, let's list all possible (A,C):
+
+A can be from 1 to min(3,9). Since A is at least 1 and at most 3 (since A + C =3, A can be 1, 2, or 3. But A cannot be 2. So A can be 1 or 3.
+
+If A=1, then C=2. But C=2 is not allowed. So this pair is invalid.
+
+If A=3, then C=0. C=0 is allowed. So only 1 valid pair here.
+
+So total for s=3 is 1.
+
+s=4: A + C =4. A can be 1, 3, 4 (since A can't be 2). Let's check:
+
+A=1: C=3. C=3 is allowed. Valid.
+
+A=3: C=1. C=1 is allowed. Valid.
+
+A=4: C=0. Valid.
+
+So three possibilities. Are there any others? A can't be 2. So total 3.
+
+s=4: 3.
+
+s=5: A + C=5. A can be 1,3,4,5.
+
+A=1: C=4 (allowed)
+
+A=3: C=2 (invalid)
+
+A=4: C=1 (allowed)
+
+A=5: C=0 (allowed)
+
+So valid pairs: A=1,3,4,5 except when C is 2. So A=1, C=4; A=3, C=2 (invalid); A=4, C=1; A=5, C=0. So valid ones are 3 pairs. Wait, A=3 gives C=2 which is invalid. So total 3 valid pairs.
+
+Wait, A=1, C=4; A=3, C=2 (invalid); A=4, C=1; A=5, C=0. So three valid. So s=5: 3.
+
+s=6: A + C=6. A can be 1,3,4,5,6.
+
+A=1: C=5 (allowed)
+
+A=3: C=3 (allowed)
+
+A=4: C=2 (invalid)
+
+A=5: C=1 (allowed)
+
+A=6: C=0 (allowed)
+
+So valid pairs: A=1,3,5,6. So 4 valid pairs. Because A=4 gives C=2 which is invalid. So total 4.
+
+s=6: 4.
+
+s=7: A + C=7. A can be 1,3,4,5,6,7.
+
+A=1: C=6 (allowed)
+
+A=3: C=4 (allowed)
+
+A=4: C=3 (allowed)
+
+A=5: C=2 (invalid)
+
+A=6: C=1 (allowed)
+
+A=7: C=0 (allowed)
+
+So valid pairs: A=1,3,4,6,7. So 5 valid pairs. Because A=5 gives C=2 which is invalid. So total 5.
+
+s=7: 5.
+
+s=8: A + C=8. A can be 1,3,4,5,6,7,8.
+
+A=1: C=7 (allowed)
+
+A=3: C=5 (allowed)
+
+A=4: C=4 (allowed)
+
+A=5: C=3 (allowed)
+
+A=6: C=2 (invalid)
+
+A=7: C=1 (allowed)
+
+A=8: C=0 (allowed)
+
+So valid pairs: A=1,3,4,5,7,8. So 6 valid pairs. Because A=6 gives C=2 invalid. Total 6.
+
+s=8: 6.
+
+s=9: A + C=9. A can be 1,3,4,5,6,7,8,9.
+
+A=1: C=8 (allowed)
+
+A=3: C=6 (allowed)
+
+A=4: C=5 (allowed)
+
+A=5: C=4 (allowed)
+
+A=6: C=3 (allowed)
+
+A=7: C=2 (invalid)
+
+A=8: C=1 (allowed)
+
+A=9: C=0 (allowed)
+
+So valid pairs: A=1,3,4,5,6,8,9. So 7 valid pairs. Because A=7 gives C=2 invalid. Total 7.
+
+s=9: 7.
+
+So summing up S1:
+
+s=1: 1
+
+s=3:1
+
+s=4:3
+
+s=5:3
+
+s=6:4
+
+s=7:5
+
+s=8:6
+
+s=9:7
+
+Total S1 = 1 + 1 + 3 + 3 + 4 + 5 + 6 + 7 = Let's compute:
+
+1+1=2; 2+3=5; 5+3=8; 8+4=12; 12+5=17; 17+6=23; 23+7=30. So S1=30.
+
+Now moving to case 2: A + C = B + 11. Here, B = A + C - 11. And digits A, B, C must not contain 2. 
+
+In case 2, A + C ranges from 11 to 18. For each s from 11 to 18, count the number of (A, C) pairs where A and C are not 2, and B = s - 11 is also not 2. 
+
+So first, for each s in 11-18, compute B = s - 11. Then check if B is 2. If B is 2, then those numbers are invalid (since B would be 2). So we need to exclude those s where B=2. 
+
+Let's check for each s:
+
+s=11: B=0 (allowed)
+
+s=12: B=1 (allowed)
+
+s=13: B=2 (invalid)
+
+s=14: B=3 (allowed)
+
+s=15: B=4 (allowed)
+
+s=16: B=5 (allowed)
+
+s=17: B=6 (allowed)
+
+s=18: B=7 (allowed)
+
+So for s=13, B=2 is invalid. Therefore, for s=13, we need to exclude all (A, C) pairs where B would be 2. But since we are already in case 2, which requires B = s - 11, and for s=13, B=2, which is invalid. Therefore, s=13 contributes 0 to S2. For other s (11,12,14-18), we need to count the number of (A, C) pairs where A and C are not 2, and B is not 2 (which is already handled by excluding s=13).
+
+So for each s in {11,12,14,15,16,17,18}, count the number of (A, C) pairs where A ∈ {1,3-9}, C ∈ {0,1,3-9}, A + C = s, and B = s - 11 is not 2 (which is already satisfied for these s).
+
+Let me compute for each s:
+
+s=11: A + C =11. A ∈ {1,3-9}, C ∈ {0,1,3-9}. How many (A,C) pairs?
+
+Earlier, in case 2 for s=11, total was 8. But now we need to exclude any pairs where A or C is 2. Wait, but in case 2, we already have A and C not being 2. Wait, no. Wait, in case 2, we are considering numbers where digits A, B, C have no 2s. So in this case, we need to count the number of (A, C) pairs where A and C are not 2, and A + C = s. 
+
+So for s=11, how many (A, C) pairs with A ∈ {1,3-9}, C ∈ {0,1,3-9}, and A + C =11.
+
+Let me list possible A and C:
+
+A can be from 2 to 9 (as in original case 2 for s=11, but now A cannot be 2. So A ranges from 3 to 9 (since A can't be 2). For each A in 3-9, C = 11 - A. Check if C is in allowed set (not 2).
+
+For A=3: C=8 (allowed)
+
+A=4: C=7 (allowed)
+
+A=5: C=6 (allowed)
+
+A=6: C=5 (allowed)
+
+A=7: C=4 (allowed)
+
+A=8: C=3 (allowed)
+
+A=9: C=2 (invalid, since C=2 is not allowed)
+
+So for A=9, C=2 is invalid. So total valid pairs: 6 (A=3 to 8). 
+
+So s=11: 6.
+
+s=12: A + C =12. A ∈ {1,3-9}, C ∈ {0,1,3-9}. 
+
+Possible A ranges: For original case 2, s=12 had 7 pairs (A from 3 to 9). Now, need to check if any of those pairs have A or C as 2. But since A is from 3-9 (no 2), and C = 12 - A. Let's check for each A in 3-9:
+
+A=3: C=9 (allowed)
+
+A=4: C=8 (allowed)
+
+A=5: C=7 (allowed)
+
+A=6: C=6 (allowed)
+
+A=7: C=5 (allowed)
+
+A=8: C=4 (allowed)
+
+A=9: C=3 (allowed)
+
+All Cs are allowed (none are 2). So all 7 pairs are valid. So s=12:7.
+
+s=14: A + C=14. Original case 2 for s=14 had 5 pairs (A from 5 to 9). Now check if any of those pairs have A or C as 2. A ranges from 5 to 9 (no 2). C=14 - A. Let's check:
+
+A=5: C=9 (allowed)
+
+A=6: C=8 (allowed)
+
+A=7: C=7 (allowed)
+
+A=8: C=6 (allowed)
+
+A=9: C=5 (allowed)
+
+All allowed. So s=14:5.
+
+s=15: A + C=15. Original case 2 for s=15 had 4 pairs (A from 6 to 9). Check:
+
+A=6: C=9 (allowed)
+
+A=7: C=8 (allowed)
+
+A=8: C=7 (allowed)
+
+A=9: C=6 (allowed)
+
+All allowed. So s=15:4.
+
+s=16: A + C=16. Original case 2 had 3 pairs (A from 7 to 9). Check:
+
+A=7: C=9 (allowed)
+
+A=8: C=8 (allowed)
+
+A=9: C=7 (allowed)
+
+All allowed. So s=16:3.
+
+s=17: A + C=17. Original case 2 had 2 pairs (A=8 and 9). Check:
+
+A=8: C=9 (allowed)
+
+A=9: C=8 (allowed)
+
+All allowed. So s=17:2.
+
+s=18: A + C=18. Original case 2 had 1 pair (A=9, C=9). Check:
+
+A=9, C=9. Both allowed. So s=18:1.
+
+So summing up S2:
+
+s=11:6
+
+s=12:7
+
+s=14:5
+
+s=15:4
+
+s=16:3
+
+s=17:2
+
+s=18:1
+
+Total S2 = 6 +7 +5 +4 +3 +2 +1 = Let's compute:
+
+6+7=13; 13+5=18; 18+4=22; 22+3=25; 25+2=27; 27+1=28. So S2=28.
+
+Therefore, total S = S1 + S2 = 30 + 2

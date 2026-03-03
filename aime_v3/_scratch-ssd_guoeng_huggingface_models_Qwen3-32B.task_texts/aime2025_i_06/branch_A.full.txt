@@ -1,0 +1,314 @@
+<think>
+Okay, let's try to solve this problem. The question is asking for the number of integer coordinate points (a, b) that satisfy the equation [(a+2)² + (b+3)²][(a-2)² + (b-3)²] = 5000. Hmm, that looks a bit complicated, but maybe I can break it down.
+
+First, I notice that the equation is a product of two expressions. Each of those expressions resembles the square of the distance from a point to another point. Let me check: (a+2)² + (b+3)² is the square of the distance from (a, b) to (-2, -3), right? Similarly, (a-2)² + (b-3)² is the square of the distance from (a, b) to (2, 3). So the equation is saying that the product of these two squared distances equals 5000.
+
+So, if I let P = (a, b), then the product of the squared distances from P to (-2, -3) and to (2, 3) is 5000. Maybe I can think about this geometrically. Let me visualize the two points: (-2, -3) and (2, 3). They are symmetric in some way? Let me see: if I reflect (-2, -3) over the origin, I get (2, 3).
+</think>
+ So they are symmetric with respect to the origin. Interesting.
+
+But how does that help? Maybe I can find a coordinate transformation to simplify the problem. Let me consider translating or rotating the coordinate system. Alternatively, maybe I can parametrize the problem. Let me think.
+
+Alternatively, since the product of two numbers is 5001, perhaps I can factor 5000 into two integers and then find all possible pairs (d1², d2²) such that d1² * d2² = 5000. Wait, but 5000 is 5^4 * 2^3. Wait, let me check that. 5000 = 5^3 * 2^3 * 1? Wait, 5^3 is 125, 125 * 40 = 5000. Wait, 5000 = 5^3 * 2^3 * 5? No, 5^3 * 2^3 is 1000, so 5000 is 5^3 * 2^3 * 5? Wait, 5^4 * 2^3 is 625 * 8 = 5000. Yes, because 5^4 is 625, 625 * 8 = 5000. So 5000 factors into 2^3 * 5^4. Therefore, the product of the two squared distances is 2^3 * 5^4. 
+
+But each squared distance is a positive integer since a and b are integers. So we need to find all pairs of positive integers (m, n) such that m * n = 5000, and then for each such pair, find the number of integer points (a, b) such that the squared distance from (-2, -3) is m and from (2, 3) is n, or vice versa. Wait, but since the product is symmetric, maybe m and n can be swapped. So perhaps I need to consider all factor pairs (m, n) where m * n = 5000, and for each, find the number of integer points lying on both circles centered at (-2, -3) with radius sqrt(m) and at (2, 3) with radius sqrt(n). The intersection points of these two circles would be the solutions for that pair (m, n). Then, sum over all possible factor pairs.
+
+But first, I need to find all possible factor pairs (m, n) such that m * n = 5000. Since m and n are positive integers, and order matters? Or not? Because if (m, n) and (n, m) are different factor pairs, but the circles would be swapped. However, since the two centers are different, swapping m and n would lead to different circles, but maybe the number of intersection points would be the same. However, I need to check if each factor pair is considered once or twice. Wait, but if m ≠ n, then (m, n) and (n, m) are distinct, but if m = n, then it's the same. So perhaps I need to generate all ordered pairs (m, n) with m * n = 5000, and for each, compute the number of integer points on both circles. However, this might be computationally intensive, but maybe manageable.
+
+First, let's find all the divisors of 5000. Since 5000 = 2^3 * 5^4, the number of positive divisors is (3+1)*(4+1) = 4*5=20. So there are 20 divisors. Therefore, there are 20 possible values for m, and for each m, n = 5000/m. However, since m and n are squared distances, they must be positive integers. Also, the squared distances must be integers, so m and n must be integers. So each factor pair (m, n) is valid as long as m and n are positive integers. Therefore, there are 20 such pairs, but considering ordered pairs, but since m and n can be swapped, but maybe we can handle them as unordered pairs to avoid double-counting. Wait, but perhaps the problem is symmetric? Let me check.
+
+Wait, the problem is not symmetric because the two centers are different. For example, if I take m and n, the circles centered at (-2, -3) and (2, 3) with radii sqrt(m) and sqrt(n) respectively. The number of integer points on their intersection might depend on the specific positions. Therefore, perhaps each ordered pair (m, n) needs to be considered separately. However, since there are 20 divisors, there are 20 ordered pairs (m, n) where m * n = 5000. Wait, no. The number of ordered pairs (m, n) with m * n = 5000 is equal to the number of divisors, which is 20. Because for each divisor m of 5000, n is uniquely determined as 5000/m. Therefore, there are 20 ordered pairs. However, some of these pairs may be the same when m = n. Let me check if 5000 is a perfect square. 5000 is 5^4 * 2^3. The square root would be 5^2 * 2^(3/2), which is not an integer. Therefore, there is no m such that m^2 = 5000. Therefore, all ordered pairs (m, n) are distinct from (n, m) when m ≠ n. Therefore, there are 20 ordered pairs, and each pair (m, n) and (n, m) are different. Therefore, when considering all ordered pairs, we need to process all 20.
+
+But processing 20 pairs might be tedious. However, perhaps some of them can be grouped or have the same number of solutions. Alternatively, maybe there's a smarter way to approach this problem.
+
+Alternatively, maybe I can consider the geometric interpretation. Let me think about the two circles. Let me denote the first circle as C1: (x + 2)^2 + (y + 3)^2 = m, and the second circle as C2: (x - 2)^2 + (y - 3)^2 = n. The problem requires that m * n = 5000. The intersection points of C1 and C2 would be the solutions for that particular (m, n). The number of integer points on the intersection would depend on m and n. However, calculating this for each of the 20 pairs seems complicated. Maybe there's a way to find the number of integer points that lie on both circles for each (m, n), but how?
+
+Alternatively, perhaps there's a way to parametrize the problem. Let me consider the line connecting the two centers. The centers are at (-2, -3) and (2, 3). The distance between the centers is sqrt[(2 - (-2))^2 + (3 - (-3))^2] = sqrt[(4)^2 + (6)^2] = sqrt(16 + 36) = sqrt(52) = 2*sqrt(13). Let me denote this distance as D = 2√13. For two circles with radii r1 and r2, the number of intersection points depends on the relation between D, r1, and r2. However, here we are dealing with integer coordinates, so even if the circles intersect, the intersection points may or may not have integer coordinates. Therefore, this approach might not directly help.
+
+Alternatively, maybe I can find a relation between m and n. Let me expand the product [(a+2)^2 + (b+3)^2][(a-2)^2 + (b-3)^2]. Maybe expanding this expression could lead to a simplification. Let me try that.
+
+Let me denote A = (a+2)^2 + (b+3)^2 and B = (a-2)^2 + (b-3)^2. Then the product AB = 5000. Let me compute AB.
+
+First, expand A and B:
+
+A = (a^2 + 4a + 4) + (b^2 + 6b + 9) = a^2 + b^2 + 4a + 6b + 13.
+
+Similarly, B = (a^2 - 4a + 4) + (b^2 - 6b + 9) = a^2 + b^2 - 4a - 6b + 13.
+
+So AB = [ (a^2 + b^2 + 13) + 4a + 6b ] * [ (a^2 + b^2 + 13) - 4a - 6b ].
+
+This looks like (X + Y)(X - Y) = X² - Y², where X = a² + b² + 13 and Y = 4a + 6b.
+
+Therefore, AB = X² - Y² = (a² + b² + 13)^2 - (4a + 6b)^2.
+
+So the equation becomes:
+
+(a² + b² + 13)^2 - (4a + 6b)^2 = 5000.
+
+Hmm, maybe expanding this further could help. Let me compute that.
+
+First, expand (a² + b² + 13)^2:
+
+= (a² + b²)^2 + 26(a² + b²) + 169.
+
+Then subtract (4a + 6b)^2:
+
+= 16a² + 48ab + 36b².
+
+So putting it all together:
+
+(a² + b²)^2 + 26(a² + b²) + 169 - 16a² - 48ab - 36b² = 5000.
+
+Let me simplify term by term.
+
+First, (a² + b²)^2 remains as is.
+
+Then, 26(a² + b²) - 16a² - 36b² = 26a² + 26b² -16a² -36b² = (26a² -16a²) + (26b² -36b²) = 10a² -10b².
+
+Then, the remaining terms are +169 -48ab.
+
+So overall, the equation becomes:
+
+(a² + b²)^2 + 10a² -10b² -48ab + 169 = 5000.
+
+Hmm, this seems complicated. Maybe there's another way to approach this. Alternatively, perhaps I can make a substitution. Let me think.
+
+Alternatively, since we have AB = 5000, and A and B are both positive integers (since they are squared distances), perhaps I can find all possible pairs (A, B) such that A * B = 5000, and then for each such pair, find the number of integer solutions (a, b) to the system:
+
+A = (a+2)^2 + (b+3)^2,
+
+B = (a-2)^2 + (b-3)^2.
+
+But solving this system for each (A, B) might be manageable. Let me try to solve for a and b in terms of A and B.
+
+Let me write the two equations:
+
+1) (a + 2)^2 + (b + 3)^2 = A,
+
+2) (a - 2)^2 + (b - 3)^2 = B.
+
+Expanding both equations:
+
+Equation 1: a² +4a +4 + b² +6b +9 = A ⇒ a² + b² +4a +6b +13 = A.
+
+Equation 2: a² -4a +4 + b² -6b +9 = B ⇒ a² + b² -4a -6b +13 = B.
+
+Let me subtract equation 2 from equation 1:
+
+[ (a² + b² +4a +6b +13) - (a² + b² -4a -6b +13) ] = A - B.
+
+Simplifying:
+
+(4a +6b) - (-4a -6b) = A - B ⇒ 8a + 12b = A - B.
+
+Divide both sides by 4:
+
+2a + 3b = (A - B)/4.
+
+So this gives a linear equation relating a and b. Let me denote this as equation (3):
+
+2a + 3b = (A - B)/4.
+
+Now, if (A - B) is not divisible by 4, then there are no solutions for this equation, hence no integer solutions (a, b). Therefore, for each pair (A, B), we first check if (A - B) is divisible by 4. If not, skip. If yes, then proceed.
+
+Once we have equation (3), we can express a in terms of b or vice versa. Let me solve for a:
+
+2a = (A - B)/4 - 3b ⇒ a = [(A - B)/8 - (3b)/2].
+
+But since a must be an integer, [(A - B)/8 - (3b)/2] must be integer. Let me think about this. Alternatively, perhaps I can express this as:
+
+Let me denote k = (A - B)/4. Then equation (3) is 2a + 3b = k. So solving for a: a = (k - 3b)/2. For a to be integer, (k - 3b) must be even. Since k is (A - B)/4, which must be integer (as we checked earlier), so k is integer. Therefore, (k - 3b) must be even. Let me note that 3b mod 2 is equal to b mod 2, since 3 is odd. Therefore, k - 3b �� k - b mod 2. For this to be even, k - b must be even ⇒ k �� b mod 2. Therefore, b must have the same parity as k. So for each k, b must be even or odd depending on k's parity.
+
+Once we have a in terms of b, we can substitute back into one of the original equations to find b. Let me substitute into equation 1 or 2. Let me pick equation 1:
+
+a² + b² +4a +6b +13 = A.
+
+But since a is expressed in terms of b, let's substitute a = (k - 3b)/2 into this equation. Let me compute that.
+
+First, compute a²:
+
+[(k - 3b)/2]^2 = (k² - 6k b + 9b²)/4.
+
+Then, 4a = 4*(k - 3b)/2 = 2(k - 3b).
+
+Similarly, 6b remains as is.
+
+So substituting into equation 1:
+
+(k² - 6k b + 9b²)/4 + b² + 2(k - 3b) + 6b +13 = A.
+
+Let me simplify term by term.
+
+First term: (k² - 6k b + 9b²)/4.
+
+Second term: b² = 4b²/4.
+
+Third term: 2(k - 3b) = 2k - 6b.
+
+Fourth term: +6b.
+
+Fifth term: +13.
+
+So combining all terms:
+
+[ (k² - 6k b + 9b²) + 4b² ] /4 + 2k - 6b + 6b +13 = A.
+
+Simplify numerator of the first fraction:
+
+k² -6k b + 9b² +4b² = k² -6k b +13b².
+
+So the equation becomes:
+
+(k² -6k b +13b²)/4 + 2k +13 = A.
+
+Multiply both sides by 4 to eliminate denominator:
+
+k² -6k b +13b² + 8k +52 = 4A.
+
+Rearranged:
+
+13b² -6k b + (k² +8k +52) -4A = 0.
+
+This is a quadratic equation in terms of b. Let me write it as:
+
+13b² -6k b + [k² +8k +52 -4A] = 0.
+
+This seems complicated, but perhaps there's a better way. Alternatively, maybe I can use the other equation. Let me think.
+
+Alternatively, since we have equation (3): 2a + 3b = k, and we can also add equations 1 and 2. Let me try that.
+
+Adding equations 1 and 2:
+
+(a² + b² +4a +6b +13) + (a² + b² -4a -6b +13) = A + B.
+
+Simplifying:
+
+2a² + 2b² + 26 = A + B ⇒ a² + b² = (A + B - 26)/2.
+
+Let me denote this as equation (4): a² + b² = (A + B - 26)/2.
+
+Now, from equation (3), we have 2a + 3b = k = (A - B)/4. Let me denote this as equation (3).
+
+So, with equations (3) and (4), perhaps I can find a relation between a and b.
+
+Let me express a from equation (3) as a = (k - 3b)/2, then substitute into equation (4):
+
+[( (k - 3b)/2 )² + b² ] = (A + B - 26)/2.
+
+Let me compute the left-hand side:
+
+[(k² -6k b +9b²)/4 + b²] = [k² -6k b +9b² +4b²]/4 = [k² -6k b +13b²]/4.
+
+Therefore, equation becomes:
+
+[k² -6k b +13b²]/4 = (A + B -26)/2.
+
+Multiply both sides by 4:
+
+k² -6k b +13b² = 2(A + B -26).
+
+But from earlier, when we derived the quadratic equation, we had:
+
+k² -6k b +13b² +8k +52 = 4A.
+
+Wait, perhaps there's a way to combine these equations. Let me see.
+
+From the addition of equations 1 and 2, we have:
+
+a² + b² = (A + B -26)/2.
+
+But also, from equation (3), we have a expressed in terms of b. Maybe substituting into this equation is easier. Let me try again.
+
+Let me take a = (k - 3b)/2, then compute a² + b²:
+
+[(k - 3b)/2]^2 + b² = [k² -6k b +9b²]/4 + b² = [k² -6k b +9b² +4b²]/4 = [k² -6k b +13b²]/4.
+
+Set equal to (A + B -26)/2:
+
+[k² -6k b +13b²]/4 = (A + B -26)/2 ⇒ multiply both sides by 4:
+
+k² -6k b +13b² = 2(A + B -26).
+
+But from earlier, when we derived the equation after substitution into equation 1, we had:
+
+k² -6k b +13b² +8k +52 = 4A.
+
+So substituting the left-hand side from the above equation into this:
+
+[2(A + B -26)] +8k +52 = 4A.
+
+Simplify:
+
+2A + 2B -52 +8k +52 = 4A ⇒ 2A + 2B +8k = 4A ⇒ 2B +8k = 2A ⇒ B +4k = A.
+
+But recall that k = (A - B)/4. Let me substitute that into this equation:
+
+B +4*(A - B)/4 = A ⇒ B + (A - B) = A ⇒ A = A. Which is an identity. Therefore, this doesn't give new information. So perhaps this approach isn't helpful.
+
+Hmm. Maybe I need to find another way. Let me think. Since we have a quadratic equation in b, perhaps I can find the discriminant and see for which values of k and A, B it has integer solutions.
+
+The quadratic equation in b is:
+
+13b² -6k b + [k² +8k +52 -4A] = 0.
+
+Let me denote this as 13b² -6k b + C = 0, where C = k² +8k +52 -4A.
+
+For this quadratic to have integer solutions, the discriminant must be a perfect square. The discriminant D is:
+
+D = ( -6k )² - 4 *13*C = 36k² -52C.
+
+Substituting C:
+
+D = 36k² -52*(k² +8k +52 -4A) = 36k² -52k² -416k -2704 +208A.
+
+Simplify:
+
+(36k² -52k²) = -16k²,
+
+So D = -16k² -416k -2704 +208A.
+
+Factor out -16:
+
+D = -16(k² +26k + 169) +208A.
+
+Wait, let me check:
+
+-16k² -416k -2704 = -16(k² + 26k + 169). Because 16*169 = 2704, and 16*26k = 416k. Yes. So:
+
+D = -16(k² +26k +169) +208A.
+
+But k = (A - B)/4. Also, since A * B = 5000, we can express B = 5000/A. Therefore, k = (A - 5000/A)/4. However, since A and B are integers, A must divide 5000. Therefore, A is a divisor of 5000, and B = 5000/A.
+
+This seems very complicated. Maybe there's a better way. Let me think again.
+
+Alternatively, since we have A * B = 5000, and A and B are positive integers, perhaps I can iterate through all possible factor pairs (A, B) of 5000, check if (A - B) is divisible by 4, and for those that are, solve the linear equation 2a + 3b = (A - B)/4 and then find integer solutions (a, b) that also satisfy the original equations. This seems feasible since there are only 20 factor pairs.
+
+Let me proceed with this approach.
+
+First, list all the positive divisors of 5000. Since 5000 = 2^3 * 5^4, the divisors are of the form 2^a * 5^b where 0 ≤ a ≤ 3 and 0 ≤ b ≤ 4. Let me list them:
+
+For a=0: 5^0=1, 5^1=5, 5^2=25, 5^3=125, 5^4=625.
+
+For a=1: 2*1=2, 2*5=10, 2*25=50, 2*125=250, 2*625=1250.
+
+For a=2: 4*1=4, 4*5=20, 4*25=100, 4*125=500, 4*625=2500.
+
+For a=3: 8*1=8, 8*5=40, 8*25=200, 8*125=1000, 8*625=5000.
+
+So the divisors are:
+
+1, 5, 25, 125, 625,
+
+2, 10, 50, 250, 1250,
+
+4, 20, 100, 500, 2500,
+
+8, 40, 200, 1000, 5000.
+
+Total of 20 divisors. Now, for each divisor A, compute B = 5000/A, then check if (A - B) is divisible by 4. If yes, then proceed to find integer solutions (a, b) to 2a + 3b = (A - B)/4, and also satisfy the original equations.
+
+Let me start with each divisor A and compute B, then check divisibility.
+
+Let me create a table:
+
+1. A=1, B=5000. Check (1 - 5000) = -4999. Is -4
