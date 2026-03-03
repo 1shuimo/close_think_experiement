@@ -48,23 +48,39 @@ def parse_args() -> argparse.Namespace:
     return p.parse_args()
 
 
+OFFICIAL_FORMAT_WITH_STARTER = (
+    "You will use the following starter code to write the solution to the problem and enclose your code within delimiters."
+)
+OFFICIAL_FORMAT_WITHOUT_STARTER = (
+    "Read the inputs from stdin solve the problem and write the answer to stdout (do not directly test on the sample inputs). "
+    "Enclose your code within delimiters as follows. Ensure that when the python program runs, it reads the inputs, runs the algorithm and writes output to STDOUT."
+)
+
+
 def _build_prompt(problem: Dict[str, Any]) -> str:
-    title = str(problem.get("question_title", "")).strip()
+    """
+    Match LiveCodeBench official `format_prompt_generation` user-message structure
+    as closely as possible for local close runner tasks.
+    """
     content = str(problem.get("question_content", "")).strip()
     starter = str(problem.get("starter_code", "")).rstrip()
     parts: List[str] = []
-    if title:
-        parts.append(f"Title: {title}")
-    parts.append("Problem:")
+    parts.append("### Question:")
     parts.append(content)
+    parts.append("")
     if starter:
-        parts.append("")
-        parts.append("Starter Code:")
+        parts.append(f"### Format: {OFFICIAL_FORMAT_WITH_STARTER}")
         parts.append("```python")
         parts.append(starter)
         parts.append("```")
+    else:
+        parts.append(f"### Format: {OFFICIAL_FORMAT_WITHOUT_STARTER}")
+        parts.append("```python")
+        parts.append("# YOUR CODE HERE")
+        parts.append("```")
     parts.append("")
-    parts.append("Return only the final Python solution code in one markdown code block.")
+    parts.append("### Answer: (use the provided format with backticks)")
+    parts.append("")
     return "\n".join(parts).strip()
 
 
