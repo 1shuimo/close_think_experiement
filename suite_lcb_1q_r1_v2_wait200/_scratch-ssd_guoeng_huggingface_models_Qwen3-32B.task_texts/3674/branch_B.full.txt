@@ -1,0 +1,104 @@
+<think>
+Okay, I need to solve this problem where I have to count the number of subarrays that can be made non-decreasing by performing at most k operations. Each operation allows me to increment an element of the subarray by 1. The challenge is to figure out an efficient way to calculate this given the constraints, especially since the array can be up to 1e5 elements long. Let's think about how to approach this.
+
+First, let's understand what makes a subarray possible to turn into non-decreasing with at most k operations. For a given subarray, there are certain "drops" between consecutive elements. For example, if the elements are [a, b, c], and a > b or b > c, we need to calculate how much we need to add to certain elements to make it non-decreasing. The required operations for the subarray would be the sum of the necessary increments to fix these drops.
+
+Wait, how do we compute the required operations for a subarray?
+</think>
+ Let's think. For a subarray, we can imagine that to make it non-decreasing, whenever a[i] > a[i+1], we need to adjust the elements. For example, let's take the subarray [6,3]. To make it non-decreasing, we need to increase the 3 to at least 6, which requires 3 operations. Alternatively, we could increase the 6 and 3, but the minimal way is to adjust the later elements. Wait, no. Because in a non-decreasing array, each element must be >= the previous. So for each pair of consecutive elements, if the next is less than the previous, we need to calculate the deficit. 
+
+Let me think of the required cost. For a subarray, the minimal number of operations needed is the sum of the differences where a[i] > a[i+1]. Wait, no. Let's take an example. Suppose the subarray is [a, b, c].<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+Okay, let's take a subarray. To make it non-decreasing, we need to adjust the elements so that each is at least as big as the previous. The minimal cost for this is the sum of the required increases. For example, if the subarray is [a0, a1, a2, ..., an], then for each i from 0 to n-1, if a[i] > a[i+1], we need to increase a[i+1] to a[i], but that's not the only way. The minimal cost is the sum of the differences between the previous element and the current element, but only when the previous is larger. Wait, no. Let's think of the required increases as follows:
+
+Let me think of the process. Let's process the subarray from left to right. For each element, it must be at least as big as the previous. So, for the i-th element, the required increase is max(0, previous - current). But when we do this, the previous element's value is adjusted. Wait, but since we can perform operations on any elements, but the goal is to make the array non-decreasing. The minimal cost is the sum of the required increases for each position, considering the adjusted values. However, since we can only increase elements, the minimal cost is determined by making each element as small as possible but still non-decreasing.
+
+For example, let's take the subarray [6,3,1,2,4,4]. Let's process it step by step:
+
+Start with 6. Next is 3. Since 3 < 6, we need to increase 3 to 6. That requires 3 operations. Now the array becomes [6,6,1, ...]. But then the next element is 1. It's less than 6. So we need to increase it to 6. That's 5 operations. Now the array is [6,6,6, 2, ...]. The next element is 2, which is less than 6. So we need to increase it by 4. Now the array is [6,6,6,6,4, ...]. The next element is 4, which is less than 6. So increase by 2. Then the next element is 4, which is equal to the previous (after adjustment). So no cost. The total cost here is 3+5+4+2 = 14. But in the first example, the subarray [6,3,1] requires 3+ (6-1) = 3+5=8 operations? But the example says that for k=7, this subarray cannot be made non-decreasing. Wait, the example says that [6,3,1] cannot be made non-decreasing with up to 7 operations. Let's compute the required cost for this subarray.
+
+Original subarray: 6,3,1. To make it non-decreasing, the minimal cost is:
+
+We need to adjust the elements so that each is >= the previous. Let's process from left to right:
+
+First element is 6. Second is 3. Need to increase it to 6. Cost is 3. Now the array is [6,6,1]. Next element is 1. It's less than 6. Need to increase to 6. Cost is 5. Total cost is 3+5=8. Since k is 7, this is not possible. Hence, this subarray is invalid. So the required cost for this subarray is 8, which is more than 7. Hence, it's not counted.
+
+So the problem reduces to, for each possible subarray, compute the minimal required cost to make it non-decreasing, and count how many of those have cost <=k.
+
+The challenge is to compute this for all possible subarrays efficiently.
+
+But with n up to 1e5, a brute-force approach of checking all O(n^2) subarrays is impossible. So we need a smarter way.
+
+Let me think about how to compute the required cost for a subarray. Let's think of the required cost as the sum of the "deficit" between consecutive elements. For example, for a subarray [a1, a2, ..., am], the required cost is the sum over i from 1 to m-1 of max(0, prev - current), where prev is the adjusted value of the previous element. But how can we model this?
+
+This seems similar to the problem of making the array non-decreasing with minimal cost, which is a classic problem. In that problem, the minimal cost is calculated by greedily adjusting each element to be at least as big as the previous. For example, for each element, if it's less than the previous adjusted value, we add the difference to the cost and set the current adjusted value to the previous. Otherwise, we leave it as is.
+
+So for a subarray, the required cost can be computed by this method. For example, for the subarray [a0, a1, a2], the cost is:
+
+cost = 0
+prev = a0
+if a1 < prev:
+    cost += prev - a1
+    prev = prev
+else:
+    prev = a1
+if a2 < prev:
+    cost += prev - a2
+    prev = prev
+else:
+    prev = a2
+So the total cost is the sum of the required increases.
+
+This process can be done for any subarray, but doing this for all O(n^2) subarrays is O(n^3), which is way too slow for n=1e5.
+
+We need a way to compute the number of subarrays where the required cost is <=k efficiently.
+
+Let me think about the possible patterns. The required cost for a subarray depends on the sequence of differences between consecutive elements. Let's think of the cost as a series of "runs" where each run is a sequence of elements that can be adjusted with certain cost.
+
+Alternatively, perhaps we can model the problem using sliding window technique. Let's think about the following: for each starting index i, we can find the maximum j such that the subarray from i to j can be made non-decreasing with cost <=k. Then, for each i, the number of valid subarrays starting at i is (j - i + 1). Summing over all i gives the total.
+
+But how to compute the cost incrementally as we expand the window?
+
+Let's think. Suppose we have a window [l, r], and we want to expand it to [l, r+1]. The cost for the new window can be computed based on the previous cost and the new element. Let's see.
+
+For example, when we add a new element to the end of the subarray, the cost is determined by how much we need to adjust this new element compared to the previous adjusted value of the subarray. Let's track for each window the adjusted value of the last element (the maximum it needs to be) and the total cost.
+
+For example, let's consider that for a subarray ending at position r, when we add r+1, we can compute the required adjustment. Let's think of the following:
+
+We can maintain for each possible ending position r, a list of possible subarrays ending at r, and their accumulated cost and the previous adjusted value. But this seems complicated.
+
+Alternatively, perhaps we can model the problem as follows: for each position r, we can track the required cost for all subarrays ending at r. Then, for each r, we can find how many of these subarrays have cost <=k. Summing over all r gives the total.
+
+But how to compute this efficiently?
+
+Let me think of an example. Let's take the array [a0, a1, a2, ...]. For each r, let's consider subarrays ending at r. For example, for r=0, the only subarray is [a0], cost 0. For r=1, the subarrays are [a1], and [a0, a1]. The cost for [a1] is 0. For [a0, a1], the cost is max(0, a0 - a1). For r=2, the subarrays are [a2], [a1,a2], [a0,a1,a2]. The cost for each can be computed based on the previous subarrays.
+
+But how to compute this incrementally?
+
+Let me think. For a subarray ending at r, which starts at some l, the cost can be computed based on the cost of the subarray ending at r-1 that starts at l. For example, when we add a new element to the subarray, the new cost is the previous cost plus the adjustment needed between the previous adjusted value and the new element.
+
+But how to track the previous adjusted value? For example, for a subarray [a, b, c], after processing, the adjusted value of c is max(c + required adjustment, ...). Wait, perhaps for each subarray ending at position r, we can track two things: the total cost required to make it non-decreasing, and the value of the last element after adjustment. Let's call this value 'prev'.
+
+For example, when we have a subarray ending at r-1, with cost c and last adjusted value p. Now, adding the new element nums[r], we need to compare it with p. If nums[r] >= p, then no cost is added, and the new prev is nums[r]. If nums[r] < p, then the cost increases by (p - nums[r]), and the new prev is p (since we have to increase nums[r] to p to make it non-decreasing).
+
+So for each r, the subarrays ending at r can be determined based on the subarrays ending at r-1. However, there's also the case where the subarray starts at r (so length 1, cost 0, prev is nums[r]).
+
+This suggests that for each r, we can compute the cost for all subarrays ending at r by considering the subarrays ending at r-1 and extending them by one element, plus the new subarray of length 1.
+
+But how to do this efficiently?
+
+Let's think of it as follows. For each r, we can have a list of possible subarrays ending at r. Each entry in the list represents a possible subarray ending at r, with a certain cost and a certain prev value. However, for overlapping subarrays, there might be multiple possibilities, but perhaps we can find a way to track them in a way that allows us to compute the total cost incrementally.
+
+For example, let's say for position r-1, there are some subarrays ending there. For each of those, when we extend them to include r, we can compute the new cost and new prev. Additionally, we have the new subarray [nums[r]].
+
+But if we do this for each r, and for each possible subarray ending at r, we can track their cost. Then, for each r, we can collect all these costs and count how many are <=k. However, for n=1e5, this approach would be O(n^2), which is not feasible.
+
+So this suggests that we need a way to find for each r, the maximum length of subarrays ending at r that have total cost <=k. But how?
+
+Alternatively, perhaps we can use a sliding window approach where we maintain a window [left, right], and for each right, find the minimal left such that the subarray [left...right] can be made non-decreasing with cost <=k. But how to compute the cost for the window?
+
+Alternatively, perhaps the cost for a subarray can be represented as a prefix sum array. Let me think. Let's define for each position i, the required "deficit" between consecutive elements. For example, for the array [a
