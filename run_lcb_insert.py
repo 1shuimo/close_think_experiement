@@ -28,8 +28,9 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--prompt-mode", default="baseline", choices=["baseline", "enhanced"])
 
     p.add_argument("--checkpoint-delay", type=int, default=0)
-    p.add_argument("--checkpoint-mid-min-tokens", type=int, default=220)
-    p.add_argument("--checkpoint-mid-max-tokens", type=int, default=320)
+    # For codegen insertion, default to a longer post-first-think wait.
+    p.add_argument("--checkpoint-mid-min-tokens", type=int, default=500)
+    p.add_argument("--checkpoint-mid-max-tokens", type=int, default=500)
     p.add_argument("--checkpoint-mid-avoid-final-regex", default=r"(?i)\bfinal\s*:|\bfinal answer\b")
 
     p.add_argument("--max-prefix-tokens", type=int, default=6000)
