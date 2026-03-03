@@ -23,8 +23,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--tasks-file", required=True, help="LCB tasks jsonl prepared by prepare_lcb_codegen_tasks.py")
     p.add_argument("--output-dir", default=str(here / "suite_lcb_insert"))
 
-    p.add_argument("--system-prompt-file", default=str(here / "prompts" / "system_lcb_r1_insert_v1.txt"))
-    p.add_argument("--inject-text-file", default=str(here / "prompts" / "inject_think_codegen_aime_like_v1.txt"))
+    p.add_argument("--system-prompt-file", default=str(here / "prompts" / "system_lcb_r1_insert_v2.txt"))
+    p.add_argument("--inject-text-file", default=str(here / "prompts" / "inject_think_codegen_aime_like_v2.txt"))
     p.add_argument("--prompt-mode", default="baseline", choices=["baseline", "enhanced"])
 
     p.add_argument("--checkpoint-delay", type=int, default=0)
