@@ -105,6 +105,16 @@ def parse_args() -> argparse.Namespace:
         default=120,
         help="Hard cap on first <think> words in prefix (0 disables).",
     )
+    p.add_argument(
+        "--enable-first-think-smooth-close",
+        action="store_true",
+        help="When first-think truncation is applied, append a short first-person bridge before </think>.",
+    )
+    p.add_argument(
+        "--first-think-smooth-close-text",
+        default="I think this local check is enough, so I will close this think block and continue from this exact point.",
+        help="Bridge sentence injected before </think> when first-think smooth close is enabled.",
+    )
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
@@ -255,7 +265,13 @@ def _has_step_marker(text: str) -> bool:
     return re.search(r"(?im)^\s*step\s+\d+\s*:", text or "") is not None
 
 
-def _truncate_first_think_words(text: str, max_words: int) -> Tuple[str, Dict[str, object]]:
+def _truncate_first_think_words(
+    text: str,
+    max_words: int,
+    *,
+    smooth_close_enabled: bool = False,
+    smooth_close_text: str = "",
+) -> Tuple[str, Dict[str, object]]:
     limit = max(0, int(max_words))
     if limit <= 0:
         return text, {"applied": False, "reason": "disabled"}
@@ -286,17 +302,39 @@ def _truncate_first_think_words(text: str, max_words: int) -> Tuple[str, Dict[st
             "limit_words": limit,
         }
 
-    kept = " ".join(words[:limit]).strip()
+    kept_words = words[:limit]
+    bridge_text = ""
+    bridge_words_used: List[str] = []
+    if smooth_close_enabled:
+        bridge_words = re.findall(r"\S+", str(smooth_close_text or "").strip())
+        if bridge_words:
+            reserve = min(limit, len(bridge_words))
+            body_budget = max(0, limit - reserve)
+            kept_words = words[:body_budget]
+            remain = max(0, limit - len(kept_words))
+            bridge_words_used = bridge_words[:remain]
+            bridge_text = " ".join(bridge_words_used).strip()
+
+    kept = " ".join(kept_words).strip()
+    body_parts: List[str] = []
     if kept:
-        kept = "\n" + kept + "\n"
-    new_text = text[: m_open.start()] + "<think>" + kept + "</think>" + suffix
+        body_parts.append(kept)
+    if bridge_text:
+        body_parts.append(bridge_text)
+    merged_body = "\n".join(body_parts).strip()
+    kept_block = ("\n" + merged_body + "\n") if merged_body else ""
+    new_text = text[: m_open.start()] + "<think>" + kept_block + "</think>" + suffix
     return new_text, {
         "applied": True,
         "reason": "truncated",
         "orig_words": len(words),
-        "new_words": len(words[:limit]),
+        "new_words": int(len(kept_words) + len(bridge_words_used)),
         "limit_words": limit,
         "close_found": close_found,
+        "smooth_close_enabled": bool(smooth_close_enabled),
+        "smooth_close_applied": bool(bridge_text),
+        "smooth_close_words": int(len(bridge_words_used)),
+        "smooth_close_text": bridge_text if bridge_text else None,
     }
 
 
@@ -415,6 +453,8 @@ def _force_close_unclosed_first_think_near_offset(
     tokenizer,
     token_offset: int,
     window_chars: int = 220,
+    smooth_close_enabled: bool = False,
+    smooth_close_text: str = "",
 ) -> Tuple[str, Dict[str, object]]:
     if not text:
         return text, {"applied": False, "reason": "empty_text"}
@@ -429,7 +469,11 @@ def _force_close_unclosed_first_think_near_offset(
     anchor_rel = _nearest_sentence_end_near(body, center_rel, radius=max(120, int(window_chars)))
     close_abs = m_open.end() + anchor_rel
     close_abs = max(m_open.end(), min(len(text), close_abs))
-    close_tag = "\n</think>\n"
+    bridge = str(smooth_close_text or "").strip() if smooth_close_enabled else ""
+    if bridge:
+        close_tag = "\n" + bridge + "\n</think>\n"
+    else:
+        close_tag = "\n</think>\n"
     forced = text[:close_abs] + close_tag + text[close_abs:]
     return forced, {
         "applied": True,
@@ -439,6 +483,9 @@ def _force_close_unclosed_first_think_near_offset(
         "total_tokens_in_think": int(total_tokens),
         "close_pos_before_insert": int(close_abs),
         "close_pos_after_insert": int(close_abs + len(close_tag)),
+        "smooth_close_enabled": bool(smooth_close_enabled),
+        "smooth_close_applied": bool(bridge),
+        "smooth_close_text": bridge if bridge else None,
     }
 
 
@@ -532,6 +579,8 @@ def run_task_ab(
     enable_think_word_limit: bool,
     enable_first_think_max_words: bool,
     first_think_max_words: int,
+    enable_first_think_smooth_close: bool,
+    first_think_smooth_close_text: str,
     math_step_user_guidance: str,
     task: Dict[str, object],
     temperature: float,
@@ -607,7 +656,10 @@ def run_task_ab(
     prefix_think_limit_meta = {"applied": False, "reason": "disabled"}
     if bool(enable_first_think_max_words) and int(first_think_max_words) > 0:
         prefix_text, prefix_think_limit_meta = _truncate_first_think_words(
-            prefix_text, int(first_think_max_words)
+            prefix_text,
+            int(first_think_max_words),
+            smooth_close_enabled=bool(enable_first_think_smooth_close),
+            smooth_close_text=first_think_smooth_close_text,
         )
 
     prefix_step_wait_meta = {
@@ -661,6 +713,8 @@ def run_task_ab(
                 tokenizer=tokenizer,
                 token_offset=int(no_step_fallback_offset_tokens),
                 window_chars=220,
+                smooth_close_enabled=bool(enable_first_think_smooth_close),
+                smooth_close_text=first_think_smooth_close_text,
             )
             scope_meta["first_think_force_close_meta"] = forced_meta
             if bool(forced_meta.get("applied")):
@@ -1077,6 +1131,8 @@ def main() -> None:
                 enable_think_word_limit=bool(args.enable_think_word_limit),
                 enable_first_think_max_words=bool(args.enable_first_think_max_words),
                 first_think_max_words=args.first_think_max_words,
+                enable_first_think_smooth_close=bool(args.enable_first_think_smooth_close),
+                first_think_smooth_close_text=args.first_think_smooth_close_text,
                 math_step_user_guidance=math_step_user_guidance,
                 task=task,
                 temperature=args.temperature,
@@ -1184,6 +1240,8 @@ def main() -> None:
             "enable_think_word_limit": bool(args.enable_think_word_limit),
             "enable_first_think_max_words": bool(args.enable_first_think_max_words),
             "first_think_max_words": args.first_think_max_words,
+            "enable_first_think_smooth_close": bool(args.enable_first_think_smooth_close),
+            "first_think_smooth_close_text": args.first_think_smooth_close_text,
             "branch_mode": args.branch_mode,
             "min_b_tokens_before_eos": args.min_b_tokens_before_eos,
             "b_retry_times": args.b_retry_times,

@@ -46,6 +46,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--enable-think-word-limit", action="store_true")
     p.add_argument("--enable-first-think-max-words", action="store_true")
     p.add_argument("--first-think-max-words", type=int, default=120)
+    p.add_argument("--enable-first-think-smooth-close", action="store_true")
+    p.add_argument(
+        "--first-think-smooth-close-text",
+        default="I think this local check is enough, so I will close this think block and continue from this exact point.",
+    )
     p.add_argument("--checkpoint-mode", default="think_end_mid", choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"])
     p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--checkpoint-delay", type=int, default=0)
@@ -111,6 +116,8 @@ def main() -> None:
         str(args.think_word_limit),
         "--first-think-max-words",
         str(args.first_think_max_words),
+        "--first-think-smooth-close-text",
+        args.first_think_smooth_close_text,
         "--checkpoint-mode",
         args.checkpoint_mode,
         "--checkpoint-regex",
@@ -147,6 +154,8 @@ def main() -> None:
         cmd.append("--enable-think-word-limit")
     if args.enable_first_think_max_words:
         cmd.append("--enable-first-think-max-words")
+    if args.enable_first_think_smooth_close:
+        cmd.append("--enable-first-think-smooth-close")
     if args.corrupt_after_first_think:
         cmd.append("--corrupt-after-first-think")
     else:
