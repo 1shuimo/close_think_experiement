@@ -1,0 +1,75 @@
+{
+  "task_id": "smoke_int_01",
+  "user_prompt": "Compute the definite integral \\(\\int_0^3 (x^2+1)\\,dx\\). Provide only the final integer.\n\nOutput format requirement (MUST follow): after reasoning, output one step per line using 'Step 0:', 'Step 1:', 'Step 2:', ...; then output one final line that contains ONLY the final answer value (no extra words).",
+  "reference_output": null,
+  "expected_regex": "(?m)^\\s*12\\s*$",
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_then_regex",
+    "checkpoint_regex": "(?i)step\\s*3",
+    "seen_anchor": true,
+    "counter_after_anchor": 1,
+    "tokens_after_first_think": 121,
+    "checkpoint_mid_min_tokens": 20,
+    "checkpoint_mid_max_tokens": 30,
+    "checkpoint_mid_target_tokens": null,
+    "checkpoint_mid_avoid_final_regex": "(?i)\\bfinal\\s*:|\\bfinal answer\\b",
+    "checkpoint_mid_early_stop_on_final": false
+  },
+  "insert_meta": {
+    "inject_text": "<think>\nI may be uncertain here, so I will run a strict local check before closing this block.\nUncertainty (first person):\nLocal check (nearest step/equation only):\nDecision (exact next continuation point):\nI will not close this <think> block until the 3 items above are filled with concrete content. Let me start thinking,\n",
+    "inject_opens_think": true,
+    "prefix_open_think_before_inject": 0,
+    "prefix_auto_closed_think": 0,
+    "prefix_forced_close_for_inject": 0,
+    "after_first_think_scope": {
+      "corrupt_after_first_think": true,
+      "first_think_closed_found": true,
+      "no_step_fallback_offset_tokens_effective": 300
+    },
+    "locator_meta": {
+      "mode": "locator_only_step",
+      "changed": true,
+      "inject_pos": 75,
+      "step_no": 0,
+      "reason": "step_found"
+    },
+    "force_inject_at_corrupt": true,
+    "force_inject_at_corrupt_effective": true,
+    "branch_b_force_overlap_applied": true,
+    "branch_b_inject_pos": 1520,
+    "branch_b_suffix_len": 106,
+    "force_inject_at_sentence_end": true,
+    "inject_clamped_to_tail_due_unclosed_think": false
+  },
+  "branch_mode": "b",
+  "branch_A_metrics": null,
+  "branch_B_metrics": {
+    "think_balanced": false,
+    "overlap_prefix_to_continuation": 0,
+    "repetition_flag": false,
+    "expected_hit_raw": true,
+    "expected_hit": true,
+    "eval_strip_meta": {
+      "removed_blocks": 2,
+      "unclosed_tail_trimmed": false,
+      "stray_tags_removed": 0
+    }
+  },
+  "branch_B_prefix_text": "<think>\nOkay, let's see. I need to compute the definite integral of x squared plus 1 from 0 to 3. Hmm, right. The integral of a function gives the area under the curve between the limits. So first, I should find the antiderivative of x² + 1.\n\nThe antiderivative of x² is (x³)/3, right? And the antiderivative of 1 is x. So putting that together, the antiderivative should be (x³)/3 + x. Then I need to evaluate this from 0 to 3. \n\nWait, let me check that again. The integral of x^n is (x^(n+1))/(n+1), so for x², n is 2, so yes, (x³)/3. And the integral of 1 dx is x. So that part is correct. \n\nNow, applying the Fundamental Theorem of Calculus, I substitute the upper limit 3 into the antiderivative and subtract the value at the lower limit 0. Let's compute that. \n\nAt x=3: (3³)/3 + 3 = 27/3 + 3 = 9 + 3 = 12. \n\nAt x=0: (0³)/3 + 0 = 0 + 0 = 0. \n\nSubtracting, 12 - 0 = 12. So the definite integral should be 12. \n\nWait, but let me double-check the calculations. Maybe I made a mistake in the arithmetic. Let's recalculate:\n\nFor x=3: 3 cubed is 27, divided by 3 is 9. Then add 3 (since the antiderivative is (x³)/3 + x). 9 + 3 equals 12. Correct. At x=0, everything is zero. So 12 minus 0 is indeed 12. \n\nHmm, seems straightforward. I don't see any errors here. The integral of x² +1 from 0 to 3 is 12. So the final answer should be 12.\n</think>\n\nStep 0: Find the antiderivative of $x^2 + 1$: $\\frac{x^3}{3} + x + C$.  \nStep 1: Evaluate the antiderivative at the upper limit $x = 3$: $\\frac{3^3}{3} + 3 = 9 + 3 = 12$.  \n",
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "retry_reasons": [],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "eos",
+  "branch_A_match_cover": {},
+  "branch_B_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  }
+}
