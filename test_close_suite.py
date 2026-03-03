@@ -13,7 +13,7 @@ import gc
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 import torch
 
@@ -94,6 +94,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Enable soft think length hint in enhanced system prompt.",
     )
+    p.add_argument(
+        "--enable-first-think-max-words",
+        action="store_true",
+        help="Enable hard truncation for the first <think> block in prefix.",
+    )
+    p.add_argument(
+        "--first-think-max-words",
+        type=int,
+        default=120,
+        help="Hard cap on first <think> words in prefix (0 disables).",
+    )
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
@@ -114,6 +125,18 @@ def parse_args() -> argparse.Namespace:
         help="In think_end_mid mode, stop early if this regex appears (set empty string to disable).",
     )
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
+    p.add_argument(
+        "--step-wait-extra-tokens",
+        type=int,
+        default=1200,
+        help="If no Step marker appears, continue prefix generation by this many tokens.",
+    )
+    p.add_argument(
+        "--no-step-fallback-offset-tokens",
+        type=int,
+        default=300,
+        help="When no Step marker is found, locate inject position near this token offset.",
+    )
     p.add_argument("--max-new-after", type=int, default=1200)
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
     p.add_argument("--min-b-tokens-before-eos", type=int, default=64)
@@ -124,6 +147,29 @@ def parse_args() -> argparse.Namespace:
         help="Force close unmatched <think> tags in prefix/final output.",
     )
     p.add_argument("--inject-text", default=DEFAULT_INJECT_TEXT)
+    p.add_argument(
+        "--corrupt-after-first-think",
+        dest="corrupt_after_first_think",
+        action="store_true",
+        default=True,
+        help="Scope insertion-point locating to content after first </think> (default: enabled).",
+    )
+    p.add_argument(
+        "--no-corrupt-after-first-think",
+        dest="corrupt_after_first_think",
+        action="store_false",
+        help="Disable after-first-think scoping.",
+    )
+    p.add_argument(
+        "--force-inject-at-corrupt",
+        action="store_true",
+        help="Use located insert position (step/fallback) instead of appending at tail.",
+    )
+    p.add_argument(
+        "--force-inject-at-sentence-end",
+        action="store_true",
+        help="Shift located insert position to nearest sentence end after it.",
+    )
 
     p.add_argument("--apply-match-cover", action="store_true")
     p.add_argument("--cover-min-exact-overlap", type=int, default=40)
@@ -183,6 +229,275 @@ def _strip_all_think_blocks(text: str) -> Dict[str, object]:
     }
 
 
+def _split_after_first_think_close(text: str) -> Tuple[str, str, bool]:
+    m = re.search(r"</think>", text, re.IGNORECASE)
+    if not m:
+        return text, "", False
+    return text[: m.end()], text[m.end() :], True
+
+
+def _collect_step_lines(text: str) -> List[Tuple[int, int, str, int]]:
+    step_re = re.compile(r"^\s*Step\s+(\d+)\s*:", re.IGNORECASE)
+    spans: List[Tuple[int, int, str, int]] = []
+    off = 0
+    for line in text.splitlines(keepends=True):
+        ln = line.rstrip("\r\n")
+        st = off
+        ed = off + len(ln)
+        m_step = step_re.match(ln)
+        if m_step:
+            spans.append((st, ed, ln, int(m_step.group(1))))
+        off += len(line)
+    return spans
+
+
+def _has_step_marker(text: str) -> bool:
+    return re.search(r"(?im)^\s*step\s+\d+\s*:", text or "") is not None
+
+
+def _truncate_first_think_words(text: str, max_words: int) -> Tuple[str, Dict[str, object]]:
+    limit = max(0, int(max_words))
+    if limit <= 0:
+        return text, {"applied": False, "reason": "disabled"}
+
+    m_open = re.search(r"<think>", text or "", re.IGNORECASE)
+    if not m_open:
+        return text, {"applied": False, "reason": "no_first_think_open"}
+
+    start = m_open.end()
+    m_close_rel = re.search(r"</think>", (text or "")[start:], re.IGNORECASE)
+    if m_close_rel:
+        close_start = start + m_close_rel.start()
+        close_end = start + m_close_rel.end()
+        body = text[start:close_start]
+        suffix = text[close_end:]
+        close_found = True
+    else:
+        body = text[start:]
+        suffix = ""
+        close_found = False
+
+    words = re.findall(r"\S+", body)
+    if len(words) <= limit and close_found:
+        return text, {
+            "applied": False,
+            "reason": "within_limit",
+            "orig_words": len(words),
+            "limit_words": limit,
+        }
+
+    kept = " ".join(words[:limit]).strip()
+    if kept:
+        kept = "\n" + kept + "\n"
+    new_text = text[: m_open.start()] + "<think>" + kept + "</think>" + suffix
+    return new_text, {
+        "applied": True,
+        "reason": "truncated",
+        "orig_words": len(words),
+        "new_words": len(words[:limit]),
+        "limit_words": limit,
+        "close_found": close_found,
+    }
+
+
+def _extend_prefix_for_step(
+    *,
+    model,
+    tokenizer,
+    device,
+    prompt_ids: torch.Tensor,
+    prefix_text: str,
+    max_new_tokens: int,
+    temperature: float,
+    top_p: float,
+    seed: int,
+    chunk_size: int,
+) -> Tuple[str, Dict[str, object]]:
+    extra = max(0, int(max_new_tokens))
+    if extra <= 0:
+        return prefix_text, {"applied": False, "reason": "disabled", "new_tokens": 0, "step_found": _has_step_marker(prefix_text)}
+
+    prefix_ids = tokenizer.encode(prefix_text, add_special_tokens=False)
+    prefix_ids_t = torch.tensor([prefix_ids], dtype=torch.long, device=device)
+    full_ids = torch.cat([prompt_ids, prefix_ids_t], dim=1)
+    past, logits = prefill_kv(model, full_ids, chunk_size=chunk_size)
+    out = generate_from_state(
+        model=model,
+        tokenizer=tokenizer,
+        past_key_values=past,
+        logits=logits,
+        max_new_tokens=extra,
+        temperature=temperature,
+        top_p=top_p,
+        seed=seed,
+        return_meta=True,
+        print_stream=False,
+    )
+    gen_ids = out["generated_ids"]
+    ext_text = tokenizer.decode(gen_ids, skip_special_tokens=False)
+    new_prefix = prefix_text + ext_text
+    return new_prefix, {
+        "applied": True,
+        "reason": "extended_for_step",
+        "new_tokens": len(gen_ids),
+        "stop_reason": str(out.get("stop_reason", "unknown")),
+        "step_found": _has_step_marker(new_prefix),
+    }
+
+
+def _char_pos_from_token_offset(text: str, tokenizer, token_offset: int) -> Tuple[int, int]:
+    if not text:
+        return 0, 0
+    ids = tokenizer.encode(text, add_special_tokens=False)
+    n = len(ids)
+    if n <= 0:
+        return 0, 0
+    k = min(max(0, int(token_offset)), n)
+    if k <= 0:
+        return 0, n
+    prefix = tokenizer.decode(ids[:k], skip_special_tokens=False)
+    return min(len(text), len(prefix)), n
+
+
+def _advance_to_sentence_end(text: str, start: int, max_lookahead: int = 220) -> int:
+    if start < 0:
+        return 0
+    if start >= len(text):
+        return len(text)
+
+    line_start = text.rfind("\n", 0, start) + 1
+    line_end = text.find("\n", start)
+    if line_end < 0:
+        line_end = len(text)
+    line = text[line_start:line_end]
+    if re.match(r"^\s*Step\s+\d+\s*:", line, re.IGNORECASE):
+        if line_end < len(text) and text[line_end] == "\n":
+            return line_end + 1
+        return line_end
+
+    end = min(len(text), start + max(0, int(max_lookahead)))
+    stops = set(".!?。！？;；")
+    for i in range(start, end):
+        if text[i] in stops:
+            return i + 1
+    nl = text.find("\n", start, end)
+    if nl >= 0:
+        return nl + 1
+    return start
+
+
+def _nearest_sentence_end_near(text: str, pos: int, radius: int = 220) -> int:
+    if not text:
+        return 0
+    p = max(0, min(int(pos), len(text)))
+    r = max(0, int(radius))
+    lo = max(0, p - r)
+    hi = min(len(text), p + r)
+    stops = set(".!?。！？;；")
+
+    best_idx: Optional[int] = None
+    best_dist: Optional[int] = None
+    for i in range(lo, hi):
+        if text[i] not in stops:
+            continue
+        d = abs(i - p)
+        if best_idx is None or d < best_dist or (d == best_dist and i >= p):
+            best_idx = i
+            best_dist = d
+    if best_idx is not None:
+        return best_idx + 1
+    return _advance_to_sentence_end(text, p, max_lookahead=r if r > 0 else 220)
+
+
+def _force_close_unclosed_first_think_near_offset(
+    text: str,
+    *,
+    tokenizer,
+    token_offset: int,
+    window_chars: int = 220,
+) -> Tuple[str, Dict[str, object]]:
+    if not text:
+        return text, {"applied": False, "reason": "empty_text"}
+    if re.search(r"</think>", text, re.IGNORECASE):
+        return text, {"applied": False, "reason": "already_closed"}
+    m_open = re.search(r"<think>", text, re.IGNORECASE)
+    if not m_open:
+        return text, {"applied": False, "reason": "no_think_open"}
+
+    body = text[m_open.end() :]
+    center_rel, total_tokens = _char_pos_from_token_offset(body, tokenizer, token_offset)
+    anchor_rel = _nearest_sentence_end_near(body, center_rel, radius=max(120, int(window_chars)))
+    close_abs = m_open.end() + anchor_rel
+    close_abs = max(m_open.end(), min(len(text), close_abs))
+    close_tag = "\n</think>\n"
+    forced = text[:close_abs] + close_tag + text[close_abs:]
+    return forced, {
+        "applied": True,
+        "reason": "forced_close_at_fallback_anchor",
+        "target_token_offset": int(token_offset),
+        "target_char_offset_in_think": int(center_rel),
+        "total_tokens_in_think": int(total_tokens),
+        "close_pos_before_insert": int(close_abs),
+        "close_pos_after_insert": int(close_abs + len(close_tag)),
+    }
+
+
+def _locate_insert_pos_no_edit(
+    text: str,
+    *,
+    tokenizer,
+    fallback_token_offset: int,
+    window_chars: int,
+) -> Dict[str, object]:
+    if not text:
+        return {"mode": "locator_only", "changed": False, "reason": "empty_text", "inject_pos": None}
+
+    step_spans = _collect_step_lines(text)
+    if step_spans:
+        st, ed, ln, step_no = step_spans[0]
+        colon = ln.find(":")
+        if colon >= 0:
+            body_start = st + colon + 1
+            inject_local = _advance_to_sentence_end(text, body_start)
+        else:
+            inject_local = ed
+        inject_local = max(0, min(len(text), int(inject_local)))
+        return {
+            "mode": "locator_only_step",
+            "changed": True,
+            "inject_pos": int(inject_local),
+            "step_no": int(step_no),
+            "reason": "step_found",
+        }
+
+    fb = int(fallback_token_offset)
+    if fb > 0:
+        center_char, total_tokens = _char_pos_from_token_offset(text, tokenizer, fb)
+        anchor_char = _nearest_sentence_end_near(
+            text,
+            center_char,
+            radius=max(120, int(window_chars)),
+        )
+        inject_local = max(0, min(len(text), int(anchor_char)))
+        return {
+            "mode": "locator_only_token",
+            "changed": True,
+            "inject_pos": int(inject_local),
+            "target_token_offset": int(fb),
+            "target_char_offset": int(center_char),
+            "sentence_anchor_char_offset": int(anchor_char),
+            "total_tokens": int(total_tokens),
+            "reason": "fallback_token_anchor",
+        }
+
+    return {
+        "mode": "locator_only",
+        "changed": False,
+        "inject_pos": None,
+        "reason": "no_step_and_fallback_disabled",
+    }
+
+
 def evaluate_branch(
     prefix_text: str,
     continuation_text: str,
@@ -215,6 +530,8 @@ def run_task_ab(
     prompt_mode: str,
     think_word_limit: int,
     enable_think_word_limit: bool,
+    enable_first_think_max_words: bool,
+    first_think_max_words: int,
     math_step_user_guidance: str,
     task: Dict[str, object],
     temperature: float,
@@ -227,6 +544,8 @@ def run_task_ab(
     checkpoint_mid_max_tokens: int,
     checkpoint_mid_avoid_final_regex: Optional[str],
     max_prefix_tokens: int,
+    step_wait_extra_tokens: int,
+    no_step_fallback_offset_tokens: int,
     max_new_after: int,
     branch_mode: str,
     min_b_tokens_before_eos: int,
@@ -234,6 +553,9 @@ def run_task_ab(
     auto_close_unclosed_think: bool,
     chunk_size: int,
     inject_text: str,
+    corrupt_after_first_think: bool,
+    force_inject_at_corrupt: bool,
+    force_inject_at_sentence_end: bool,
     apply_match_cover_flag: bool,
     apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
@@ -282,19 +604,136 @@ def run_task_ab(
 
     prefix_ids = ckpt["generated_ids"]
     prefix_text = ckpt.get("generated_text") or tokenizer.decode(prefix_ids, skip_special_tokens=False)
+    prefix_think_limit_meta = {"applied": False, "reason": "disabled"}
+    if bool(enable_first_think_max_words) and int(first_think_max_words) > 0:
+        prefix_text, prefix_think_limit_meta = _truncate_first_think_words(
+            prefix_text, int(first_think_max_words)
+        )
 
-    prefix_think_gap = _think_balance_delta(prefix_text)
-    if auto_close_unclosed_think and prefix_think_gap > 0:
-        prefix_text = prefix_text + ("\n</think>" * prefix_think_gap) + "\n"
+    prefix_step_wait_meta = {
+        "applied": False,
+        "reason": "not_needed",
+        "step_found_before": _has_step_marker(prefix_text),
+        "step_found_after": _has_step_marker(prefix_text),
+        "new_tokens": 0,
+    }
+    if (
+        checkpoint_mode == "think_end_then_regex"
+        and bool(corrupt_after_first_think)
+        and (not _has_step_marker(prefix_text))
+        and int(step_wait_extra_tokens) > 0
+    ):
+        prefix_text, ext_meta = _extend_prefix_for_step(
+            model=model,
+            tokenizer=tokenizer,
+            device=device,
+            prompt_ids=prompt_ids,
+            prefix_text=prefix_text,
+            max_new_tokens=int(step_wait_extra_tokens),
+            temperature=temperature,
+            top_p=top_p,
+            seed=seed + 43,
+            chunk_size=chunk_size,
+        )
+        prefix_step_wait_meta = {
+            "applied": True,
+            "reason": ext_meta.get("reason"),
+            "step_found_before": False,
+            "step_found_after": bool(ext_meta.get("step_found")),
+            "new_tokens": int(ext_meta.get("new_tokens", 0)),
+            "stop_reason": ext_meta.get("stop_reason"),
+        }
 
-    prefix_ids_local = tokenizer.encode(prefix_text, add_special_tokens=False)
-    prefix_ids_t = torch.tensor([prefix_ids_local], dtype=torch.long, device=device)
-    full_ids_base = torch.cat([prompt_ids, prefix_ids_t], dim=1)
-    past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
+    target_prefix = prefix_text
+    head_prefix = ""
+    effective_no_step_fallback_offset_tokens = int(no_step_fallback_offset_tokens)
+    scope_meta: Dict[str, object] = {
+        "corrupt_after_first_think": bool(corrupt_after_first_think),
+        "first_think_closed_found": False,
+        "no_step_fallback_offset_tokens_effective": int(effective_no_step_fallback_offset_tokens),
+    }
+    if bool(corrupt_after_first_think):
+        head_prefix, target_prefix, found_close = _split_after_first_think_close(prefix_text)
+        scope_meta["first_think_closed_found"] = bool(found_close)
+        if not found_close and int(no_step_fallback_offset_tokens) > 0:
+            forced_text, forced_meta = _force_close_unclosed_first_think_near_offset(
+                prefix_text,
+                tokenizer=tokenizer,
+                token_offset=int(no_step_fallback_offset_tokens),
+                window_chars=220,
+            )
+            scope_meta["first_think_force_close_meta"] = forced_meta
+            if bool(forced_meta.get("applied")):
+                prefix_text = forced_text
+                head_prefix, target_prefix, found_close2 = _split_after_first_think_close(prefix_text)
+                scope_meta["first_think_closed_found"] = bool(found_close2)
+                scope_meta["first_think_forced_close_before_inject"] = bool(found_close2)
+                scope_meta["first_think_force_close_applied"] = bool(found_close2)
+                if found_close2:
+                    effective_no_step_fallback_offset_tokens = 1
+                    scope_meta["no_step_fallback_offset_tokens_effective"] = 1
+        if not bool(scope_meta.get("first_think_closed_found")):
+            head_prefix = prefix_text
+            target_prefix = ""
+            scope_meta["first_think_forced_close_before_inject"] = True
+
+    locator_meta = _locate_insert_pos_no_edit(
+        target_prefix,
+        tokenizer=tokenizer,
+        fallback_token_offset=int(effective_no_step_fallback_offset_tokens),
+        window_chars=220,
+    )
+
+    edited_text = head_prefix + target_prefix
+    prefix_think_gap = _think_balance_delta(edited_text)
+    inject_opens_think = ("<think>" in inject_text) and ("</think>" not in inject_text)
+    forced_close_for_inject = bool(inject_opens_think and prefix_think_gap > 0)
+    if forced_close_for_inject:
+        edited_text = edited_text + ("\n</think>" * prefix_think_gap) + "\n"
+    elif auto_close_unclosed_think and prefix_think_gap > 0:
+        edited_text = edited_text + ("\n</think>" * prefix_think_gap) + "\n"
+
+    branch_b_inject_pos = len(edited_text)
+    branch_b_force_overlap_applied = False
+    force_inject_effective = bool(force_inject_at_corrupt)
+    if (
+        force_inject_effective
+        and (not forced_close_for_inject)
+        and bool(locator_meta.get("changed"))
+        and (locator_meta.get("inject_pos") is not None)
+    ):
+        try:
+            inject_pos_local = int(locator_meta.get("inject_pos"))
+            inject_pos_global = len(head_prefix) + inject_pos_local
+            if 0 <= inject_pos_global <= len(edited_text):
+                if force_inject_at_sentence_end:
+                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
+                branch_b_inject_pos = inject_pos_global
+                branch_b_force_overlap_applied = True
+        except Exception:
+            pass
+
+    branch_b_prefix_text = edited_text[:branch_b_inject_pos]
+    branch_b_suffix_text = edited_text[branch_b_inject_pos:]
+
+    prefix_ids_local = tokenizer.encode(edited_text, add_special_tokens=False)
+
+    need_base_prefill = (branch_mode == "ab") or (branch_b_inject_pos == len(edited_text))
+    past_base = None
+    logits_base = None
+    full_ids_base = None
+
+    if need_base_prefill:
+        prefix_ids_t = torch.tensor([prefix_ids_local], dtype=torch.long, device=device)
+        full_ids_base = torch.cat([prompt_ids, prefix_ids_t], dim=1)
+        past_base, logits_base = prefill_kv(model, full_ids_base, chunk_size=chunk_size)
+        del prefix_ids_t
 
     # 2) Branch A：直接续写。
     branch_a_rec: Dict[str, object] = {"skipped": True, "reason": "branch_mode=b"}
     if branch_mode == "ab":
+        if past_base is None or logits_base is None:
+            raise RuntimeError("Branch A requires base prefill state, but it is missing.")
         past_a = clone_past_key_values(past_base)
         logits_a = logits_base.clone()
         gen_a_out = generate_from_state(
@@ -314,7 +753,7 @@ def run_task_ab(
 
         if apply_match_cover_flag:
             cont_a, cover_meta_a = apply_match_cover(
-                prefix_text,
+                edited_text,
                 cont_a_raw,
                 min_exact_overlap=cover_min_exact_overlap,
                 fuzzy_min_len=cover_fuzzy_min_len,
@@ -324,8 +763,8 @@ def run_task_ab(
         else:
             cont_a, cover_meta_a = cont_a_raw, {"mode": "disabled", "trimmed_chars": 0}
 
-        full_a = prefix_text + cont_a
-        eval_a = evaluate_branch(prefix_text, cont_a, full_a, expected_regex)
+        full_a = edited_text + cont_a
+        eval_a = evaluate_branch(edited_text, cont_a, full_a, expected_regex)
         branch_a_rec = {
             "continuation_text_raw": cont_a_raw,
             "continuation_text": cont_a,
@@ -344,8 +783,28 @@ def run_task_ab(
             torch.cuda.empty_cache()
 
     # 3) Branch B：注入 <think> 后续写。
-    past_b = clone_past_key_values(past_base)
-    logits_b = logits_base.clone()
+    if branch_b_inject_pos == len(edited_text):
+        if past_base is None or logits_base is None:
+            raise RuntimeError("Branch B requires base prefill state, but it is missing.")
+        past_b = clone_past_key_values(past_base)
+        logits_b = logits_base.clone()
+    else:
+        branch_b_ids = tokenizer.encode(branch_b_prefix_text, add_special_tokens=False)
+        branch_b_ids_t = torch.tensor([branch_b_ids], dtype=torch.long, device=device)
+        full_ids_b = torch.cat([prompt_ids, branch_b_ids_t], dim=1)
+        past_b, logits_b = prefill_kv(model, full_ids_b, chunk_size=chunk_size)
+        del branch_b_ids_t
+        del full_ids_b
+
+    if past_base is not None:
+        del past_base
+    if logits_base is not None:
+        del logits_base
+    if full_ids_base is not None:
+        del full_ids_base
+    del prompt_ids
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
 
     inject_ids = tokenizer.encode(inject_text, add_special_tokens=False)
     inject_ids_t = torch.tensor([inject_ids], dtype=torch.long, device=device)
@@ -400,7 +859,7 @@ def run_task_ab(
     cont_b_raw = tokenizer.decode(gen_b, skip_special_tokens=False)
     if apply_match_cover_flag:
         cont_b, cover_meta_b = apply_match_cover(
-            prefix_text + inject_text,
+            branch_b_prefix_text + inject_text,
             cont_b_raw,
             min_exact_overlap=cover_min_exact_overlap,
             fuzzy_min_len=cover_fuzzy_min_len,
@@ -412,7 +871,7 @@ def run_task_ab(
 
     if apply_cross_think_cover_flag:
         cont_b, cross_cover_meta_b = apply_cross_think_match_cover(
-            prefix_text,
+            branch_b_prefix_text,
             cont_b,
             min_exact_overlap=max(16, cover_min_exact_overlap // 2),
             fuzzy_min_len=max(12, cover_fuzzy_min_len // 2),
@@ -422,14 +881,14 @@ def run_task_ab(
     else:
         cross_cover_meta_b = {"mode": "disabled", "trimmed_chars": 0}
 
-    full_b = prefix_text + inject_text + cont_b
+    full_b = branch_b_prefix_text + inject_text + cont_b
     full_b_think_gap = _think_balance_delta(full_b)
     if auto_close_unclosed_think and full_b_think_gap > 0:
         closer = ("\n</think>" * full_b_think_gap) + "\n"
         cont_b = cont_b + closer
         full_b = full_b + closer
 
-    eval_b = evaluate_branch(prefix_text, cont_b, full_b, expected_regex)
+    eval_b = evaluate_branch(branch_b_prefix_text, cont_b, full_b, expected_regex)
 
     return {
         "task_id": task_id,
@@ -454,16 +913,28 @@ def run_task_ab(
         },
         "prefix_seen_first_think_end": bool(ckpt["seen_first_think_end"]),
         "prefix_tokens": len(prefix_ids_local),
+        "prefix_think_limit_meta": prefix_think_limit_meta,
+        "prefix_step_wait_meta": prefix_step_wait_meta,
         "insert_meta": {
             "inject_text": inject_text,
             "inject_opens_think": bool(inject_opens_think),
             "prefix_open_think_before_inject": max(0, prefix_think_gap),
             "prefix_auto_closed_think": max(0, prefix_think_gap) if auto_close_unclosed_think else 0,
+            "prefix_forced_close_for_inject": max(0, prefix_think_gap) if forced_close_for_inject else 0,
+            "after_first_think_scope": scope_meta,
+            "locator_meta": locator_meta,
+            "force_inject_at_corrupt": bool(force_inject_at_corrupt),
+            "force_inject_at_corrupt_effective": bool(force_inject_effective),
+            "branch_b_force_overlap_applied": bool(branch_b_force_overlap_applied),
+            "branch_b_inject_pos": int(branch_b_inject_pos),
+            "branch_b_suffix_len": int(len(branch_b_suffix_text)),
+            "force_inject_at_sentence_end": bool(force_inject_at_sentence_end),
+            "inject_clamped_to_tail_due_unclosed_think": bool(forced_close_for_inject and force_inject_at_corrupt),
         },
         "branch_mode": branch_mode,
         "branch_A": branch_a_rec,
         "branch_B": {
-            "prefix_text": prefix_text,
+            "prefix_text": branch_b_prefix_text,
             "continuation_text_raw": cont_b_raw,
             "continuation_text": cont_b,
             "full_text": full_b,
@@ -601,6 +1072,8 @@ def main() -> None:
                 prompt_mode=args.prompt_mode,
                 think_word_limit=args.think_word_limit,
                 enable_think_word_limit=bool(args.enable_think_word_limit),
+                enable_first_think_max_words=bool(args.enable_first_think_max_words),
+                first_think_max_words=args.first_think_max_words,
                 math_step_user_guidance=math_step_user_guidance,
                 task=task,
                 temperature=args.temperature,
@@ -613,6 +1086,8 @@ def main() -> None:
                 checkpoint_mid_max_tokens=args.checkpoint_mid_max_tokens,
                 checkpoint_mid_avoid_final_regex=resolved_checkpoint_mid_avoid_final_regex,
                 max_prefix_tokens=args.max_prefix_tokens,
+                step_wait_extra_tokens=args.step_wait_extra_tokens,
+                no_step_fallback_offset_tokens=args.no_step_fallback_offset_tokens,
                 max_new_after=args.max_new_after,
                 branch_mode=args.branch_mode,
                 min_b_tokens_before_eos=args.min_b_tokens_before_eos,
@@ -620,6 +1095,9 @@ def main() -> None:
                 auto_close_unclosed_think=bool(args.auto_close_unclosed_think),
                 chunk_size=args.chunk_size,
                 inject_text=args.inject_text,
+                corrupt_after_first_think=bool(args.corrupt_after_first_think),
+                force_inject_at_corrupt=bool(args.force_inject_at_corrupt),
+                force_inject_at_sentence_end=bool(args.force_inject_at_sentence_end),
                 apply_match_cover_flag=bool(args.apply_match_cover),
                 apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,
@@ -701,6 +1179,8 @@ def main() -> None:
             "prompt_mode": args.prompt_mode,
             "think_word_limit": args.think_word_limit,
             "enable_think_word_limit": bool(args.enable_think_word_limit),
+            "enable_first_think_max_words": bool(args.enable_first_think_max_words),
+            "first_think_max_words": args.first_think_max_words,
             "branch_mode": args.branch_mode,
             "min_b_tokens_before_eos": args.min_b_tokens_before_eos,
             "b_retry_times": args.b_retry_times,
@@ -710,6 +1190,11 @@ def main() -> None:
             "checkpoint_mid_min_tokens": args.checkpoint_mid_min_tokens,
             "checkpoint_mid_max_tokens": args.checkpoint_mid_max_tokens,
             "checkpoint_mid_avoid_final_regex": resolved_checkpoint_mid_avoid_final_regex,
+            "step_wait_extra_tokens": args.step_wait_extra_tokens,
+            "no_step_fallback_offset_tokens": args.no_step_fallback_offset_tokens,
+            "corrupt_after_first_think": bool(args.corrupt_after_first_think),
+            "force_inject_at_corrupt": bool(args.force_inject_at_corrupt),
+            "force_inject_at_sentence_end": bool(args.force_inject_at_sentence_end),
             "apply_match_cover": bool(args.apply_match_cover),
             "apply_cross_think_cover": bool(args.apply_cross_think_cover),
             "cover_min_exact_overlap": args.cover_min_exact_overlap,

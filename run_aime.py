@@ -3,7 +3,7 @@
 AIME2025 一键评测入口。
 
 定位：
-- 只做“中途插入 <think>”对照评测（A/B），不做改错/扰动。
+- 只做“中途插入 <think>”评测（Branch B only），不做改错/扰动。
 - 内部调用精简后的 test_close_suite.py。
 """
 
@@ -15,7 +15,7 @@ from pathlib import Path
 
 def parse_args() -> argparse.Namespace:
     here = Path(__file__).resolve().parent
-    p = argparse.ArgumentParser(description="Run AIME2025 with insertion-only A/B evaluation.")
+    p = argparse.ArgumentParser(description="Run AIME2025 with insertion-only Branch-B evaluation.")
     p.add_argument("--model-paths", required=True, help="Comma-separated local model paths.")
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
 
@@ -44,6 +44,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
     p.add_argument("--think-word-limit", type=int, default=60)
     p.add_argument("--enable-think-word-limit", action="store_true")
+    p.add_argument("--enable-first-think-max-words", action="store_true")
+    p.add_argument("--first-think-max-words", type=int, default=120)
     p.add_argument("--checkpoint-mode", default="think_end_mid", choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"])
     p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--checkpoint-delay", type=int, default=0)
@@ -55,8 +57,22 @@ def parse_args() -> argparse.Namespace:
     )
 
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
+    p.add_argument("--step-wait-extra-tokens", type=int, default=1200)
+    p.add_argument("--no-step-fallback-offset-tokens", type=int, default=300)
     p.add_argument("--max-new-after", type=int, default=1200)
-    p.add_argument("--branch-mode", default="ab", choices=["ab", "b"])
+    p.add_argument(
+        "--corrupt-after-first-think",
+        dest="corrupt_after_first_think",
+        action="store_true",
+        default=True,
+    )
+    p.add_argument(
+        "--no-corrupt-after-first-think",
+        dest="corrupt_after_first_think",
+        action="store_false",
+    )
+    p.add_argument("--force-inject-at-corrupt", action="store_true")
+    p.add_argument("--force-inject-at-sentence-end", action="store_true")
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
@@ -93,6 +109,8 @@ def main() -> None:
         args.prompt_mode,
         "--think-word-limit",
         str(args.think_word_limit),
+        "--first-think-max-words",
+        str(args.first_think_max_words),
         "--checkpoint-mode",
         args.checkpoint_mode,
         "--checkpoint-regex",
@@ -107,10 +125,14 @@ def main() -> None:
         args.checkpoint_mid_avoid_final_regex,
         "--max-prefix-tokens",
         str(args.max_prefix_tokens),
+        "--step-wait-extra-tokens",
+        str(args.step_wait_extra_tokens),
+        "--no-step-fallback-offset-tokens",
+        str(args.no_step_fallback_offset_tokens),
         "--max-new-after",
         str(args.max_new_after),
         "--branch-mode",
-        args.branch_mode,
+        "b",
         "--temperature",
         str(args.temperature),
         "--top-p",
@@ -123,6 +145,16 @@ def main() -> None:
         cmd.append("--apply-match-cover")
     if args.enable_think_word_limit:
         cmd.append("--enable-think-word-limit")
+    if args.enable_first_think_max_words:
+        cmd.append("--enable-first-think-max-words")
+    if args.corrupt_after_first_think:
+        cmd.append("--corrupt-after-first-think")
+    else:
+        cmd.append("--no-corrupt-after-first-think")
+    if args.force_inject_at_corrupt:
+        cmd.append("--force-inject-at-corrupt")
+    if args.force_inject_at_sentence_end:
+        cmd.append("--force-inject-at-sentence-end")
     if args.apply_cross_think_cover:
         cmd.append("--apply-cross-think-cover")
     if args.save_task_texts:
