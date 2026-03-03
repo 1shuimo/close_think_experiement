@@ -1,0 +1,137 @@
+<think>
+Okay, I need to solve this problem where I have to count the number of subarrays that can be made non-decreasing by performing at most k operations. Each operation allows me to increment any element of the subarray by 1. The challenge is to figure out for each possible subarray whether the required number of operations is ≤k, and sum all those valid subarrays.
+
+First, let's think about how to determine the minimum number of operations needed to make a subarray non-decreasing. For a given subarray, what's the minimal number of operations required?
+
+Let me think. The problem is similar to making the array non-decreasing by adjusting elements. For example, if the array is [3, 1, 2], then we need to increase the 1 to 3 (so that the array is [3,3,2] but that's not non-decreasing. Wait, no. Wait, maybe I need to approach this differently. The operations allow me to increment elements. So the way to make the array non-decreasing is to adjust each element to be at least as big as the previous one.
+
+Let me think of the standard approach for this. For example, in the problem where you have to make the array non-decreasing by adding to elements, the minimal number of operations is calculated by keeping track of the required increases. For example, for each element, if it's less than the previous, you need to increase it to the previous value. The total number of operations is the sum of all these required increases.
+
+Wait, here's an example. Let's take the array [a1, a2, a3, ... an]. For it to be non-decreasing, we can process it from left to right. Let's track the current required value. For each element, if it's less than the required value, we need to increase it to that value, and add (required - current) to the total operations. Then, the required value becomes this new value. If the element is already ≥ required, then no operation is needed, and the required becomes the element's value.
+
+For example, take the subarray [6,3,1]. Let's process it:
+
+Start with required = 6. Next element is 3. Since 3 < 6, we need to increase it to 6. Operations += 3 (6-3). Now required is 6. Next element is 1.
+</think>
+ Again, 1 < 6, so increase to 6. Operations +=5. Total is 8. Since k is 7 in the first example, this subarray would be invalid. Which matches the example given.
+
+So for each subarray, we can compute the required number of operations by this method. The key is to find all subarrays where this total is ≤k.
+
+Now the problem becomes: how to efficiently compute for all possible subarrays the required number of operations and count those that are ≤k.
+
+But the brute-force approach of checking all possible subarrays would be O(n²), which for n up to 1e5 is way too slow. So we need a smarter approach.
+
+Let me think about dynamic programming. For each position i, can we find the length of the current valid subarrays ending at i?
+
+Let me think. Let's consider that for each subarray ending at i, the required operations can be calculated based on the previous subarray. For example, if we have a subarray ending at i-1, and we extend it by one element (nums[i]), then how does the required operations change?
+
+Let me think of an example. Suppose we have a subarray ending at i-1 with some accumulated operations. When adding nums[i], we need to adjust the previous required value. Let's think in terms of the required increases.
+
+Let me think of the process for a subarray. Let's say we have a subarray from j to i. Let's track the total operations needed. Let's also track the previous value (the last value in the non-decreasing array after applying operations). For example, when adding a new element, if it's less than the previous adjusted value, we need to add the difference and update the previous adjusted value.
+
+This suggests that for each i, we can track for all possible subarrays ending at i the required operations. But how?
+
+Let me think of dynamic programming. For each i, let's consider all possible subarrays that end at i. For each such subarray, we can compute the required operations. But how to compute this efficiently.
+
+Let me think of an example. Suppose we have nums[i] and we want to consider subarrays ending at i. Let's say that for the previous position i-1, there are some lengths l where the subarray ending at i-1 of length l can be extended to i.<think>
+I may be uncertain here, so I will briefly re-check only the most recent local steps, verify logic, edge cases, and Python details, make only minimal fixes, and continue exactly from this point by finishing the interrupted part immediately before this injected <think> without restarting or repeating earlier long text, while strictly keeping the required output format. Let me start thinking.
+</think>
+
+Let me think again. For each i, we can track for each possible subarray ending at i the required number of operations. But how?
+
+Let me think of the following approach. For each i, we can find the maximum length of subarray ending at i that can be made non-decreasing with some accumulated cost. But how to track this.
+
+Let me think of the following idea inspired by the problem of finding the minimum number of operations for each subarray. For each i, we can track the number of operations needed for the subarray ending at i. For example, if the current element is >= the previous element's adjusted value, then the operations for the subarray ending at i (extended by this element) is the same as the previous plus zero. Otherwise, we need to calculate the difference and add it.
+
+Let me formalize this. Let's define dp[i] as the number of operations needed to make the subarray ending at i non-decreasing. For example, if the subarray is nums[0..i], then dp[i] is the required operations. But how to compute dp[i] based on dp[i-1].
+
+Let me think. Suppose the subarray ends at i-1, and we add nums[i]. Let's say that in the subarray ending at i-1, the last adjusted value is prev. Now, if nums[i] >= prev, then we don't need to do anything. The required operations for the subarray ending at i is dp[i-1] + 0. The new prev is nums[i]. However, if nums[i] < prev, then we need to increase nums[i] to prev. The required operations would be (prev - nums[i]) added to dp[i-1]. The new prev is prev (since the adjusted value remains the same as before, because we increased nums[i] to prev).
+
+Wait, but this is for the subarray that starts from the beginning up to i. But we need to consider all possible subarrays. For example, the subarray could start at j, for various j ≤i. How can we track this?
+
+Alternatively, perhaps for each i, there are multiple possible subarrays ending at i. For each such subarray, we can track the required number of operations. But how to do this efficiently.
+
+Let me think of an example. Let's take nums = [3, 1, 2]. For i=0 (element 3), there's one subarray [3], which requires 0 operations. For i=1 (element 1), there are two subarrays: [3,1] and [1]. For [3,1], the required operations are 2 (increase 1 to 3). For [1], 0. For i=2 (element 2), the subarrays are [3,1,2], [1,2], [2]. Let's compute their required operations:
+
+- [3,1,2]: For the first two elements, we need 2 operations. Now, the adjusted array is [3,3]. The third element is 2, which is less than 3. So we need to increase it by 1. Total operations is 2+1=3.
+
+- [1,2]: requires 0 operations (already non-decreasing).
+
+- [2]: 0.
+
+So for i=2, the required operations for the subarrays ending at i are 3, 0, 0.
+
+But how to track this for all i?
+
+An alternative approach is to realize that for each i, the subarrays ending at i can be grouped into contiguous ranges. For example, when adding nums[i], we can find how far back we can extend the subarray such that the required operations for that subarray is within k.
+
+But how to compute this.
+
+Let me think of the following approach inspired by the problem of finding the number of subarrays with sum less than or equal to k. But in this case, the "sum" is the required operations for the subarray.
+
+Let me think of the following idea: For each i, we can track all possible subarrays ending at i, and for each, compute the required operations. Then, for each i, we can find how many of these subarrays have operations ≤k. Summing over all i gives the total.
+
+The problem is how to compute for each i the required operations for all subarrays ending at i efficiently.
+
+Let me think of the following dynamic programming approach. For each i, we can track the required operations for the subarray ending at i with length m. For example, for each i, we can have a list of possible lengths and their corresponding operation counts. But this might be too slow.
+
+Alternatively, for each i, we can track the required operations for the longest possible subarray ending at i. Then, for shorter subarrays, we can derive their required operations based on this.
+
+Let me think of the following: For each i, we can track the required operations for the subarray ending at i. Let's say that for the subarray ending at i, the required operations is dp[i]. But how to compute dp[i] based on previous values.
+
+Let me think again. For example, when considering the subarray ending at i, it can be formed by extending a subarray ending at i-1. Let's say that in the subarray ending at i-1, the last adjusted value is prev. Now, when adding nums[i], if nums[i] >= prev, then the required operations for the new subarray is dp[i-1] + 0, and the new prev is nums[i]. If nums[i] < prev, then we need to add (prev - nums[i]) to the operations, and the new prev is prev. But how to track prev?
+
+Ah, so for each i, we need to track not only the total operations but also the last adjusted value. This suggests that for each i, we can track two things: the total operations needed for the subarray ending at i, and the last adjusted value. Let's call these variables cost and last.
+
+For example, for each i, we can have a list of possible (cost, last) pairs, representing different subarrays ending at i. But this seems too vague.
+
+Wait, perhaps for each i, there is a way to determine the cost for all possible subarrays ending at i by considering the previous subarrays. Let me think of the following approach inspired by the problem of finding the minimum number of operations to make the entire array non-decreasing. In that problem, we can process the array and track the required increases. For example, let's imagine that for each position i, we track the required increases for the subarray ending at i. Let's say that for the subarray ending at i, the required increases are based on the previous subarray.
+
+Let me think of an example. Suppose we have nums[i] and we want to form a subarray ending at i. Let's say that the previous subarray (ending at i-1) has a certain adjusted value. When adding nums[i], if nums[i] is >= that adjusted value, then the new adjusted value is nums[i], and the cost is previous cost. If nums[i] is less than the adjusted value, then we need to add (adjusted value - nums[i]) to the cost, and the adjusted value remains the same as before.
+
+But how to track this for all possible subarrays ending at i. For example, the subarray could start at i, i-1, i-2, etc. Each of these would have different adjusted values and costs.
+
+This seems complex, but perhaps there's a way to model this with dynamic programming. Let's think: for each i, we can track for all possible subarrays ending at i the cost and the adjusted value. However, this would be O(n²) in the worst case, which is not feasible for n=1e5.
+
+Alternative idea: For each i, there is a certain number of possible subarrays ending at i, and for each, the cost can be computed based on the previous subarray. Let's think recursively. Let's say that for the subarray ending at i with length l (i.e., starting at i-l+1), the cost is c. How can we compute this based on the subarray of length l-1 ending at i-1?
+
+Let me think. Suppose we have a subarray ending at i-1 of length l-1, with cost c_prev and adjusted last value last_prev. Adding nums[i] to this subarray to form a subarray of length l ending at i. The new adjusted last value depends on nums[i] and last_prev. If nums[i] >= last_prev, then the new adjusted last value is nums[i], and the cost is c_prev. If nums[i] < last_prev, then we need to add (last_prev - nums[i]) to the cost, and the adjusted last value remains last_prev.
+
+So for each i, we can track for each possible subarray ending at i (of varying lengths) the cost and adjusted last value. But again, this seems like O(n²) time.
+
+But perhaps there's a way to track for each i the possible subarrays ending at i in a way that allows us to compute the total number of valid subarrays efficiently.
+
+Let me think of the following approach. For each i, we can track the possible subarrays ending at i as a list of intervals. For example, for each i, we can have a variable that tells us the start of the longest valid subarray ending at i. But I'm not sure.
+
+Alternatively, let's think of the problem as follows: For each i, we can find all j ≤i such that the subarray nums[j..i] can be made non-decreasing with at most k operations. The total number of valid subarrays is the sum over all i of the number of such j's.
+
+The challenge is to compute for each i the number of j's such that the required operations for nums[j..i] is ≤k.
+
+To compute this, we need an efficient way to calculate the required operations for any subarray [j..i].
+
+But how?
+
+Let me think of the required operations for a subarray [j..i]. As discussed earlier, this can be computed by processing the subarray from left to right, keeping track of the previous adjusted value and accumulating the required increases. Let's denote this as the "delta" for the subarray.
+
+If we can find a way to compute this delta for any subarray [j..i] quickly, then we can use a sliding window or two pointers approach to find for each i the range of j's where delta is ≤k.
+
+But how to compute delta for arbitrary [j..i]?
+
+This seems challenging. However, perhaps there's a way to precompute some information that allows us to calculate delta for any subarray efficiently.
+
+Let me think again about how delta is computed. For a subarray [a_1, a_2, ..., a_m], the delta is the sum of all the increments needed to make it non-decreasing. Let's denote this as D. Let's think of the process of building the subarray from left to right. For each element, we track the required value it must be at least. For example:
+
+prev = a_1
+delta = 0
+for i from 1 to m-1:
+    if a_{i+1} < prev:
+        delta += prev - a_{i+1}
+        prev = prev
+    else:
+        prev = a_{i+1}
+
+So the delta is the sum of all the increments needed. The key observation here is that the delta depends on the sequence of elements in the subarray and how they compare to each other.
+
+This seems like it's not easily expressible as a prefix sum or similar structure. However, perhaps we can find a way to model this with dynamic programming.
+
+Let me think of the following idea: For each position i, we can track for
