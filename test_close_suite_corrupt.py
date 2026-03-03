@@ -1044,10 +1044,11 @@ def run_task_ab(
                     scope_meta["first_think_forced_close_before_inject"] = bool(found_close2)
                     scope_meta["first_think_force_close_applied"] = bool(found_close2)
                     if found_close2:
-                        # target_prefix now starts right after forced close anchor,
-                        # so fallback offset should start near the new segment head.
-                        effective_no_step_fallback_offset_tokens = 1
-                        scope_meta["no_step_fallback_offset_tokens_effective"] = 1
+                        # Keep the configured fallback offset after first-think close.
+                        # This ensures insertion happens after enough post-think tokens.
+                        scope_meta["no_step_fallback_offset_tokens_effective"] = int(
+                            effective_no_step_fallback_offset_tokens
+                        )
             if not bool(scope_meta.get("first_think_closed_found")):
                 # Keep original behavior if force-close did not apply.
                 head_prefix = prefix_text

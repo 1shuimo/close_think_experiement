@@ -24,7 +24,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--output-dir", default=str(here / "suite_lcb_insert"))
 
     p.add_argument("--system-prompt-file", default=str(here / "prompts" / "system_lcb_r1_insert_v1.txt"))
-    p.add_argument("--inject-text-file", default=str(here / "prompts" / "inject_think_codegen_qwq_fused_v1.txt"))
+    p.add_argument("--inject-text-file", default=str(here / "prompts" / "inject_think_codegen_aime_like_v1.txt"))
     p.add_argument("--prompt-mode", default="baseline", choices=["baseline", "enhanced"])
 
     p.add_argument("--checkpoint-delay", type=int, default=0)
@@ -34,6 +34,7 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--max-prefix-tokens", type=int, default=6000)
     p.add_argument("--max-new-after", type=int, default=1200)
+    p.add_argument("--no-step-fallback-offset-tokens", type=int, default=500)
 
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
@@ -89,7 +90,7 @@ def main() -> None:
         "--step-wait-extra-tokens",
         "0",
         "--no-step-fallback-offset-tokens",
-        "300",
+        str(args.no_step_fallback_offset_tokens),
         "--max-new-after",
         str(args.max_new_after),
         "--branch-mode",
