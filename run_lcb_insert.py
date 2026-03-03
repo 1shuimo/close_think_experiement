@@ -4,7 +4,7 @@ LiveCodeBench insertion runner (no corruption).
 
 Notes:
 - This script does NOT modify AIME entry scripts.
-- It wraps test_close_suite_corrupt.py with a fixed insertion-only setup for LCB tasks.
+- It wraps test_close_suite.py with a fixed insertion-only setup for LCB tasks.
 - Step-based logic is disabled for code generation tasks; insertion uses think-mid + token fallback.
 """
 
@@ -45,19 +45,25 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--save-task-texts", action="store_true")
     p.add_argument("--print-full-output", action="store_true")
-    p.add_argument("--apply-match-cover", action="store_true")
-    p.add_argument("--apply-cross-think-cover", action="store_true")
     return p.parse_args()
 
 
 def main() -> None:
     args = parse_args()
     here = Path(__file__).resolve().parent
+    system_prompt_text = Path(args.system_prompt_file).read_text(encoding="utf-8")
     inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
+
+    print("[run_lcb_insert] system prompt file:", args.system_prompt_file)
+    print("[run_lcb_insert] prompt mode:", args.prompt_mode)
+    print("[run_lcb_insert] system prompt content:")
+    print("----- SYSTEM PROMPT BEGIN -----")
+    print(system_prompt_text.rstrip())
+    print("----- SYSTEM PROMPT END -----")
 
     cmd = [
         sys.executable,
-        str(here / "test_close_suite_corrupt.py"),
+        str(here / "test_close_suite.py"),
         "--model-paths",
         args.model_paths,
         "--dtype",
@@ -95,19 +101,14 @@ def main() -> None:
         str(args.max_new_after),
         "--branch-mode",
         "b",
+        "--corrupt-after-first-think",
+        "--force-inject-at-corrupt",
         "--temperature",
         str(args.temperature),
         "--top-p",
         str(args.top_p),
         "--seed",
         str(args.seed),
-        "--locator-only",
-        "--corrupt-mode",
-        "none",
-        # For codegen tasks, disable step-based locator branch and always use token fallback.
-        "--corrupt-min-step",
-        "999999",
-        "--corrupt-after-first-think",
     ]
 
     if args.enable_think_word_limit:
@@ -116,11 +117,6 @@ def main() -> None:
         cmd.append("--save-task-texts")
     if args.print_full_output:
         cmd.append("--print-full-output")
-    if args.apply_match_cover:
-        cmd.append("--apply-match-cover")
-    if args.apply_cross_think_cover:
-        cmd.append("--apply-cross-think-cover")
-
     print("[run_lcb_insert] command:")
     print(" ".join(cmd))
     subprocess.run(cmd, check=True, cwd=str(here))
