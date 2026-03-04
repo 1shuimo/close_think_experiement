@@ -88,6 +88,11 @@ def parse_args() -> argparse.Namespace:
         help="Disable auto step-format guidance injected into prompts.",
     )
     p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
+    p.add_argument(
+        "--disable-model-thinking",
+        action="store_true",
+        help="Disable native model thinking mode in apply_chat_template(enable_thinking=False).",
+    )
     p.add_argument("--think-word-limit", type=int, default=60)
     p.add_argument(
         "--enable-think-word-limit",
@@ -575,6 +580,7 @@ def run_task_ab(
     device,
     system_prompt: str,
     prompt_mode: str,
+    enable_model_thinking: bool,
     think_word_limit: int,
     enable_think_word_limit: bool,
     enable_first_think_max_words: bool,
@@ -629,7 +635,7 @@ def run_task_ab(
         system_prompt=used_system_prompt,
         user_prompt=user_prompt,
         device=device,
-        enable_thinking=True,
+        enable_thinking=bool(enable_model_thinking),
     )
 
     # 1) 生成到 checkpoint，得到注入前缀。
@@ -1127,6 +1133,7 @@ def main() -> None:
                 device=device,
                 system_prompt=args.system_prompt,
                 prompt_mode=args.prompt_mode,
+                enable_model_thinking=not bool(args.disable_model_thinking),
                 think_word_limit=args.think_word_limit,
                 enable_think_word_limit=bool(args.enable_think_word_limit),
                 enable_first_think_max_words=bool(args.enable_first_think_max_words),
@@ -1236,6 +1243,7 @@ def main() -> None:
             "system_prompt_file": args.system_prompt_file,
             "no_math_step_format_guidance": bool(args.no_math_step_format_guidance),
             "prompt_mode": args.prompt_mode,
+            "disable_model_thinking": bool(args.disable_model_thinking),
             "think_word_limit": args.think_word_limit,
             "enable_think_word_limit": bool(args.enable_think_word_limit),
             "enable_first_think_max_words": bool(args.enable_first_think_max_words),
