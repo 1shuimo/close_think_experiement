@@ -5,7 +5,7 @@ AIME insertion-only runner with native model thinking disabled.
 Design:
 - Disable apply_chat_template(enable_thinking) at the base prompt stage.
 - Do not scope insertion after first think (there may be no first think).
-- Force insert position from fallback token offset (default 300).
+- Use a total generation budget, and force insertion near a token offset (default 300).
 """
 
 import argparse
@@ -48,9 +48,36 @@ def parse_args() -> argparse.Namespace:
         default=r"(?i)\bfinal\s*:|\bfinal answer\b",
     )
 
-    p.add_argument("--max-prefix-tokens", type=int, default=350)
-    p.add_argument("--no-step-fallback-offset-tokens", type=int, default=300)
-    p.add_argument("--max-new-after", type=int, default=1200)
+    p.add_argument(
+        "--max-total-new-tokens",
+        type=int,
+        default=1500,
+        help="Total generated tokens budget before+after injection when --max-new-after is not set.",
+    )
+    p.add_argument(
+        "--inject-offset-tokens",
+        type=int,
+        default=300,
+        help="Target insertion offset in generated prefix tokens.",
+    )
+    p.add_argument(
+        "--max-prefix-tokens",
+        type=int,
+        default=None,
+        help="Optional override for prefix generation tokens. Default uses --inject-offset-tokens.",
+    )
+    p.add_argument(
+        "--no-step-fallback-offset-tokens",
+        type=int,
+        default=None,
+        help="Optional override for fallback insertion token offset. Default uses --inject-offset-tokens.",
+    )
+    p.add_argument(
+        "--max-new-after",
+        type=int,
+        default=None,
+        help="Optional override for tokens generated after injection. Default = total - prefix.",
+    )
 
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
@@ -66,6 +93,22 @@ def main() -> None:
     here = Path(__file__).resolve().parent
 
     inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
+    prefix_tokens = int(args.max_prefix_tokens) if args.max_prefix_tokens is not None else int(args.inject_offset_tokens)
+    fallback_tokens = (
+        int(args.no_step_fallback_offset_tokens)
+        if args.no_step_fallback_offset_tokens is not None
+        else int(args.inject_offset_tokens)
+    )
+    if prefix_tokens <= 0:
+        raise ValueError("--max-prefix-tokens/--inject-offset-tokens must be > 0")
+    if fallback_tokens <= 0:
+        raise ValueError("--no-step-fallback-offset-tokens/--inject-offset-tokens must be > 0")
+    if args.max_new_after is not None:
+        max_new_after = int(args.max_new_after)
+    else:
+        max_new_after = int(args.max_total_new_tokens) - int(prefix_tokens)
+    if max_new_after <= 0:
+        raise ValueError("Computed --max-new-after <= 0. Increase --max-total-new-tokens or reduce prefix.")
 
     cmd = [
         sys.executable,
@@ -100,13 +143,13 @@ def main() -> None:
         "--checkpoint-mid-avoid-final-regex",
         args.checkpoint_mid_avoid_final_regex,
         "--max-prefix-tokens",
-        str(args.max_prefix_tokens),
+        str(prefix_tokens),
         "--step-wait-extra-tokens",
         "0",
         "--no-step-fallback-offset-tokens",
-        str(args.no_step_fallback_offset_tokens),
+        str(fallback_tokens),
         "--max-new-after",
-        str(args.max_new_after),
+        str(max_new_after),
         "--branch-mode",
         "b",
         "--no-corrupt-after-first-think",
@@ -128,6 +171,10 @@ def main() -> None:
 
     print("[run_aime_no_think] command:")
     print(" ".join(cmd))
+    print(
+        f"[run_aime_no_think] budget: total_new={args.max_total_new_tokens}, "
+        f"prefix={prefix_tokens}, after_inject={max_new_after}, inject_offset={fallback_tokens}"
+    )
     subprocess.run(cmd, check=True, cwd=str(here))
 
 
