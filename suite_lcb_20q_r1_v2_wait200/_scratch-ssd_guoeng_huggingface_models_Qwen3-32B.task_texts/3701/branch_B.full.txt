@@ -1,0 +1,128 @@
+<think>
+Okay, I need to solve this problem where I have to convert a given string into a "good caption" with the minimum number of operations. And if there are multiple options, return the lex smallest one. Let's think about how to approach this.
+
+First, understanding the problem. A good caption requires that every character appears in groups of at least three consecutive. So for example, "aabbb" is invalid because the first group is only two 'a's. The operations allowed are changing a character to the previous or next in the alphabet. Each operation can be done any number of times. The goal is to find the minimum number of operations and then pick the lex smallest caption among possible ones.
+
+Hmm. The challenge is to figure out how to group the characters optimally. Since the problem requires the lex smallest when there are multiple options with the same minimal cost, I need to consider that during the decision process.
+
+Let me think of dynamic programming. Because for each position, the decision depends on previous choices.
+</think>
+ For example, if I have a group of characters that I'm merging into the same group, I need to decide what character they should be, and how to transition between different characters.
+
+Let me think of the problem as grouping the characters into segments where each segment has length ≥3. For each segment in the original string, we need to merge it (possibly by modifying adjacent characters) into a single group of same or adjusted characters. But since the operations allow changing individual characters, perhaps the approach is to find for each position, the optimal way to extend the current group.
+
+Wait, but the original string can be modified. So the problem is not just about grouping existing characters but also modifying them. For example, in "cdcd", the optimal is to make all 'c's by changing the two 'd's. But how do I model this?
+
+An alternative approach is to model this as a dynamic programming problem where for each position in the string, we track the possible states that can lead to forming valid groups.<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+</think>
+
+Let me think of the problem as building the good caption step by step. For each position in the original string, I need to decide which character it will become in the final caption, ensuring that consecutive characters form groups of at least 3.
+
+But how to model this? Let's consider that each group in the final caption must consist of at least 3 same characters. So, for example, if the current group is being built with a certain character, we need to have at least 3 of them.
+
+Dynamic programming seems like a possible approach. Let's define dp[i][c][k] as the minimum number of operations needed to process the first i characters, ending with a group of character c, and the current group has length k. However, since the length of the string can be up to 5e4, this approach might be too slow.
+
+Alternative idea: For each position, track the possible state of the current group. For example, when processing the i-th character, we can decide to extend the previous group (by making this character the same as the previous group's character) or start a new group. But since the group must have at least 3 characters, we need to track how many characters are in the current group.
+
+But even this approach could be too slow for large n. Let's think of the possible transitions.
+
+Let me think of the DP state as dp[i][c][l], where i is the current index, c is the character of the current group, and l is the length of the current group (1, 2, or ≥3). For each position, we can transition from previous states.
+
+For example, if the previous state was (i-1, c, l), then for the current character, we can choose to make it c (so the group length increases by 1), or change it to a different character (starting a new group).
+
+But since the group must have at least 3 characters, when starting a new group, we need to ensure that the new group will eventually reach length 3.
+
+This seems manageable. Let's think of the possible states for each position i:
+
+- For each possible character c (a-z), and for group lengths 1, 2, or 3+ (but since once a group reaches 3, it can be extended further, but for the DP state, we can represent it as 3 to save space).
+
+So for each i, we track for each character c, and for l in {1, 2, 3}, the minimum number of operations needed to reach that state.
+
+The transitions would be:
+
+For each state (i-1, prev_c, prev_l), and for each possible current_c (could be same as prev_c or different), we can compute the cost to change the i-th character to current_c, and then update the group length accordingly.
+
+For example, if prev_c is the same as current_c, then the new length is prev_l + 1. If it's different, then we start a new group with length 1 (but only if we can eventually reach 3 in this group).
+
+The base case is for the first character. For the first character, we can choose any character (original or modified), and the group length is 1.
+
+At the end, after processing all characters, we need to check all states where the group length is ≥3 (i.e., l is 3 in our DP state), and select the one with the minimal cost. Also, among those with the same minimal cost, we need to choose the lex smallest string.
+
+But how to track the actual string (not just the cost)? Since the problem requires returning the lex smallest string among those with minimal cost, we need to track not only the cost but also the actual characters chosen at each step.
+
+This complicates things. However, since for each DP state, we can track the minimal cost and the lex smallest string that achieves that cost, perhaps we can manage it.
+
+But given the constraints (n up to 5e4 and 26 letters), the DP approach may be feasible. Let's calculate the time complexity.
+
+For each of the n characters, for each of the 26 letters, and for each of the 3 possible group lengths (1, 2, 3+), we have O(n * 26 * 3) states. For each state, we consider transitions from previous states. For each transition, we have to consider all possible previous characters and group lengths. However, for each current state, we can only transition from the same character (if we extend the group) or a different one (if we start a new group). But this would lead to O(26 * 3) transitions per state, leading to O(n * 26^2 * 3) operations. For n=5e4, this would be 5e4 * 26^2 * 3 ≈ 5e4 * 2028 ≈ 1e8 operations, which is acceptable for Python.
+
+So the plan is:
+
+- Use dynamic programming where for each position i, and for each possible character c and group length l (1, 2, 3), we track the minimal cost and the lex smallest string up to that state.
+
+But storing the entire string for each state is not feasible due to memory. Instead, we can track for each state the previous state and the character chosen, allowing us to reconstruct the string once we reach the end.
+
+However, reconstructing the path for the lex smallest string may be complex. Alternatively, during the DP transitions, when multiple options have the same cost, we can choose the lex smallest character.
+
+Let me think again. For each DP state (i, c, l), we need to track two things: the minimal number of operations to reach this state, and the lex smallest string that achieves this minimal cost.
+
+But how to represent the string? Since the string is built step by step, perhaps for each state, we can track the last few characters (since the lex order depends on the actual characters chosen). However, this seems challenging.
+
+Alternative idea: Since we need the lex smallest string among all minimal cost options, during the DP transitions, when there are multiple ways to reach the same state (same i, c, l) with the same cost, we can choose the one that leads to the lex smallest string. This requires that during the DP transitions, when considering options with the same cost, we select the lex smallest character.
+
+So, for each state (i, c, l), we store the minimal cost and the last character (or the last few characters) to help in choosing the lex smallest path.
+
+But how to track the entire string? Well, during the DP transitions, when building the string, we can track for each state the previous state and the character chosen. Then, once we find the optimal end state, we can backtrack through the DP states to reconstruct the string.
+
+But for the purposes of this problem, perhaps we can track for each state (i, c, l) the minimal cost and the lex smallest character choice at each step. Let's proceed.
+
+Let me outline the steps:
+
+1. Initialize a DP table. For each position i, for each character c, and for each group length l (1, 2, 3), we store the minimal cost and the previous state (to reconstruct the string).
+
+2. For the first character (i=0), for each possible character c (original or modified), the cost is the number of operations needed to change the original character to c. The group length is 1.
+
+3. For each subsequent character i (from 1 to n-1), for each possible previous state (i-1, prev_c, prev_l), and for each possible current character curr_c, we can transition to a new state (i, curr_c, new_l). The new_l depends on whether curr_c is the same as prev_c.
+
+   - If curr_c == prev_c: new_l = prev_l + 1. If prev_l was 2, then new_l is 3. If prev_l was 3, new_l remains 3 (since we can extend beyond 3, but in the DP state, we can represent it as 3 for simplicity).
+
+   - If curr_c != prev_c: then we start a new group. So new_l is 1. But we need to ensure that this new group can eventually reach length 3. However, during the DP transitions, we can't know that yet. So we just proceed, and during the end, we only consider states where the group length is 3.
+
+4. For each transition, calculate the cost of changing the current character to curr_c. The cost is 0 if the original character is already curr_c, else 1 (since each operation changes it once; for example, changing 'c' to 'd' is one operation, but changing 'c' to 'e' would require two operations, but according to the problem statement, each operation can change to either previous or next character. Wait, no! The problem allows changing a character to either the previous or next character in one operation. So to change from 'c' to 'e', you need two operations: first to 'd', then to 'e'. So the cost to change from original character to target character is the absolute difference between their positions in the alphabet. For example, changing 'c' to 'e' would cost 2 operations.
+
+Wait, the problem says that each operation can change a character to either the previous or next character. So to get from 'c' to 'e', you need two operations. So the number of operations required to change a character to a target character is the absolute difference between their ASCII values (since each step is one operation). For example, original character is 'c', target is 'e' → cost is 2.
+
+So for each position i, the cost to change the original character to curr_c is abs(ord(caption[i]) - ord(curr_c)).
+
+But wait, the problem allows changing to either previous or next. So for example, changing 'c' to 'a' can be done in two steps (c → b → a). So the cost is the absolute difference between the original and target character.
+
+Yes. So the cost for changing the i-th character to curr_c is the absolute difference between their ASCII values.
+
+So during the DP transitions, for each possible current character curr_c, we calculate the cost for that step and add it to the previous state's cost.
+
+Now, for each state (i, curr_c, new_l), we need to track the minimal cost and the lex smallest string.
+
+But how to track the lex smallest string? Well, during the transitions, when two different paths reach the same state (i, curr_c, new_l) with the same cost, we need to choose the one that leads to the lex smallest string. To do this, when considering transitions, if two options have the same cost, we choose the one with the lex smaller character. For example, if two options for curr_c (say 'a' and 'b') lead to the same cost, we choose 'a' because it's lex smaller.
+
+So during the DP transitions, for each state, we keep track of the minimal cost and the lex smallest character choice when there are ties.
+
+Now, let's think about how to implement this.
+
+We can represent the DP as a list of dictionaries. For each i, we have a dictionary for each (c, l) where c is a character and l is 1, 2, or 3. Each entry stores the minimal cost and the previous character and state to reconstruct the path.
+
+But for Python, perhaps we can use a 3D array. However, given the size, perhaps using dictionaries or arrays for each step is manageable.
+
+Let me outline the code structure.
+
+Initialize for i=0:
+
+For each possible character c in 'a' to 'z':
+
+   cost = abs(ord(caption[0]) - ord(c))
+
+   dp[0

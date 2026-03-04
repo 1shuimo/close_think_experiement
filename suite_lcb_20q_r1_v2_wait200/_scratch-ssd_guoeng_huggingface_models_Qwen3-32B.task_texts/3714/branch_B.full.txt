@@ -1,0 +1,140 @@
+<think>
+Okay, I need to solve this problem where I have to find the sum of the maximum and minimum elements of all subsequences with at most k elements. And then return that sum modulo 1e9+7. Let's think about how to approach this.
+
+First, let's understand the problem. For every possible subsequence of the array nums that has between 1 and k elements (since "at most k" includes all sizes up to k, but wait, wait— the example 1 includes all subsequences with 1 or 2 elements. Because the example says "at most 2 elements". And each such subsequence contributes its max plus its min to the total sum. So the task is to calculate the sum over all such subsequences of (min + max) of the subsequence.
+
+But directly generating all possible subsequences is impossible because for an array of size 1e5, even k=70 would make this approach computationally infeasible.
+</think>
+ So we need a smarter way.
+
+Let me think: For each element in the array, determine how many times it contributes as a minimum and how many times as a maximum. Then, multiply each occurrence by the element's value and sum all contributions. Since min and max contributions are separate, perhaps we can compute them separately.
+
+But how to find for each element, the number of subsets where it is the minimum (or maximum)?
+
+Let me think about the min first. Suppose I want to find for each element x, how many subsets where x is the minimum. Similarly for max.
+
+For example, take the first sample input: nums = [1,2,3], k=2. Let's look at the subsets where 1 is the min. Well, any subset that includes 1 and no elements smaller than 1. Since 1 is the smallest element. So for subsets of size 1 or 2. For subsets of size 1: [1], min is 1.<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+Okay, for the min part:
+
+Sort the array. Let's sort nums in ascending order. For each element at index i, if we want it to be the minimum in a subset, then the subset can only contain elements from index i or higher (since the array is sorted). Wait, no. Wait, if the array is sorted, then the elements after i are larger. So to have nums[i] as the minimum, the subset must consist of nums[i] plus any elements from nums[i+1 ... n-1], but the subset can't include any elements smaller than nums[i]. So for a sorted array, to find the number of subsets where nums[i] is the minimum, we can consider that the subset must include nums[i], and all other elements are chosen from the elements after i (since they are larger). The size of the subset must be between 1 and k.
+
+So for each i, the number of subsets where nums[i] is the min is equal to the product of (number of ways to choose elements from the elements after i, with 0 to (k-1) elements). Because the subset must include nums[i], and then can include any number of elements from the elements after i, as long as the total size is <=k.
+
+Wait, more precisely: For each i, the number of subsets where nums[i] is the minimum and the subset size is between 1 and k is equal to the sum_{t=0}^{min(k-1, n-1-i)} } C(m, t), where m is the number of elements after i (i.e., m = n - i - 1). Because for each such t, we can take nums[i] plus t elements from the m elements after it. But the total size is 1 + t, which must be <=k. So t can be from 0 to min( (k-1), m ). So the sum of combinations C(m, 0) + C(m, 1) + ... + C(m, s), where s = min( k-1, m ). And this sum is equal to 2^m - sum_{t=s+1}^m C(m, t) }, but only if s < m. However, calculating this sum for each i could be tricky. But since k is up to 70, and n is up to 1e5, perhaps we can precompute some prefix sums of combinations.
+
+Alternatively, for each i, the maximum number of elements we can take from the elements after i is up to (k-1) elements. Because the subset must include nums[i], and then can take up to (k-1) elements from the elements after i. So for each i, the number of subsets where nums[i] is the minimum is the sum_{t=0}^min(k-1, m) } C(m, t), where m = (n - i - 1). But how to compute this sum?
+
+But m can be up to 1e5 - i - 1. For example, if i is 0, m is n-1. For n up to 1e5, and k up to 70, the sum for each i would be the sum of combinations C(m, t) for t from 0 to s, where s is min(k-1, m). But since k is up to 70, s is up to 69. So for each i, the sum is sum_{t=0}^{min(k-1, m)} C(m, t)}. But how to compute this efficiently?
+
+Wait, if m is larger than k-1, then the sum is sum_{t=0}^{k-1} C(m, t)}. Otherwise, if m <= k-1, then the sum is 2^m (since sum_{t=0}^m C(m, t) = 2^m).
+
+But how to compute this sum for each i?
+
+But for m up to 1e5, and t up to 70, perhaps we can precompute for each possible m and t up to 70, the sum of combinations. However, since m can be up to 1e5, and t up to 70, the precomputation would be O(1e5 * 70) which is acceptable.
+
+Alternatively, for each i, m is (n - i - 1). For each i, we need to calculate sum_{t=0}^s C(m, t), where s is min(k-1, m). Since k is up to 70, s is up to 69. So for each i, m can be anything, but we need to compute the sum of combinations C(m, 0) + C(m, 1) + ... + C(m, s), where s is min(k-1, m). But since s is up to 69, even for m up to 1e5, this sum can be computed quickly for each i.
+
+So the plan is:
+
+Sort the array in ascending order.
+
+For the minimum contribution:
+
+For each element nums[i], compute the number of subsets where it is the minimum. Multiply by nums[i], and sum all these contributions.
+
+Similarly, for the maximum contribution:
+
+Sort the array in descending order. For each element nums[i], compute the number of subsets where it is the maximum. Multiply by nums[i], and sum all these contributions.
+
+The total answer is the sum of the minimum contributions and the maximum contributions.
+
+Wait, but for maximum contribution, how?
+
+If we sort the array in ascending order, then for maximum contribution, the largest elements are at the end. So perhaps for maximum, we can sort the array in ascending order, and for each i, compute the number of subsets where nums[i] is the maximum. How?
+
+To have nums[i] as the maximum, the subset must include nums[i], and all other elements are chosen from the elements before i (since they are smaller or equal to nums[i], assuming the array is sorted in ascending order). The subset size can be from 1 to k.
+
+So for each i, the number of subsets where nums[i] is the maximum is sum_{t=0}^{s} C(i, t), where s is min(k-1, i). Because the elements before i (indices 0 to i-1) are i elements. We can choose t elements from them (t ranges from 0 to min(k-1, i)), since adding t elements to nums[i] gives a subset size of t+1, which must be <=k. So t can be up to k-1.
+
+So for each i, the number of subsets where nums[i] is the maximum is sum_{t=0}^{s} C(i, t), where s = min(k-1, i).
+
+Once we compute these counts for min and max, multiply by the respective nums[i], and sum all contributions.
+
+So the steps are:
+
+1. Sort the array in ascending order.
+
+2. Precompute for each i, the count of subsets where nums[i] is the min (for min contribution) and the count where it's the max (for max contribution).
+
+3. Sum all min contributions and max contributions, then add them together.
+
+Now, the problem is how to compute the sum of combinations C(n, 0) + C(n, 1) + ... + C(n, t), where t is up to 69 (since k can be up to 70, and for subsets of size up to k, t can be up to k-1=69).
+
+But how to compute C(n, t) for large n (up to 1e5) and t up to 69?
+
+We can compute this using dynamic programming. For example, for each n, and for each t from 0 to 69, compute the sum.
+
+But for each i, we need to calculate two sums:
+
+For min contribution: sum_{t=0}^s C(m, t), where m = (n - i - 1), and s = min(k-1, m).
+
+For max contribution: sum_{t=0}^s C(i, t), where s = min(k-1, i).
+
+But how to compute C(m, t) for m up to 1e5 and t up to 69?
+
+Note that C(m, t) is the number of ways to choose t elements from m elements. For each t, C(m, t) can be computed as m*(m-1)*...*(m-t+1)/(t!). But since we need to compute this for many m and t, perhaps we can compute it on the fly for each m and t.
+
+But for t up to 69, and m up to 1e5, this is feasible.
+
+Let me think about how to compute C(m, t) for given m and t. For example, for t=0, it's 1. For t=1, it's m. For t=2, m*(m-1)/2, etc. So for each t, we can compute the value directly.
+
+But since m can be up to 1e5 and t up to 69, and for each i, we need to compute the sum for t from 0 to s (s up to 69), this is manageable.
+
+So here's the plan:
+
+For each element in the sorted array:
+
+For min contribution:
+
+m = number of elements after i (n - i - 1)
+
+s = min(k-1, m)
+
+sum_min = sum_{t=0}^s [ C(m, t) ]
+
+Similarly for max contribution:
+
+available = i elements before (indices 0..i-1)
+
+s = min(k-1, available)
+
+sum_max = sum_{t=0}^s [ C(available, t) ]
+
+So for each i, compute these two sums, multiply by nums[i], and accumulate.
+
+Now, the problem is how to compute these combinations quickly.
+
+But for each t, C(m, t) can be computed as product_{j=0 to t-1} (m - j) / (t! )
+
+But since the numbers can be large, but since we are working with counts (and the final answer is mod 1e9+7?), but wait, no. The counts can be very large. However, since the final answer is mod 1e9+7, we need to compute these sums modulo 1e9+7. But how?
+
+Wait, the problem says that the answer can be very large, so we need to return it modulo 1e9+7. So all the intermediate calculations (sums of combinations) must be computed modulo MOD = 1e9+7.
+
+But how to compute C(m, t) mod MOD?
+
+But for m up to 1e5 and t up to 69, we can compute C(m, t) as follows:
+
+For each t, compute the product (m * (m-1) * ... * (m - t + 1)) divided by t! But since MOD is a prime (1e9+7 is 10^9+7 which is a prime?), yes. So 1e9+7 is a prime. So we can precompute factorials and inverse factorials mod MOD.
+
+But perhaps for each C(m, t), since t is small (up to 69), we can compute the numerator as product from (m - t + 1) to m, then multiply by the inverse of t! mod MOD.
+
+But how to precompute inverse factorials up to 1e5! ?
+
+Alternatively, since t is small, for each t, compute the product and then multiply by the precomputed inverse of t! mod MOD.
+
+But first, precompute factorials up to 7e4 (since k is up to

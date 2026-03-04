@@ -1,0 +1,102 @@
+<think>
+Okay, let's see. I need to find the number of substrings of a given string s that are divisible by their non-zero last digit. Hmm. So for each substring, I need to check if the number formed by it is divisible by its last digit. And then count all such cases.
+
+First, let's think about the constraints. The length of s can be up to 1e5, which is 10^5. So any O(n^2) approach would probably be too slow. For example, generating all possible substrings would be O(n^2) time, which for n=1e5 would be 1e10 operations. That's way too slow. So I need a more efficient approach.
+
+Wait, but how can I avoid checking every possible substring? Let's think about the problem differently. For each position in the string, perhaps there's a way to calculate how many substrings ending at that position satisfy the condition.
+</think>
+
+
+Let me consider each character in the string. Let's say the current character is at index i, and the digit is d. The substrings ending here can be formed by starting anywhere from the beginning of the string up to i. So there are i+1 possible substrings ending at i. But how to check which of them are divisible by their last digit, which is d.
+
+But wait, the last digit of the substring is d. So for each substring ending at position i, the last digit is s[i]. However, the substring could be long. For example, "129" ends with 9. The entire number 129 must be divisible by 9. But calculating the entire number for each possible substring is going to be expensive if done naively, because for each substring, converting it to a number could take O(n) time, leading to O(n^2) overall.
+
+But maybe there's a way to compute the value modulo the last digit efficiently.<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+</think>
+
+Let me think about the modulo properties. For example, if I have a number represented as a string, say "abc", and I want to find its value mod c (assuming c is non-zero). How can I compute this efficiently?
+
+Well, the value of "abc" is 100*a + 10*b + c. Modulo c, this is (100*a + 10*b) mod c + c mod c. But since c mod c is 0, it's (100*a + 10*b) mod c. But 100 is 10^2, and 10^k can be precomputed mod c. Hmm. But how to do this for varying lengths and varying digits?
+
+Alternatively, for each position i, and for each possible prefix ending at i, I can track the value modulo the digit at i. But since the digit at i can be 0, but the problem says the last digit must be non-zero. So first, for each position i where s[i] is 0, we can ignore them because the last digit must be non-zero. So we only process positions where the digit is non-zero.
+
+So here's an idea: for each position i where s[i] is non-zero, we want to count the number of substrings ending at i where the number formed by the substring is divisible by s[i]. Let's call this digit d. So for each such i, we need to count how many prefixes (starting at some position <=i) ending at i satisfy the condition.
+
+Let me think about how to compute the value of the substring modulo d. Let's say the substring starts at position j and ends at i. The value of this substring is the number formed by s[j..i]. Let's denote this number as N. We need N mod d == 0.
+
+But N can be written as s[j] * 10^{i-j} + s[j+1] * 10^{i-j-1} + ... + s[i]. But calculating this for every j is expensive. However, perhaps we can compute the value modulo d incrementally.
+
+Let me think recursively. Suppose I have a prefix ending at i-1, and I add the current digit. For example, if I have a number formed by s[j..i-1], then appending s[i] gives s[j..i], which is equal to (s[j..i-1] * 10 + s[i]). So modulo d, this is (prev * 10 + s[i]) mod d, where prev is the value of the previous number mod d.
+
+So for each position i where s[i] is non-zero (d = int(s[i])), I can keep track of the current value mod d as I build substrings ending at i. For example, starting from i and moving leftwards, or from left to right?
+
+Let me think of processing the string from left to right. For each i, if s[i] is zero, skip. Else, d = int(s[i]). We can compute for each possible starting position j (from 0 to i) the value mod d. But again, this would be O(n^2) time.
+
+But perhaps there's a way to compute this with some pre-processing. Let's think about the formula for the value mod d. For a substring starting at j and ending at i, the value mod d can be computed as follows:
+
+Let me denote the value of the substring s[j..i] as V. Then V mod d can be calculated using the formula:
+
+V = (s[j] * 10^{i-j} + s[j+1] * 10^{i-j-1} + ... + s[i-1] * 10^1 + s[i] * 10^0)
+
+But mod d, this can be written as:
+
+V mod d = ( (s[j] * 10^{i-j} mod d + ... + s[i]) ) mod d.
+
+But calculating this for each j is expensive. However, if we can compute for each position, the contribution of the digits multiplied by the appropriate power of 10 mod d, perhaps we can find a way to track this.
+
+Let me think recursively. Suppose I have already computed for position i-1, and now I'm at position i. For the current digit d, I can track the current value mod d as follows:
+
+For each previous step, when adding a new digit to the right, the value is previous_value * 10 + new_digit. But here, the new digit is added to the right, so for the substring ending at i, starting at j, the value is (value of substring s[j..i-1] * 10 + s[i]).
+
+So for each i, if we track the mod value for each possible d (but d is fixed as s[i] here), perhaps we can compute it incrementally.
+
+Wait, for a fixed d (the current digit at i), we can compute for each position j (from 0 to i) the value mod d of the substring s[j..i]. Let's think of this as follows:
+
+We can precompute the powers of 10 mod d. For example, for the current digit i, the power for position j would be 10^{i-j} mod d. But how?
+
+Alternatively, for each i, and for the current d, we can compute the value of the substring s[k..i] mod d for all k from 0 to i. But how to do this efficiently?
+
+Let me think of the formula again. For the substring s[k..i], its value mod d can be computed as:
+
+value = (s[k] * 10^{i - k} + s[k+1] * 10^{i - k - 1} + ... + s[i]) mod d.
+
+But this seems hard to compute. However, if we process from right to left, perhaps we can find a way. Let's say we are at position i, and we want to compute for each position k (from i downto 0) the value mod d. Let's define a variable current_mod. Starting from i, current_mod is s[i] mod d. Then, for position i-1, current_mod = (current_mod * 10 + s[i-1]) mod d. And so on. Wait, no. Because when you add a digit to the left, the existing value is multiplied by 10 and added the new digit. For example, the value of s[i-1..i] is s[i-1] * 10 + s[i]. The value of s[i-2..i] is s[i-2] * 100 + s[i-1] * 10 + s[i], etc. So if we process from right to left, for each step, we can compute the current_mod as (current_mod * 10 + current_digit) mod d.
+
+Yes! So for the current digit d at position i, we can process from i back to 0, keeping track of the current_mod. Each step, we compute current_mod = (current_mod * 10 + s[j]) % d, where j is the current position. Then, if current_mod is 0, it means that the substring s[j..i] is divisible by d. 
+
+This way, for each i where s[i] is non-zero, we can process all substrings ending at i in O(n) time. But doing this for each i would lead to O(n^2) time in total, which is not feasible for n up to 1e5.
+
+So this approach would not work for large n. We need a more efficient way.
+
+Hmm. Let's think again. The problem is that for each i, we have to process O(n) steps. How can we find a way to calculate the number of valid substrings ending at i in O(1) or O(1) per i?
+
+Let me think about the modulo again. For a substring ending at i, with last digit d, the value mod d can be calculated as follows. Let's denote the value of the substring s[j..i] as V. Then V mod d = 0.
+
+But V can be written as (s[j..i-1] * 10 + s[i]). Let me denote the value of s[j..i-1] as V_prev. Then V_prev is the value of the substring ending at i-1. But how to track this?
+
+Alternatively, let's precompute for each position i, the value of the number formed by the digits from position 0 to i mod (some value). But since the mod depends on the last digit, which varies, this seems challenging.
+
+Wait, but for a fixed last digit d (the digit at position i), perhaps we can track the mod of the numbers formed by the digits up to each position, multiplied by the appropriate power of 10.
+
+Let me think. For example, consider the current digit d at position i. For any substring ending at i, the value can be expressed as (some number) * 10^k + digits from some position to i. But perhaps we can find a way to represent the mod in terms of previous calculations.
+
+Let me think of the following approach. For each position i, if the digit is non-zero (d), then we can compute for each possible k (number of digits) the value mod d. But again, not sure.
+
+Another idea: For each position i, and for the digit d = s[i], the value of the substring s[j..i] mod d can be computed as (num[j..i] mod d). Let me think of num[j..i] as equal to (num[j..i-1] * 10 + s[i]). So mod d, this is (prev_mod * 10 + s[i]) mod d, where prev_mod is num[j..i-1] mod d. But how to track this for all possible j?
+
+But if I can track the prefix sums mod d in some way, perhaps using a prefix array.
+
+Wait, here's a thought. Let's define for each i, a prefix value that allows us to compute the mod for any substring ending at i. For example, if we have a prefix array where prefix[i] is the value of the number formed by s[0..i] mod (something). But again, since the mod depends on the last digit, which varies, this is tricky.
+
+Alternatively, for each i, when processing it, we can compute the mod for all substrings ending at i by using the fact that the value of the substring s[j..i] mod d is equal to ( (s[j..i-1] mod d) * 10 + s[i] ) mod d. But how to track this for all j?
+
+But for a fixed d (the current digit at i), we can compute this incrementally. For example, starting from j = i and moving backwards to j = 0, we can keep track of the current mod value. Let's say we start with current_mod = 0. For j = i, the substring is just s[i], so current_mod = s[i] mod d. If this is zero, count increases by 1. Then for j = i-1, current_mod = (current_mod * 10 + s[j]) mod d. Check if zero, and so on. 
+
+This way, for each i, we process O(i) steps. But for n=1e5, this is O(n^2) time, which is not feasible. 
+
+But perhaps there's a way to optimize this. Let's think about the following: for each digit d (from 1 to 9), can we track some information that allows us to quickly compute the number of valid substrings ending at

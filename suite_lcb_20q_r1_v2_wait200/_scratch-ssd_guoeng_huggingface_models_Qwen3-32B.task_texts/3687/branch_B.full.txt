@@ -1,0 +1,94 @@
+<think>
+Okay, I need to solve this problem where I have to find the longest special path in a tree. Let me try to understand the problem first.
+
+The problem says that a special path is a downward path from an ancestor to a descendant where all node values are unique. And I have to return the maximum length of such a path and the minimum number of nodes among all such maximum paths.
+
+Hmm. So the key here is that along the path, all the node values must be unique. So when traversing from an ancestor to a descendant, I need to make sure that adding a new node doesn't introduce a duplicate value in the path.
+
+Let me think about how to approach this. Since it's a tree, maybe a depth-first search (DFS) approach would work. For each node, I can track the values in the path from the root (but wait, the tree isn't rooted, but the problem says it's rooted at node 0. Oh right, the root is node 0.
+</think>
+ So the tree is considered as rooted at 0, and paths are downward. So the traversal must go from ancestor to descendant, not up the tree.
+
+So for each node, I need to consider all possible paths starting from it downwards. But checking all possibilities naively would be too slow for n up to 5e4. So I need an efficient approach.
+
+Wait, maybe for each node, I can keep track of the maximum path length that can be extended from its children, but ensuring that the current node's value doesn't conflict with the values in the child path.
+
+For example, when processing a node, I look at all its children. For each child, there might be some maximum path lengths that are valid (i.e., their paths have unique values). If the current node's value is not present in the child's path, then we can combine them. Otherwise, we can't.
+
+But how do I combine these? Let's think recursively.<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+</think>
+
+Let me think again. For each node during DFS, I need to collect information from its children about the longest paths that can be extended, but without duplicate values. For example, if a node has value v, then for each child, if the child's path doesn't include v, then we can combine the paths. But if the child's path already has v, then we can't use that child's path.
+
+So for each node, during the traversal, we can keep track of the set of values along the path. But since this is a tree and we're doing DFS, maybe we can use a hash map to track the latest occurrence of each value in the current path. Wait, but for each node, the path is from the ancestor (upwards to the root?), no. Wait, the path is from an ancestor to a descendant. So for a node, the path can start at itself and go down, or be part of a longer path that includes ancestors.
+
+Alternatively, for each node, during the traversal, we can track the set of values in the path from the root to this node. But that's not directly helpful for finding paths that start elsewhere.
+
+Wait, perhaps the problem is similar to the problem of finding the longest path in a tree where all nodes have distinct values. But in this case, the path must be downward and the values must be unique.
+
+An approach that comes to mind is for each node, we check all possible paths starting at that node, going down, and ensuring that the values are unique. But for large n, this would be O(n^2), which is not feasible.
+
+So we need a way to compute for each node, the best possible paths from its children that can be extended by this node.
+
+Let me think of this as follows: For each node, during the DFS traversal, we can collect for each of its children the maximum length of a path starting at the child where the values are unique and do not include the current node's value. Then, the maximum path for the current node could be 1 (the node itself) plus the sum of the top two such paths from children (if there are two different ones that don't conflict). Or maybe just the maximum one.
+
+Wait, but the path can be a single child's path extended by this node. For example, if the current node's value is unique in the path, then we can take the maximum path from a child and add this node to it. But if the child's path already contains the current node's value, then we can't.
+
+So for each node, during the traversal, we need to track the maximum length of a path starting at this node (downwards) with unique values. Also, we need to track the values along that path. But storing the entire set for each path is not feasible.
+
+Alternative idea: For each node, during the traversal, we can keep track of the values in the path from the current node down. But how?
+
+Wait, here's a possible approach inspired by the problem of finding the longest unique path in a binary tree. For each node, we can perform a post-order traversal. For each child, we get a list of possible paths (each path is a list of values, but that's too memory-heavy). Instead, for each child, we can get a dictionary that maps the value to the maximum length of a path starting at that child that includes that value. Wait, perhaps not. Let me think again.
+
+Let me think of it this way: For each node, when processing its children, we can collect the maximum lengths of paths from the children that do not include the current node's value. Then, the maximum path starting at the current node can be 1 (the node itself) plus the maximum such child path. But if there are multiple children, we can take the top one. However, if the current node's value is already present in one of the child's paths, then that child's path cannot be extended.
+
+Wait, but how do we track if the current node's value is present in the child's path? For example, when processing a child, we can track the set of values in the path starting at that child. But again, storing the entire set is not feasible.
+
+Alternative idea: For each node, during the traversal, we can keep track of a set of values that are present in the path starting at this node. But again, for large trees, this is not feasible.
+
+Wait, but perhaps for each node, the path starting at it (downwards) with unique values can be represented by a set. However, for a tree with 5e4 nodes, this would be O(n^2) in the worst case, which is not acceptable.
+
+Hmm. Let's think of another approach. Let's consider that for a node, when we process its children, we can track for each possible value, the maximum length of a path in the subtree of that child that does not include the current node's value. Then, for the current node, the maximum path length would be 1 plus the maximum among all such paths from children. But how do we track this?
+
+Wait, here's a possible way. For each node, during the traversal, we can keep track of a dictionary (let's call it 'value_map') that records the maximum length of a path starting at this node (downwards) that includes certain values. But since the path must have unique values, the 'value_map' for a node can only have one key: the value of the node itself. Because any path starting at this node must start with this node's value. So for example, if the node's value is v, then the 'value_map' for this node would have {v: max_length}, where max_length is the maximum length of a path starting at this node (downwards) with unique values.
+
+Wait, that makes sense. Because any path starting at this node must include this node's value. So when considering combining with a parent node, if the parent's value is the same as v, then the path cannot be extended. Otherwise, it can be extended.
+
+So here's the idea: For each node, during the traversal, we compute a dictionary (or in this case, a single entry) that maps the value of the node to the maximum length of a path starting at this node (downwards) with unique values. Then, when processing a parent node, for each child, we check if the child's value (which is the key in the child's dictionary) is different from the parent's value. If so, the parent can take the child's maximum length and add 1 (for itself) to form a longer path. But also, the parent's own path can be formed by combining multiple children's paths (but only one can be used, since the path is downward).
+
+Wait, perhaps for each node, the maximum path length starting at this node is 1 (the node itself) plus the maximum among the children's maximum path lengths where the child's value is not equal to the current node's value.
+
+But how do we handle multiple children? For example, if a node has two children, each with a path that doesn't include the current node's value. Then, the maximum path starting at this node could be 1 + max_child_length. But if there are two children with such paths, then combining them would form a longer path (current node + child1 path + current node + child2 path?), but no, because the path must be downward. So the path can only go through one child. So the maximum path starting at this node is 1 plus the maximum of the children's valid paths.
+
+But then, for the overall problem, the longest special path could be formed by combining two branches from a node. For example, if a node has two children, each with a path length of L1 and L2, and the node's value is unique in both paths. Then, the total path length would be L1 + L2 + 1 (the node itself). But how do we track that?
+
+Ah, right! Because the longest special path could be formed by combining two branches from a node. For example, if a node can take the top two valid child paths (i.e., two children whose paths don't include the current node's value), then the total path length would be the sum of those two paths plus 1 (the current node). So during the traversal, for each node, we need to track not only the maximum path starting at this node, but also the top two maximum child paths that can be combined with this node to form a longer path.
+
+So here's the plan:
+
+- Perform a post-order traversal of the tree (since children need to be processed before parents).
+- For each node, collect all the valid paths from its children (i.e., paths that do not include the current node's value).
+- For each such valid child path, we can consider extending it by adding the current node. The length would be the child path's length + the edge length from the current node to the child. Wait, no. Wait, the problem says that the path's length is the sum of the edge lengths. Oh right! The problem's first part is to return the length of the longest special path, which is the sum of the edge lengths along the path.
+
+Oh wait, I completely forgot about the edge lengths. The problem says that each edge has a length, and the path's length is the sum of the edge lengths. So my previous thinking about path lengths being counts of nodes is incorrect. Oh no! That complicates things.
+
+So the problem is not about the number of nodes in the path, but the sum of the edge lengths along the path. And the result[0] is the maximum such sum. Also, result[1] is the minimum number of nodes in all paths that have this maximum sum.
+
+So I need to track two things for each path: the total edge length (sum) and the number of nodes in the path. And for each node during traversal, I need to find the best possible paths that can be extended, ensuring that all node values are unique.
+
+This makes the problem more complex. Let me reorient.
+
+Let me think again. For each node, during the traversal, I need to track the maximum possible edge length sum of a path starting at this node (downwards) with unique values. Also, for each such path, track the number of nodes in it. Additionally, when combining two branches from a node, the total edge length would be the sum of the two branches' edge lengths plus the edge from the current node to each child. Wait, no. For example, if a node has two children, each with a path of length L1 and L2 (sum of edges), and the edges from the current node to each child are e1 and e2, then combining the two paths would form a path that goes from child1's path up to the current node, then down to child2's path. The total edge length would be L1 + e1 + e2 + L2. Because the path is child1's path -> current node (adding e1) -> child2's path (adding e2 and L2). So the total is L1 + e1 + e2 + L2.
+
+But how do I track this during traversal?
+
+This seems complicated. Let me think of the approach again.
+
+For each node, during the traversal, I need to collect information from its children. For each child, if the child's path does not include the current node's value, then I can consider extending that path by adding the current node. The new path would start at the current node, go down to the child's path. The edge length would be the child's path's edge length sum plus the edge between current node and child. The number of nodes would be the child's count + 1.
+
+Additionally, for each node, the maximum path that can be formed by combining two of its children's paths (if they are valid) would be the sum of their edge lengths plus twice the edge

@@ -1,0 +1,134 @@
+<think>
+Okay, I need to solve this problem where I have to find the sum of the maximum and minimum elements for all subarrays with at most k elements. Let's think about how to approach this.
+
+First, the problem says subarrays with at most k elements. So for each possible subarray of length 1 to k, I need to find the min and max and add them. But if I do this naively, checking every possible subarray, the time complexity would be O(n*k^2), which might not be efficient enough for n up to 80,000. That's probably going to be too slow. So I need a more efficient way.
+
+Wait, for each subarray size from 1 to k, I need to consider all possible subarrays of that size. But how do I efficiently find the min and max for all those subarrays?
+
+I remember that there's a sliding window technique combined with deques (monotonic queues) to keep track of min and max in O(n) time for each size.
+</think>
+ But since here we have to do this for all sizes up to k, maybe I need to process each window size from 1 to k and apply that technique each time? But that would be O(n*k), which again is not feasible for large n and k.
+
+Alternatively, perhaps there's a way to handle all window sizes up to k in a single pass. Or maybe there's a mathematical trick here. Let me think again.
+
+Wait, the problem is to sum for all subarrays of length up to k. Let me think of it as considering every possible subarray with length 1, 2, ..., k. For each of these, compute min and max, then add them all together.
+
+But how to compute all these mins and maxes efficiently?
+
+Let me think about the sliding window approach. For each possible window size s (from 1 to k), I can use a sliding window of size s and track min and max. But for each s, this would take O(n) time.<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+Okay, for each window size from 1 to k, I need to process all possible subarrays of that size. For each such subarray, add min and max. But with n up to 8e4 and k up to that, this approach would be O(k*n) = O(8e4^2) = 6.4e9 operations. That's way too slow. So this approach is not feasible.
+
+Alternative idea: Maybe find for each element, how many times it is the minimum or maximum in any subarray of size up to k. Then multiply by the element and sum all contributions. But how to compute that?
+
+This seems challenging, but perhaps there's a way using monotonic queues. However, I'm not sure about the exact method.
+
+Another thought: The problem requires considering all subarrays of length up to k. So perhaps for each element, the number of subarrays where it is the minimum (or maximum) can be calculated using some data structure or algorithm.
+
+But again, I'm not sure. Let me think of another approach.
+
+Let me think of the sliding window for maximum and minimum. For example, for all subarrays of size exactly s (for s from 1 to k), compute the sum of all max and min. Then sum over all s from 1 to k.
+
+But again, for each s, we can use a sliding window with deque to find all max and min in O(n) time. So for all s from 1 to k, total time is O(kn). But for n=8e4 and k=8e4, this is O(n²), which is way too slow.
+
+So this approach is not feasible. Need to find a better way.
+
+Wait, perhaps there's a way to find all possible subarrays of size up to k and compute their min and max efficiently. Let me think about the problem again.
+
+Let me think of the total sum as the sum for all subarrays (min + max). Which is equal to the sum of all min of subarrays plus the sum of all max of subarrays. Now, note that the sum of max of subarrays can be found using certain algorithms, and similarly for the sum of min. But how?
+
+For example, if I can find the sum of all max elements in all subarrays of size up to k, and similarly for the sum of all min elements, then add them together.
+
+But how to compute these two sums?
+
+For the sum of max, there's an algorithm that uses a monotonic stack to find for each element the number of subarrays where it is the maximum. But that's for all possible subarrays. However, here we need to limit the subarray size to at most k.
+
+So perhaps modifying that approach to account for the size constraint.
+
+Let me recall the approach for finding the sum of max of all subarrays. The idea is for each element, find the number of subarrays where it is the maximum. This can be done using a monotonic stack to find the previous and next greater elements. Then for each element, the number of subarrays where it is the maximum is (i - left) * (right - i), where left is the index of the previous greater element and right is the index of the next greater or equal element (or vice versa, depending on the exact implementation). But this gives the count for all subarrays. However, how to adjust this to only count subarrays of size up to k?
+
+This seems complicated. Let me think if there's another way.
+
+Alternatively, perhaps the problem can be transformed. Since the subarrays can be of any size up to k, perhaps for each position, we can find the maximum possible range where the current element is the maximum, and then count how many subarrays of size up to k fall into that range.
+
+But I'm not sure how to proceed.
+
+Alternatively, perhaps for each element, find the first element to the left that is greater than it (call it left_bound), and the first element to the right that is greater or equal (call it right_bound). Then, the number of subarrays where this element is the maximum is (i - left_bound) * (right_bound - i). But again, this counts all subarrays where the element is the maximum. However, we need to limit the subarray size to at most k. So for each such subarray, we need to ensure that its length is <=k.
+
+So for each element, the number of subarrays where it is the maximum and the subarray length is <=k would be the number of subarrays in the above calculation that have length <=k. How to compute that?
+
+This seems tricky. For example, the total number of subarrays where the element is the maximum is (i - left) * (right - i). But each of these subarrays can have varying lengths. For each such subarray, we need to check if its length is <=k. But how to compute that efficiently?
+
+Alternatively, perhaps for each element, the maximum possible length of a subarray where it is the maximum is (right_bound - left_bound - 1). But again, how to count the number of subarrays of length up to k in that range.
+
+This seems complicated. Maybe there's a smarter way.
+
+Let me think again. Since the problem requires considering all subarrays of size up to k, perhaps we can use a sliding window approach for each possible window size. But again, for large k, this is O(nk) time.
+
+But given the constraints of n up to 8e4, O(nk) would be 8e4 * 8e4 = 6.4e9 operations, which is way too slow for Python. So this approach is not feasible.
+
+Alternative idea: Maybe there's a way to combine the sliding window for all sizes up to k. For example, using a deque to track the max and min for all possible window sizes up to k as we slide the window.
+
+Wait, here's an idea. Let's consider all subarrays of size up to k. For each element, as we process the array, we can maintain a sliding window that can expand up to size k. For each position, we can track the max and min in all possible subarrays ending at that position with size up to k.
+
+But I'm not sure how to do this.
+
+Alternatively, think of it as for each right end, the window can start from (right - k + 1) to right. For each right, we can consider all window sizes from 1 to min(k, right+1). For each of these windows, we need to find the max and min. But how to do this efficiently.
+
+This seems like the same problem as before. For each window of size up to k, find the max and min. But how?
+
+Maybe for each element, we can maintain two deques: one for max and one for min. As we expand the window to the right, we add elements to the deques and remove elements that are out of the current window. But for each right, we can have windows of size up to k. So for example, for each right, we can process all possible window sizes from 1 to k (but not exceeding the start of the array). For each of these windows, we can track the max and min.
+
+But how to do this efficiently. Let's think:
+
+We can have a sliding window that starts at left and ends at right. For each right, we can let the window size vary from 1 to k. For each possible window ending at right, with size up to k, we need to track the max and min.
+
+But maintaining this for all possible window sizes up to k for each right seems challenging.
+
+Wait, perhaps for each right, we can have a sliding window that starts from (right - k + 1) to right. For example, for each right, the window can be of size 1 to k. But how to track the max and min for all possible window sizes up to k.
+
+Alternatively, for each right, we can maintain a deque that keeps track of the max in the current window. But the window can be of varying sizes. Hmm.
+
+Alternatively, for each possible window size s (from 1 to k), we can maintain a sliding window of size s. But again, this would be O(kn) time.
+
+But given the time constraints, perhaps there's no better way, and we need to find an optimized way to handle this.
+
+Let me think of the following approach:
+
+For each window size s in 1 to k:
+
+   Use a sliding window of size s, and for each window, compute the min and max using deques. Sum them all.
+
+But for n=8e4 and k=8e4, this is O(nk) which is not feasible. However, perhaps in practice, for the given constraints, this approach can be optimized enough. Let's see.
+
+But for example, if k is 8e4 and n is 8e4, then for each s from 1 to k, the sliding window would take O(n) time. So total O(kn) = 6.4e9 operations. That's way too slow for Python, which can handle about 1e8 operations per second.
+
+So this approach is not feasible. Need to find a better way.
+
+Alternative idea: Let's think of the problem differently. The sum of min and max for all subarrays of size up to k is equal to the sum of max for all such subarrays plus the sum of min for all such subarrays. Now, for the sum of max, there's an algorithm to compute it for all subarrays. Similarly for the sum of min. So if I can compute these two sums for all subarrays of size up to k, then adding them would give the answer.
+
+So the problem reduces to two separate problems: compute sum_max and sum_min for all subarrays of size up to k, then return sum_max + sum_min.
+
+But how to compute sum_max for all subarrays of size up to k?
+
+Let me think about how to compute sum_max for all subarrays of any size. For that, there's an algorithm using a monotonic stack. Let me recall that.
+
+The idea is for each element, find the number of subarrays where it is the maximum. This can be done by finding for each element the previous greater element (PGE) and next greater or equal element (NGE). The number of subarrays where the current element is the maximum is (i - PGE) * (NGE - i). Multiply this by the element's value to get its contribution to the sum_max.
+
+But this counts all subarrays. How to adjust this to count only subarrays of size up to k?
+
+This seems challenging. For each element, the contribution to sum_max is the number of subarrays where it is the maximum and the subarray size is <=k, multiplied by the element's value.
+
+So perhaps for each element, after finding the range where it is the maximum, we can calculate how many of those subarrays have length <=k.
+
+But how?
+
+Let me think. Suppose for an element at index i, the PGE is at index L, and the NGE is at index R. The number of subarrays where this element is the maximum is (i - L) * (R - i). But each of these subarrays can have varying lengths. For example, the subarrays can start anywhere between L+1 and i, and end anywhere between i and R-1. The length of such a subarray is (end - start + 1). So for each such subarray, we need to check if its length is <=k.
+
+But how to count the number of such subarrays with length <=k?
+
+This seems complicated. Let me think of an example. Suppose L = -1 (no PGE), R = n (no NGE). Then the number of subarrays where the element is the maximum is i * (n - i). But how many of these have length <=

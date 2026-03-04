@@ -1,0 +1,134 @@
+<think>
+Okay, I need to solve this problem where I have to find the maximum sum of k non-overlapping subarrays, each of length at least m. Let's think about how to approach this.
+
+First, the constraints. The array can be up to 2000 elements long. For each subarray, the minimum length is m, which can be 1, 2, or 3. And k is up to the floor of the array length divided by m. So for example, if the array is 2000 elements and m is 1, k can be up to 2000. But since k is given, we need to select exactly k subarrays.
+
+The challenge is to select these subarrays such that they don't overlap and each has a length of at least m, and their total sum is maximized.
+
+Hmm. How to model this? Dynamic programming seems like a possible approach. Let's think about DP states.
+</think>
+
+
+Let me think: For dynamic programming, maybe the state can be dp[i][j], which represents the maximum sum when considering the first i elements and selecting j subarrays. Then, for each position, we can decide whether to include the current element in a subarray or not.
+
+But how to track the subarrays? Because each subarray must have a certain length. So when we end a subarray at position i, we need to make sure that the subarray has at least m elements.
+
+Another idea: For each possible j (number of subarrays selected up to that point), and for each position i in the array, track the maximum sum. But also, when ending a subarray, we need to know where it started so that we can add the sum of that subarray. But that might complicate things.
+
+Alternatively, perhaps we can precompute for each position the maximum possible sum for subarrays ending there.<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+Okay, let's think again. For dynamic programming, maybe we can define dp[i][j] as the maximum sum we can get by selecting j subarrays from the first i elements. The transition would be: for dp[i][j], we can either not take the current element (so dp[i][j] = dp[i-1][j]), or we can take it as part of a new subarray. But to take it as part of a new subarray, we need to look back at least m elements. So for each possible end at i, we can consider subarrays of length l (from m to i), and compute the sum of that subarray, then add it to dp[i-l][j-1].
+
+But this approach might be too slow for large arrays. Let's think about the time complexity. For each i (up to 2000), j (up to k), and for each possible l (up to i), that's O(n^2 * k) time. For n=2000 and k=2000, that's way too big.
+
+Hmm. So maybe we need a better way. Let's think about the problem differently. Since m is small (up to 3), perhaps we can optimize based on that.
+
+Another approach: For each position i and for each j (number of subarrays selected so far), track the best way to end a subarray at i with a certain length. But I'm not sure.
+
+Wait, maybe we can precompute the prefix sums. Let's compute prefix_sums where prefix_sums[i] is the sum of the first i elements. Then the sum of elements from a to b (inclusive) is prefix_sums[b+1] - prefix_sums[a].
+
+Now, for the DP approach, when considering dp[i][j], we can look back to some position a, such that the subarray from a to i-1 (since prefix sums are 0-based) is a valid subarray (length at least m). So for each possible a where i-1 - a + 1 >= m (i.e., a <= i-1 - m + 1 = i - m), we can compute the sum of that subarray and add it to dp[a][j-1]. But again, this would involve checking all possible a's for each i and j, which could be O(n^3) time.
+
+But with m up to 3, maybe we can optimize. For example, when considering the current subarray ending at position i, since the minimum length is m, we can look back m steps and compute the sum. But even then, for each i and j, we need to check all possible starting positions for the current subarray.
+
+Alternatively, for each j and i, we can track the best possible sum by considering the best possible subarray ending at i. For example, for each j, and for each i, we can compute the maximum between taking a new subarray ending at i (with length >= m) or not taking it.
+
+Wait, here's an idea inspired by the problem's constraints. Since m is small (up to 3), for each position i, we can precompute the maximum sum of a subarray ending at i with length exactly l (for l from m to some maximum possible). But how does that help with the DP?
+
+Let me try to formalize the DP approach again. Let's define dp[i][j] as the maximum sum we can get by selecting j subarrays from the first i elements. The recurrence would be:
+
+dp[i][j] = max(
+    dp[i-1][j],  // not taking the current element
+    max( dp[a][j-1] + sum(a+1 ... i) for all a where i - a >= m )
+)
+
+The base case would be dp[0][0] = 0, and other dp[0][j>0] = -infinity, etc.
+
+But computing this for each i and j would be O(n^2 * k) time. For n=2000 and k=2000, this is 2000^3, which is way too big. However, given that m is small, perhaps we can find a way to optimize the inner loop.
+
+Wait, but for each i and j, when we want to compute the max over a, we can look back m steps. For example, for the current subarray ending at i, the earliest it can start is at i - m + 1. But since the subarray can be longer than m, we need to consider all possible starting positions from 0 to i - m. But that's still O(n) per i and j.
+
+Hmm. Let's think of another way. Since each subarray must have a length of at least m, perhaps we can precompute for each position i the best possible subarray ending at i (with length >= m). Then, in the DP, for each j, we can consider adding this best subarray.
+
+But how to combine this with the DP transitions?
+
+Alternatively, for each j and i, we can track two things: the maximum sum when the last subarray ends at i, and when it doesn't. But I'm not sure.
+
+Another thought: Since the problem requires exactly k subarrays, and each has a minimum length, perhaps we can use a DP approach where for each position i and number of subarrays j, we track the best way to reach there. And for each step, when adding a new subarray, we ensure that it's non-overlapping with previous ones.
+
+Let me try to outline the steps:
+
+1. Precompute prefix sums for quick sum queries.
+2. Initialize a DP table where dp[i][j] represents the maximum sum for the first i elements and j subarrays.
+3. For each i from 1 to n, and for each j from 1 to k:
+   a. For dp[i][j], we can look back to some position a, where the subarray from a to i-1 has length >= m. Then dp[i][j] = max(dp[a][j-1] + sum(a to i-1)) for all valid a.
+   b. The maximum of these possibilities will be the value for dp[i][j].
+
+But again, the problem is the time complexity. Let's think about how to optimize this.
+
+Let's consider that for each i and j, when we want to compute dp[i][j], we can look back for the best possible a. For example, for each i, the subarray can start at any position from 0 up to i - m. For each possible start position a, we can calculate the sum of the subarray from a to i-1 and add it to dp[a][j-1]. The maximum of these values would be the best option for adding a new subarray ending at i-1.
+
+But how to compute this efficiently?
+
+Let me think about the sum from a to i-1. With prefix sums, this is prefix_sums[i] - prefix_sums[a]. So for each i and j, we need to find the maximum value of (dp[a][j-1] + (prefix_sums[i] - prefix_sums[a])) for a in [0, i - m]. This can be rewritten as (prefix_sums[i] + (dp[a][j-1] - prefix_sums[a])).
+
+So for each i and j, the maximum value is prefix_sums[i] + max( dp[a][j-1] - prefix_sums[a] ), where a ranges from 0 to i - m.
+
+Ah! This is a key insight. For each i and j, if we can precompute the maximum of (dp[a][j-1] - prefix_sums[a]) for a up to i - m, then we can compute dp[i][j] quickly.
+
+So for each j, when computing dp[i][j], we can keep track of this maximum value. Let's formalize this:
+
+dp[i][j] = max( previous_max + prefix_sums[i] )
+
+where previous_max is the maximum of (dp[a][j-1] - prefix_sums[a]) for a <= i - m.
+
+So, during the computation of dp[i][j], for each j, we can track this previous_max as we iterate through i.
+
+This would reduce the time complexity significantly. Let's see:
+
+For each j from 1 to k:
+   For each i from 1 to n:
+      compute dp[i][j] as max( dp[i-1][j], previous_max + prefix_sums[i] )
+
+But how to compute previous_max?
+
+For each j, as we iterate i from 1 to n, we can also maintain a running maximum of (dp[a][j-1] - prefix_sums[a]) for a up to (i - m). For each i, the a's that are valid are those where a <= i - m. So for i, the earliest a is 0, and the latest a is i - m.
+
+So for each j, as we process i, we can compute for the current i the value of (i - m) and check if a can be up to that. For example, when i is processed, we can add the value (dp[i - m][j-1] - prefix_sums[i - m]) to the running maximum for j.
+
+Wait, perhaps for each j, we can maintain a variable that tracks the maximum value of (dp[a][j-1] - prefix_sums[a]) for a up to (current i - m). As i increases, the upper bound for a increases as well. So for each j, when processing i, we can add the (dp[i - m][j-1] - prefix_sums[i - m]) to the running maximum for j.
+
+Let me try to outline this:
+
+Initialize prefix_sums.
+
+Initialize dp as a 2D array of size (n+1) x (k+1), filled with -infinity, except dp[0][0] = 0.
+
+For each j in 1 to k:
+   Initialize a variable current_max = -infinity
+   For each i in 1 to n:
+      if i >= m:
+          a = i - m
+          current_max = max(current_max, dp[a][j-1] - prefix_sums[a])
+      # Now, if i >= m * j (probably not necessary?), then we can consider adding a new subarray
+      dp[i][j] = max( dp[i-1][j], (current_max if i >= m else -inf) + prefix_sums[i] )
+
+Wait, but for i to be able to form a subarray of length m, we need i >= m. But for j subarrays, each of length at least m, the total minimum length is j*m. So for i to be able to form j subarrays, we need i >= j*m. Otherwise, it's impossible. So during the DP, for i < j*m, dp[i][j] should be -infinity.
+
+But how to handle this in the code? Well, the DP will naturally take care of it because when j increases, the current_max for j can only be updated when i is large enough.
+
+Let me try to code this logic.
+
+First, compute prefix_sums. Let's say nums is 0-based, and prefix_sums[0] = 0, prefix_sums[1] = nums[0], prefix_sums[2] = nums[0] + nums[1], etc.
+
+Then, for each j from 1 to k:
+   current_max is initialized to -infinity
+   for i from 1 to n:
+      if i >= m:
+          a = i - m
+          current_max = max(current_max, dp[a][j-1] - prefix_sums[a])
+      option1 = dp[i-1][j

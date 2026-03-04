@@ -1,0 +1,110 @@
+<think>
+Okay, I need to solve this problem where I have to find the number of subarrays that can be made non-decreasing by performing at most k operations. Each operation allows me to increment an element in the subarray. The challenge is to figure out an efficient way to calculate this given the constraints, especially since the array can be up to 1e5 elements long. Let's think about how to approach this.
+
+First, let's understand what makes a subarray possible to turn into non-decreasing with at most k operations. The operations are incrementing elements. So, for a given subarray, the minimal number of operations required to make it non-decreasing is determined by the differences between consecutive elements. Wait, but how?
+
+Wait, when you can only increase elements, the way to make the array non-decreasing is to adjust each element to be at least as big as the previous. Let's think of the required changes.
+</think>
+ For example, if the original array is [a, b], and if a > b, then we need to increase b by (a - b) to make it equal to a. But since we can also increase a, but that would affect previous elements. Wait no, because if we have to make the array non-decreasing, the optimal way is to adjust each element to be at least the previous one. So for each position i in the subarray (starting from the second element), we need to make sure that current element is at least as big as the previous. 
+
+So, let's model the problem. For a subarray, let's compute the required "deficit" that needs to be covered by operations. Let's think of the differences between consecutive elements. For example, if the original array is [nums_0, nums_1, ..., nums_{m-1}], then to make it non-decreasing, we can track the differences where nums[i] < nums[i+1].<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+Okay, let's think of the required increments. For example, let's take the array [6,3,1,2,4,4]. The subarray [6,3,1] needs to be made non-decreasing. How?
+
+Start with 6. The next element is 3, which is less than 6. So we need to increase it to 6. The required increase here is 3 (6-3). Then the third element is 1. After adjusting the second element to 6, the third element must be at least 6. So required increase is 5 (6-1). Total required is 3+5=8. But k is 7, so this subarray can't be made non-decreasing. Hence, it's excluded from the count.
+
+So the key is to find for each subarray, the total required operations. If that total is <=k, then it's counted as valid. Otherwise, invalid.
+
+But how do we compute this total required for all possible subarrays efficiently?
+
+Let me think of the problem in terms of differences. Let's consider the original array and compute the required "increments" for each position. For example, for a subarray starting at index i and ending at index j, the required operations can be determined by looking at the differences between consecutive elements in the original array. 
+
+Let me think of the required increments as a series of deficits. For example, if the original array has elements a_0, a_1, a_2, ..., a_n-1. For the array to be non-decreasing, each a_i must be >= a_{i-1} after adjustments. The adjustments can only increase elements. So, for each i, the required adjustment is max(0, a_{i} - a_{i-1} + ... ? No, perhaps not. Let me think again.
+
+Let me model the problem as follows: For a given subarray, let's process it from left to right. For each position i (starting from the second element), we need to ensure that the current element is at least as big as the previous one. The required increase is max(0, previous_val - current_val). But previous_val here is the adjusted value of the previous element, not the original. 
+
+For example, consider the original elements [a, b, c]. Let's process them:
+
+- The first element is a. The second element must be at least a. If b < a, we need to add (a - b) to it. Now, the adjusted second element is a. The third element must be at least a's adjusted value (which is a). But if original c is less than a, then we add (a - c). But if original c is >= a, then no addition. However, if the original array was [a, b, c] where b < a and c < b (so after adjustment, the second element is a, and third must be at least a. But original c is less than b, which is now a. So required increase is a - c. 
+
+But how can we model this for a subarray? It seems that for each subarray, the required total operations is the sum of the deficits between consecutive elements. Wait, perhaps not. Let me think again.
+
+Let me think of the required increments as follows. Let's imagine that for a subarray, we process each element and track the previous value. For each element, if it's less than the previous adjusted value, we need to increase it. The total required is the sum of all these increases. 
+
+For example, let's take the original array [6,3,1]. 
+
+Processing:
+
+- First element is 6. No change.
+- Second element is 3. Previous adjusted is 6. Need to add 3 (6-3). Now adjusted to 6.
+- Third element is 1. Previous adjusted is 6. Need to add 5 (6-1). Total required is 3+5=8.
+
+Another example: [3,1,2]. 
+
+Processing:
+
+- 3, then 1. Add 2 (3-1). Now adjusted to 3. Next element is 2. Previous adjusted is 3. Need to add 1 (3-2). Total is 2+1=3.
+
+But how can we model this for all subarrays efficiently?
+
+The key insight here is that the required number of operations for a subarray can be determined by looking at the "differences" between consecutive elements. Let me think of the required increments as a series of cumulative deficits. 
+
+Let me think of the problem in terms of the differences between consecutive elements. For example, if we have a subarray from index i to j, then the required operations can be calculated based on the differences between nums[i] and nums[i-1], nums[i+1] and the adjusted nums[i], etc. But this seems complicated. 
+
+An alternative approach is to model the required increments as a series of "deficit" values. For example, for a subarray, the required operations can be determined by the sum of the deficits between consecutive elements, where each deficit is the amount by which the current element is less than the previous one. However, this is not exactly correct because when you adjust an element, it affects the next element. 
+
+Wait, but here's a way to model this. Let's imagine that for a subarray, we can compute the required increments as follows. Let's define an array d where d[i] = max(0, nums[i] - nums[i-1], 0). Wait, no. Actually, if nums[i] < nums[i-1], then there's a deficit of (nums[i-1] - nums[i]). But when we adjust the array, each adjustment affects the next element. So the total required operations for the subarray is the sum of all (previous adjusted value - current original value) whenever current original value is less than the previous adjusted value. 
+
+This seems tricky. However, there's a way to model this using dynamic programming. Let's think of the problem as follows: for each position i, we can track the number of contiguous subarrays ending at i that can be made non-decreasing with a certain total cost. 
+
+Let me think of the following approach. For each position i, we can calculate the length of the "run" where the subarrays ending at i can be adjusted with certain costs. For example, if nums[i] >= nums[i-1], then the cost for extending a subarray ending at i-1 by including i is zero. But if nums[i] < nums[i-1], then there's a deficit. 
+
+Let me think of an example. Suppose we have a previous subarray ending at i-1. Let's say that for that subarray, the total required operations up to i-1 is some value. Now, when adding nums[i], the new deficit is (previous adjusted value of i-1) - nums[i]. But how do we track the previous adjusted value?
+
+Alternatively, perhaps we can model the required operations for a subarray ending at i as follows. Let's consider that for each subarray ending at i, there is a certain "delta" that accumulates the required increments. 
+
+Let me think of the following idea. For each i, we can track the maximum length l such that the subarray ending at i (of length l) can be made non-decreasing with a certain total cost. For example, if nums[i] >= nums[i - 1], then the subarrays ending at i can include the subarrays ending at i-1, and the cost is the same as before plus zero. But if nums[i] < nums[i-1], then there's a new deficit. 
+
+But how to compute the total required operations for each possible subarray ending at i?
+
+Let me think of the following approach inspired by the problem of finding the number of subarrays with sum less than k. 
+
+Let me think of the required operations for a subarray as a series of cumulative deficits. For example, for a subarray from index j to i, the required operations can be represented as the sum of some values. If we can find for each i, all possible subarrays ending at i and their required operations, then we can check if they are <=k. 
+
+Let me think of the following way to model the required operations. For a subarray ending at i, the required operations can be determined by looking at the differences between consecutive elements. Let me define an array called 'diffs' where diffs[i] = nums[i] - nums[i-1]. For example, if the original array is [a, b, c], then diffs[1] = b - a, diffs[2] = c - b. 
+
+Now, for a subarray to be non-decreasing, all the cumulative required increments must make sure that each element is at least as big as the previous. The way to model this is that the cumulative required increments up to position i must cover any negative diffs. 
+
+Let me think of an example. Suppose we have a subarray [a, b, c]. The original differences are (b - a) and (c - b). For the array to be non-decreasing, each of these differences must be >= 0. If they are not, we need to add the deficit. 
+
+But how does this translate into the total required operations? Let's think recursively. 
+
+Let's imagine that we process the array from left to right. For each position i, we can track the total required operations for all possible subarrays ending at i. 
+
+For example, if the current element nums[i] is greater than or equal to the previous element, then the required operations for the subarray ending at i (with length l) is the same as the required operations for the subarray ending at i-1 (with length l-1) plus zero. 
+
+But if nums[i] is less than the previous element, then there's a deficit. Let's say that after adjusting the previous subarray, the previous element's adjusted value is prev_adj. The current element needs to be increased by (prev_adj - nums[i]) to make it non-decreasing. However, prev_adj depends on the adjustments made in the previous steps. 
+
+This seems complicated. However, there's a way to model this using the concept of "prefix sums" of required increments. 
+
+Let me think of the following approach inspired by the problem of finding the number of subarrays with sum less than k. 
+
+Let me define for each position i, a variable that represents the cumulative required operations for the subarray ending at i. Let's call this variable 'current_deficit'. 
+
+For example, if the current element nums[i] is greater than or equal to nums[i-1], then the current_deficit for the subarray ending at i (with length l) is the same as the current_deficit for the subarray ending at i-1 (with length l-1). 
+
+But if nums[i] < nums[i-1], then there's a deficit of (nums[i-1] - nums[i]). However, this deficit is added to the current_deficit. 
+
+Wait, but this is only considering the difference between consecutive original elements. However, when we adjust the previous elements, the actual required deficit may be different. 
+
+For example, consider the subarray [a, b, c], where a > b and b > c. The required operations would be (a - b) + (max(a, b) - c). But since after adjusting b to a, the next element c must be at least a, so the required is (a - b) + (a - c). 
+
+But how can we model this? The total required operations for the subarray [a, b, c] is (a - b) + (a - c). 
+
+But how to compute this for all possible subarrays?
+
+Let me think of the following idea. For

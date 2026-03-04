@@ -1,0 +1,150 @@
+<think>
+Okay, let's see. I need to solve this problem where I have to find the minimum possible maximum edge weight after removing some edges from a directed graph. The conditions are that node 0 is reachable from all other nodes, each node has at most threshold outgoing edges, and the maximum edge weight in the resulting graph is as small as possible. If it's impossible, return -1.
+
+Hmm. So the problem is about optimizing the maximum weight while ensuring that the graph structure meets certain constraints. Let me think about how to approach this.
+
+First, the key constraints are:
+
+1. Node 0 must be reachable from every other node. So the graph after removing edges must have all nodes able to reach 0. That sounds like a reverse graph problem. Maybe we need to build a graph that allows paths from every node to 0, with each node having limited outgoing edges.
+
+2. The maximum edge weight in the resulting graph is minimized.
+</think>
+ So we want to find the smallest possible value such that all necessary edges for connectivity (to 0) have weights no more than this value, and we can select edges in a way that each node's outgoing edges don't exceed the threshold.
+
+This feels like a problem that can be approached with binary search. Because the answer is a maximum weight, and we can check for a given weight whether it's possible to satisfy the conditions. So binary search on the possible weight values.
+
+Let me think about the binary search approach. The idea is to pick a candidate weight W. For this W, we can only keep edges with weight <= W. Then, we need to check if it's possible to select a subset of these edges such that:
+
+- Every node can reach node 0.
+- Each node has at most 'threshold' outgoing edges in the selected subset.
+
+If for a certain W, this is possible, then we can try to find a smaller W. If not, we need to increase W.<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+Okay, let's think about how to check for a given W. For each node, we can only use edges with weight <= W. But how to ensure that all nodes can reach 0, and that each node has at most threshold outgoing edges in the selected graph.
+
+This seems like a problem where we need to build a reverse graph (since paths must go to 0). But since edges are directed, perhaps we need to process nodes in a certain order. For example, node 0 is the root. For each other node, we need to have at least one incoming edge in the selected subset that allows it to reach 0. But how to manage the outgoing edges per node.
+
+Wait, the problem requires that each node has at most threshold outgoing edges in the final graph. So for each node (except 0?), we need to select enough edges (so that there's a path to 0) but not more than threshold outgoing edges.
+
+This seems similar to building a graph where each node has enough edges to reach 0, but with limited outgoing edges. How can we model this?
+
+Maybe we can model this as a DAG where we process nodes in topological order, starting from node 0. For each node, we need to have at least one outgoing edge (or multiple, up to threshold) that connects to nodes which can reach 0. But how to ensure that each node has enough connections while not exceeding the threshold.
+
+Alternatively, think of it as building a structure where for each node (except 0), we select some outgoing edges (with weight <= W) such that there's a path from that node to 0, and each node's outgoing edges are at most threshold.
+
+But how to check this?
+
+Another approach: For each node, we need to have at least one parent (in the selected graph) that can reach 0. But since edges are directed, each node's outgoing edges can be used to connect to other nodes. However, each node can have up to threshold outgoing edges. Wait, no. The outgoing edges are from the node. So for example, if node A has outgoing edges to B and C, then those are two outgoing edges. So for each node, the number of outgoing edges in the selected graph must be <= threshold.
+
+But how to ensure that all nodes can reach 0. For example, node A must have at least one outgoing edge (in the selected graph) that leads to a node which can reach 0. So this seems like a dependency problem.
+
+This sounds like a problem where we can model it as a graph and perform some kind of greedy selection. For each node (except 0), we need to select at least one outgoing edge (with weight <= W) that points to a node that is already connected to 0. And we can select up to threshold such edges.
+
+But how to ensure that we don't select more than threshold edges for any node.
+
+Let me think of this as a reverse process. Starting from node 0, we can build a graph where each node has enough incoming edges to ensure reachability. But since edges are directed, perhaps we need to process nodes in a certain order.
+
+Wait, here's an idea. For each node, we need to have at least one outgoing edge (in the selected graph) that leads to a node that can reach 0. So for each node, if there exists at least one such edge, and we can select it, then the node can reach 0. But since each node can have up to threshold outgoing edges, perhaps we can greedily select the necessary edges.
+
+But how to model this. Let's think of it as a graph where for each node, we need to have at least one of its outgoing edges (with weight <= W) pointing to a node that is already connected to 0. So we can process nodes in a way similar to BFS or topological order.
+
+Let me think of this as a dependency problem. Node 0 is already connected. For other nodes, if they have at least one outgoing edge to a node that is already connected, then they can be connected by selecting that edge. But since each node can have up to threshold outgoing edges, perhaps we can select the minimal number of edges to connect all nodes, ensuring that no node exceeds threshold outgoing edges.
+
+But how to check if for a given W, this is possible.
+
+Let me think of the following approach for the check function:
+
+For a given W, we consider all edges with weight <= W. Then, we need to select a subset of these edges such that:
+
+- All nodes can reach 0.
+- Each node has at most threshold outgoing edges in the subset.
+
+How to check this?
+
+This seems similar to building a reverse graph where each node (except 0) has at least one incoming edge in the subset. But since edges are directed, perhaps we can model this as follows:
+
+We can think of the problem as building a graph where each node (except 0) has at least one outgoing edge to a node that is already in the "connected" set. This is similar to a spanning arborescence, but with the constraint on the number of outgoing edges per node.
+
+But how to model this with the threshold constraint.
+
+Let me think of it as follows: For each node, we need to choose at least one outgoing edge (from the available edges with weight <= W) that points to a node that is already connected to 0. Once we choose that edge, the node becomes connected. However, each node can have up to threshold outgoing edges selected. So, for example, if a node has multiple edges to connected nodes, we can choose one (or more, up to threshold) but we need to make sure that when processing nodes, we don't exceed the threshold.
+
+But how to model this. Maybe we can use a greedy approach where for each node, we select as many edges as possible (up to threshold) to connected nodes, ensuring that all nodes are connected.
+
+Wait, but the problem is that for a node to be connected, it needs at least one outgoing edge to a connected node. So perhaps we can process nodes in some order, and for each node, once it's connected, it can help other nodes connect.
+
+But how to ensure that all nodes are connected, and that no node exceeds threshold outgoing edges.
+
+An alternative idea: For each node, the number of outgoing edges selected can be up to threshold. But for the connectivity, each node must have at least one outgoing edge selected that leads to a connected node.
+
+This seems like a problem where we can model it as a directed graph and perform a BFS or DFS, but with the constraint on the number of outgoing edges.
+
+But how to check if it's possible.
+
+Let me think of the following approach for the check function:
+
+We can model the problem as follows. For each node, we need to have at least one outgoing edge in the selected subset that points to a node that is connected to 0. We can start with node 0 as connected. Then, for other nodes, if they have any outgoing edges (with weight <= W) to connected nodes, we can select one of those edges. However, each node can have up to threshold outgoing edges selected. But how to ensure that all nodes are connected.
+
+But here's the problem: if a node has multiple edges to connected nodes, we can select one (or more, but up to threshold). However, if a node has no edges to connected nodes, then it's impossible.
+
+So the check function for a given W is:
+
+1. Collect all edges with weight <= W. Let's call this E.
+
+2. For each node, we need to have a path to 0 using edges in E.
+
+But how to ensure that, while also ensuring that each node has at most threshold outgoing edges selected.
+
+Wait, but the problem is not just about having a path, but also about selecting edges in such a way that the number of outgoing edges per node is within threshold.
+
+This seems like a problem where we need to build a graph where each node (except 0) has at least one outgoing edge selected (to a connected node), and the number of outgoing edges per node is <= threshold.
+
+This sounds like a problem that can be modeled with a greedy approach. For example, we can process nodes in some order, and for each node, select enough edges (up to threshold) to connected nodes.
+
+But how to ensure that all nodes are connected.
+
+Let me think of this as a graph where we need to select for each node, at least one outgoing edge to a node that is already connected. The key is to select these edges in a way that no node has more than threshold outgoing edges selected.
+
+Let me think of the following approach:
+
+We can use a BFS-like approach. We start with node 0 as connected. For all other nodes, we need to find at least one edge that points to a connected node. However, each time we select an edge from a node, we have to track how many outgoing edges have been selected for that node. Once a node has selected threshold outgoing edges, we can't select any more from it.
+
+But how to process the nodes in such a way that all can be connected.
+
+Wait, but for a node to be connected, it needs to have at least one outgoing edge selected. So perhaps we can model this as follows:
+
+For each node, we can have a list of edges that can be used to connect it (i.e., edges to connected nodes). Once a node is connected, it can help other nodes connect.
+
+But how to manage the selection of edges so that no node exceeds threshold outgoing edges.
+
+This seems like a problem where we can use a priority or queue-based approach. For example, we can use a queue of nodes that are connected. For each node in the queue, we can look at all nodes that have edges pointing to it (i.e., nodes that have an edge from them to this node). For each such node, if it hasn't been connected yet, and if the node has not yet used up its threshold of outgoing edges, we can select this edge, increment the count of outgoing edges for that node, and add it to the queue.
+
+But how to manage this.
+
+Let me outline the steps for the check function:
+
+Initialize a connected set with node 0. Also, for each node, track how many outgoing edges have been selected (outgoing_count). Initially, outgoing_count for all nodes is 0.
+
+For all other nodes, we need to find at least one edge to a connected node.
+
+We can use a queue (like BFS) to process connected nodes. For each connected node u, we look at all nodes v that have edges from v to u (i.e., edges [v, u, w] where w <= current W). For each such v, if v is not connected yet, and outgoing_count[v] < threshold, then we can select this edge. We increment outgoing_count[v] by 1, mark v as connected, and add v to the queue.
+
+But wait, this approach may not work because for a node v, there may be multiple edges to connected nodes, but we need to select at least one. However, if we process the nodes in a way that whenever a node can be connected (i.e., it has an edge to a connected node and outgoing_count is not exceeded), we connect it.
+
+But how to ensure that all nodes are connected.
+
+This seems like a possible approach. Let's think through an example.
+
+Take example 1:
+
+n=5, edges after filtering (W=1) would include edges [[1,0,1], [3,0,1], [4,3,1], [2,1,1]]. The threshold is 2.
+
+Initially, connected is {0}.
+
+We process node 0. Look for all nodes that have edges pointing to 0. Those are nodes 1 and 3 (edges [1,0], [3,0]).
+
+For node 1: outgoing_count is 0 < 2. So select this edge. Mark node 1 as connected. outgoing_count[1] becomes 1. Add
