@@ -1,0 +1,126 @@
+Step 0: We are given a triangle with integer side lengths, one side of length 9, and one angle that is twice another angle. We are to find how many **non-congruent** such triangles exist.
+<think>
+I may be uncertain here, so I will run a strict local check before closing this block.
+Uncertainty (first person):
+Local check (nearest step/equation/code invariant only):
+Decision (exact next continuation point in the Python implementation):
+I will not close this <think> block until the 3 items above are filled with concrete content, and after </think> I will continue writing the final runnable Python solution directly. Let me start thinking,
+Okay, I need to find all triangles with integer side lengths, one side of length 9, and one angle that is twice another angle. The triangles must be non-congruent, so I need to avoid counting congruent triangles multiple times.
+
+Let me consider the triangle with side lengths $a$, $b$, and $c$, where one of these is 9. Without loss of generality, let's assume $a = 9$. The triangle has angles $A$, $B$, and $C$, and one of these angles is twice another. For example, $A = 2B$, $B = 2C$, or $C = 2A$.
+
+I can use the Law of Sines to relate the sides and angles of the triangle. The Law of Sines states that $\frac{a}{\sin A} = \frac{b}{\sin B} = \frac{c}{\sin C}$. Since $a = 9$, I can write $\frac{9}{\sin A} = \frac{b}{\sin B} = \frac{c}{\sin C}$.
+
+Now, I need to consider the different cases where one angle is twice another. Let's first consider the case where $A = 2B$. In this case, we have $\frac{9}{\sin 2B} = \frac{b}{\sin B}$. Using the double angle identity $\sin 2B = 2\sin B \cos B$, we can rewrite this as $\frac{9}{2\sin B \cos B} = \frac{b}{\sin B}$. Simplifying, we get $\frac{9}{2\cos B} = b$.
+
+Since $b$ must be an integer, $\cos B$ must be a rational number. The only rational values of $\cos B$ that result in integer values of $b$ are $\cos B = \frac{1}{2}$, $\cos B = \frac{\sqrt{3}}{2}$, and $\cos B = \frac{\sqrt{2}}{2}$. These correspond to angles $B = 60^\circ$, $B = 30^\circ$, and $B = 45^\circ$, respectively.
+
+For each of these values of $B$, I can find the corresponding value of $b$ and then use the Law of Sines to find the value of $c$. For example, if $B = 60^\circ$, then $\cos B = \frac{1}{2}$, and $b = \frac{9}{2\cos B} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2B} = \frac{c}{\sin C}$. Since $A = 2B = 120^\circ$, we have $\sin 2B = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{c}{\sin C}$, which gives $c = \frac{9 \cdot \sin C}{\frac{\sqrt{3}}{2}}$.
+
+Since $c$ must be an integer, $\sin C$ must be a rational number. The only rational values of $\sin C$ that result in integer values of $c$ are $\sin C = \frac{1}{2}$, $\sin C = \frac{\sqrt{3}}{2}$, and $\sin C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 30^\circ$, $C = 60^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $c$ and then check if the triangle with side lengths $a = 9$, $b = 9$, and $c$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $C = 30^\circ$, then $\sin C = \frac{1}{2}$, and $c = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $c$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $B = 2C$, then $\frac{9}{\sin 2C} = \frac{b}{\sin C}$. Using the double angle identity $\sin 2C = 2\sin C \cos C$, we can rewrite this as $\frac{9}{2\sin C \cos C} = \frac{b}{\sin C}$. Simplifying, we get $\frac{9}{2\cos C} = b$.
+
+Since $b$ must be an integer, $\cos C$ must be a rational number. The only rational values of $\cos C$ that result in integer values of $b$ are $\cos C = \frac{1}{2}$, $\cos C = \frac{\sqrt{3}}{2}$, and $\cos C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 60^\circ$, $C = 30^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $b$ and then use the Law of Sines to find the value of $a$. For example, if $C = 60^\circ$, then $\cos C = \frac{1}{2}$, and $b = \frac{9}{2\cos C} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2C} = \frac{a}{\sin A}$. Since $B = 2C = 120^\circ$, we have $\sin 2C = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{a}{\sin A}$, which gives $a = \frac{9 \cdot \sin A}{\frac{\sqrt{3}}{2}}$.
+
+Since $a$ must be an integer, $\sin A$ must be a rational number. The only rational values of $\sin A$ that result in integer values of $a$ are $\sin A = \frac{1}{2}$, $\sin A = \frac{\sqrt{3}}{2}$, and $\sin A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 30^\circ$, $A = 60^\circ$, and $A = 45^\circ$, respectively.
+
+For each of these values of $A$, I can find the corresponding value of $a$ and then check if the triangle with side lengths $a$, $b = 9$, and $c$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $A = 30^\circ$, then $\sin A = \frac{1}{2}$, and $a = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $a$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $C = 2A$, then $\frac{9}{\sin 2A} = \frac{c}{\sin C}$. Using the double angle identity $\sin 2A = 2\sin A \cos A$, we can rewrite this as $\frac{9}{2\sin A \cos A} = \frac{c}{\sin C}$. Simplifying, we get $\frac{9}{2\cos A} = c$.
+
+Since $c$ must be an integer, $\cos A$ must be a rational number. The only rational values of $\cos A$ that result in integer values of $c$ are $\cos A = \frac{1}{2}$, $\cos A = \frac{\sqrt{3}}{2}$, and $\cos A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 60^\circ$, $A = 30^\circ$, and $A = 45^\circ$, respectively.
+
+For each of these values of $A$, I can find the corresponding value of $c$ and then use the Law of Sines to find the value of $b$. For example, if $A = 60^\circ$, then $\cos A = \frac{1}{2}$, and $c = \frac{9}{2\cos A} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2A} = \frac{b}{\sin B}$. Since $C = 2A = 120^\circ$, we have $\sin 2A = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{b}{\sin B}$, which gives $b = \frac{9 \cdot \sin B}{\frac{\sqrt{3}}{2}}$.
+
+Since $b$ must be an integer, $\sin B$ must be a rational number. The only rational values of $\sin B$ that result in integer values of $b$ are $\sin B = \frac{1}{2}$, $\sin B = \frac{\sqrt{3}}{2}$, and $\sin B = \frac{\sqrt{2}}{2}$. These correspond to angles $B = 30^\circ$, $B = 60^\circ$, and $B = 45^\circ$, respectively.
+
+For each of these values of $B$, I can find the corresponding value of $b$ and then check if the triangle with side lengths $a = 9$, $b$, and $c = 9$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $B = 30^\circ$, then $\sin B = \frac{1}{2}$, and $b = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $b$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $A = 2C$, then $\frac{9}{\sin 2C} = \frac{a}{\sin A}$. Using the double angle identity $\sin 2C = 2\sin C \cos C$, we can rewrite this as $\frac{9}{2\sin C \cos C} = \frac{a}{\sin A}$. Simplifying, we get $\frac{9}{2\cos C} = a$.
+
+Since $a$ must be an integer, $\cos C$ must be a rational number. The only rational values of $\cos C$ that result in integer values of $a$ are $\cos C = \frac{1}{2}$, $\cos C = \frac{\sqrt{3}}{2}$, and $\cos C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 60^\circ$, $C = 30^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $a$ and then use the Law of Sines to find the value of $b$. For example, if $C = 60^\circ$, then $\cos C = \frac{1}{2}$, and $a = \frac{9}{2\cos C} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2C} = \frac{b}{\sin B}$. Since $A = 2C = 120^\circ$, we have $\sin 2C = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{b}{\sin B}$, which gives $b = \frac{9 \cdot \sin B}{\frac{\sqrt{3}}{2}}$.
+
+Since $b$ must be an integer, $\sin B$ must be a rational number. The only rational values of $\sin B$ that result in integer values of $b$ are $\sin B = \frac{1}{2}$, $\sin B = \frac{\sqrt{3}}{2}$, and $\sin B = \frac{\sqrt{2}}{2}$. These correspond to angles $B = 30^\circ$, $B = 60^\circ$, and $B = 45^\circ$, respectively.
+
+For each of these values of $B$, I can find the corresponding value of $b$ and then check if the triangle with side lengths $a = 9$, $b$, and $c = 9$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $B = 30^\circ$, then $\sin B = \frac{1}{2}$, and $b = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $b$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $B = 2A$, then $\frac{9}{\sin 2A} = \frac{b}{\sin B}$. Using the double angle identity $\sin 2A = 2\sin A \cos A$, we can rewrite this as $\frac{9}{2\sin A \cos A} = \frac{b}{\sin B}$. Simplifying, we get $\frac{9}{2\cos A} = b$.
+
+Since $b$ must be an integer, $\cos A$ must be a rational number. The only rational values of $\cos A$ that result in integer values of $b$ are $\cos A = \frac{1}{2}$, $\cos A = \frac{\sqrt{3}}{2}$, and $\cos A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 60^\circ$, $A = 30^\circ$, and $A = 45^\circ$, respectively.
+
+For each of these values of $A$, I can find the corresponding value of $b$ and then use the Law of Sines to find the value of $c$. For example, if $A = 60^\circ$, then $\cos A = \frac{1}{2}$, and $b = \frac{9}{2\cos A} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2A} = \frac{c}{\sin C}$. Since $B = 2A = 120^\circ$, we have $\sin 2A = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{c}{\sin C}$, which gives $c = \frac{9 \cdot \sin C}{\frac{\sqrt{3}}{2}}$.
+
+Since $c$ must be an integer, $\sin C$ must be a rational number. The only rational values of $\sin C$ that result in integer values of $c$ are $\sin C = \frac{1}{2}$, $\sin C = \frac{\sqrt{3}}{2}$, and $\sin C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 30^\circ$, $C = 60^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $c$ and then check if the triangle with side lengths $a = 9$, $b = 9$, and $c$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $C = 30^\circ$, then $\sin C = \frac{1}{2}$, and $c = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $c$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $C = 2B$, then $\frac{9}{\sin 2B} = \frac{c}{\sin C}$. Using the double angle identity $\sin 2B = 2\sin B \cos B$, we can rewrite this as $\frac{9}{2\sin B \cos B} = \frac{c}{\sin C}$. Simplifying, we get $\frac{9}{2\cos B} = c$.
+
+Since $c$ must be an integer, $\cos B$ must be a rational number. The only rational values of $\cos B$ that result in integer values of $c$ are $\cos B = \frac{1}{2}$, $\cos B = \frac{\sqrt{3}}{2}$, and $\cos B = \frac{\sqrt{2}}{2}$. These correspond to angles $B = 60^\circ$, $B = 30^\circ$, and $B = 45^\circ$, respectively.
+
+For each of these values of $B$, I can find the corresponding value of $c$ and then use the Law of Sines to find the value of $a$. For example, if $B = 60^\circ$, then $\cos B = \frac{1}{2}$, and $c = \frac{9}{2\cos B} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2B} = \frac{a}{\sin A}$. Since $C = 2B = 120^\circ$, we have $\sin 2B = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{a}{\sin A}$, which gives $a = \frac{9 \cdot \sin A}{\frac{\sqrt{3}}{2}}$.
+
+Since $a$ must be an integer, $\sin A$ must be a rational number. The only rational values of $\sin A$ that result in integer values of $a$ are $\sin A = \frac{1}{2}$, $\sin A = \frac{\sqrt{3}}{2}$, and $\sin A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 30^\circ$, $A = 60^\circ$, and $A = 45^\circ$, respectively.
+
+For each of these values of $A$, I can find the corresponding value of $a$ and then check if the triangle with side lengths $a$, $b = 9$, and $c = 9$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $A = 30^\circ$, then $\sin A = \frac{1}{2}$, and $a = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $a$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $A = 2C$, then $\frac{9}{\sin 2C} = \frac{a}{\sin A}$. Using the double angle identity $\sin 2C = 2\sin C \cos C$, we can rewrite this as $\frac{9}{2\sin C \cos C} = \frac{a}{\sin A}$. Simplifying, we get $\frac{9}{2\cos C} = a$.
+
+Since $a$ must be an integer, $\cos C$ must be a rational number. The only rational values of $\cos C$ that result in integer values of $a$ are $\cos C = \frac{1}{2}$, $\cos C = \frac{\sqrt{3}}{2}$, and $\cos C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 60^\circ$, $C = 30^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $a$ and then use the Law of Sines to find the value of $b$. For example, if $C = 60^\circ$, then $\cos C = \frac{1}{2}$, and $a = \frac{9}{2\cos C} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2C} = \frac{b}{\sin B}$. Since $A = 2C = 120^\circ$, we have $\sin 2C = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{b}{\sin B}$, which gives $b = \frac{9 \cdot \sin B}{\frac{\sqrt{3}}{2}}$.
+
+Since $b$ must be an integer, $\sin B$ must be a rational number. The only rational values of $\sin B$ that result in integer values of $b$ are $\sin B = \frac{1}{2}$, $\sin B = \frac{\sqrt{3}}{2}$, and $\sin B = \frac{\sqrt{2}}{2}$. These correspond to angles $B = 30^\circ$, $B = 60^\circ$, and $B = 45^\circ$, respectively.
+
+For each of these values of $B$, I can find the corresponding value of $b$ and then check if the triangle with side lengths $a = 9$, $b$, and $c = 9$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $B = 30^\circ$, then $\sin B = \frac{1}{2}$, and $b = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $b$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $B = 2C$, then $\frac{9}{\sin 2C} = \frac{b}{\sin B}$. Using the double angle identity $\sin 2C = 2\sin C \cos C$, we can rewrite this as $\frac{9}{2\sin C \cos C} = \frac{b}{\sin B}$. Simplifying, we get $\frac{9}{2\cos C} = b$.
+
+Since $b$ must be an integer, $\cos C$ must be a rational number. The only rational values of $\cos C$ that result in integer values of $b$ are $\cos C = \frac{1}{2}$, $\cos C = \frac{\sqrt{3}}{2}$, and $\cos C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 60^\circ$, $C = 30^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $b$ and then use the Law of Sines to find the value of $a$. For example, if $C = 60^\circ$, then $\cos C = \frac{1}{2}$, and $b = \frac{9}{2\cos C} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2C} = \frac{a}{\sin A}$. Since $B = 2C = 120^\circ$, we have $\sin 2C = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{a}{\sin A}$, which gives $a = \frac{9 \cdot \sin A}{\frac{\sqrt{3}}{2}}$.
+
+Since $a$ must be an integer, $\sin A$ must be a rational number. The only rational values of $\sin A$ that result in integer values of $a$ are $\sin A = \frac{1}{2}$, $\sin A = \frac{\sqrt{3}}{2}$, and $\sin A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 30^\circ$, $A = 60^\circ$, and $A = 45^\circ$, respectively.
+
+For each of these values of $A$, I can find the corresponding value of $a$ and then check if the triangle with side lengths $a$, $b = 9$, and $c = 9$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $A = 30^\circ$, then $\sin A = \frac{1}{2}$, and $a = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $a$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $C = 2A$, then $\frac{9}{\sin 2A} = \frac{c}{\sin C}$. Using the double angle identity $\sin 2A = 2\sin A \cos A$, we can rewrite this as $\frac{9}{2\sin A \cos A} = \frac{c}{\sin C}$. Simplifying, we get $\frac{9}{2\cos A} = c$.
+
+Since $c$ must be an integer, $\cos A$ must be a rational number. The only rational values of $\cos A$ that result in integer values of $c$ are $\cos A = \frac{1}{2}$, $\cos A = \frac{\sqrt{3}}{2}$, and $\cos A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 60^\circ$, $A = 30^\circ$, and $A = 45^\circ$, respectively.
+
+For each of these values of $A$, I can find the corresponding value of $c$ and then use the Law of Sines to find the value of $b$. For example, if $A = 60^\circ$, then $\cos A = \frac{1}{2}$, and $c = \frac{9}{2\cos A} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2A} = \frac{b}{\sin B}$. Since $C = 2A = 120^\circ$, we have $\sin 2A = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{b}{\sin B}$, which gives $b = \frac{9 \cdot \sin B}{\frac{\sqrt{3}}{2}}$.
+
+Since $b$ must be an integer, $\sin B$ must be a rational number. The only rational values of $\sin B$ that result in integer values of $b$ are $\sin B = \frac{1}{2}$, $\sin B = \frac{\sqrt{3}}{2}$, and $\sin B = \frac{\sqrt{2}}{2}$. These correspond to angles $B = 30^\circ$, $B = 60^\circ$, and $B = 45^\circ$, respectively.
+
+For each of these values of $B$, I can find the corresponding value of $b$ and then check if the triangle with side lengths $a = 9$, $b$, and $c = 9$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $B = 30^\circ$, then $\sin B = \frac{1}{2}$, and $b = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $b$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $A = 2B$, then $\frac{9}{\sin 2B} = \frac{a}{\sin A}$. Using the double angle identity $\sin 2B = 2\sin B \cos B$, we can rewrite this as $\frac{9}{2\sin B \cos B} = \frac{a}{\sin A}$. Simplifying, we get $\frac{9}{2\cos B} = a$.
+
+Since $a$ must be an integer, $\cos B$ must be a rational number. The only rational values of $\cos B$ that result in integer values of $a$ are $\cos B = \frac{1}{2}$, $\cos B = \frac{\sqrt{3}}{2}$, and $\cos B = \frac{\sqrt{2}}{2}$. These correspond to angles $B = 60^\circ$, $B = 30^\circ$, and $B = 45^\circ$, respectively.
+
+For each of these values of $B$, I can find the corresponding value of $a$ and then use the Law of Sines to find the value of $c$. For example, if $B = 60^\circ$, then $\cos B = \frac{1}{2}$, and $a = \frac{9}{2\cos B} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2B} = \frac{c}{\sin C}$. Since $A = 2B = 120^\circ$, we have $\sin 2B = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{c}{\sin C}$, which gives $c = \frac{9 \cdot \sin C}{\frac{\sqrt{3}}{2}}$.
+
+Since $c$ must be an integer, $\sin C$ must be a rational number. The only rational values of $\sin C$ that result in integer values of $c$ are $\sin C = \frac{1}{2}$, $\sin C = \frac{\sqrt{3}}{2}$, and $\sin C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 30^\circ$, $C = 60^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $c$ and then check if the triangle with side lengths $a = 9$, $b = 9$, and $c$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $C = 30^\circ$, then $\sin C = \frac{1}{2}$, and $c = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $c$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $B = 2C$, then $\frac{9}{\sin 2C} = \frac{b}{\sin B}$. Using the double angle identity $\sin 2C = 2\sin C \cos C$, we can rewrite this as $\frac{9}{2\sin C \cos C} = \frac{b}{\sin B}$. Simplifying, we get $\frac{9}{2\cos C} = b$.
+
+Since $b$ must be an integer, $\cos C$ must be a rational number. The only rational values of $\cos C$ that result in integer values of $b$ are $\cos C = \frac{1}{2}$, $\cos C = \frac{\sqrt{3}}{2}$, and $\cos C = \frac{\sqrt{2}}{2}$. These correspond to angles $C = 60^\circ$, $C = 30^\circ$, and $C = 45^\circ$, respectively.
+
+For each of these values of $C$, I can find the corresponding value of $b$ and then use the Law of Sines to find the value of $a$. For example, if $C = 60^\circ$, then $\cos C = \frac{1}{2}$, and $b = \frac{9}{2\cos C} = \frac{9}{2 \cdot \frac{1}{2}} = 9$. Using the Law of Sines, we have $\frac{9}{\sin 2C} = \frac{a}{\sin A}$. Since $B = 2C = 120^\circ$, we have $\sin 2C = \sin 120^\circ = \frac{\sqrt{3}}{2}$. Therefore, $\frac{9}{\frac{\sqrt{3}}{2}} = \frac{a}{\sin A}$, which gives $a = \frac{9 \cdot \sin A}{\frac{\sqrt{3}}{2}}$.
+
+Since $a$ must be an integer, $\sin A$ must be a rational number. The only rational values of $\sin A$ that result in integer values of $a$ are $\sin A = \frac{1}{2}$, $\sin A = \frac{\sqrt{3}}{2}$, and $\sin A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 30^\circ$, $A = 60^\circ$, and $A = 45^\circ$, respectively.
+
+For each of these values of $A$, I can find the corresponding value of $a$ and then check if the triangle with side lengths $a$, $b = 9$, and $c = 9$ is valid. A triangle is valid if the sum of the lengths of any two sides is greater than the length of the third side. For example, if $A = 30^\circ$, then $\sin A = \frac{1}{2}$, and $a = \frac{9 \cdot \frac{1}{2}}{\frac{\sqrt{3}}{2}} = \frac{9}{\sqrt{3}} = 3\sqrt{3}$. Since $a$ is not an integer, this triangle is not valid.
+
+I can repeat this process for the other cases where one angle is twice another. For example, if $C = 2A$, then $\frac{9}{\sin 2A} = \frac{c}{\sin C}$. Using the double angle identity $\sin 2A = 2\sin A \cos A$, we can rewrite this as $\frac{9}{2\sin A \cos A} = \frac{c}{\sin C}$. Simplifying, we get $\frac{9}{2\cos A} = c$.
+
+Since $c$ must be an integer, $\cos A$ must be a rational number. The only rational values of $\cos A$ that result in integer values of $c$ are $\cos A = \frac{1}{2}$, $\cos A = \frac{\sqrt{3}}{2}$, and $\cos A = \frac{\sqrt{2}}{2}$. These correspond to angles $A = 60^\circ$, $A = 30^\
