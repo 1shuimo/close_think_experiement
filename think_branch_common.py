@@ -689,6 +689,13 @@ def write_text(path: Path, content: str) -> None:
     path.write_text(content, encoding="utf-8")
 
 
+def model_label(model_path: str) -> str:
+    raw = (model_path or "").strip().rstrip("/\\")
+    name = Path(raw).name if raw else ""
+    label = name or raw or "model"
+    return re.sub(r"[^A-Za-z0-9._-]", "_", label)
+
+
 def load_tasks_jsonl(path: Path) -> List[Dict[str, str]]:
     rows: List[Dict[str, str]] = []
     for line in path.read_text(encoding="utf-8").splitlines():

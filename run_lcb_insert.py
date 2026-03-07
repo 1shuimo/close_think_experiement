@@ -21,7 +21,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
 
     p.add_argument("--tasks-file", required=True, help="LCB tasks jsonl prepared by prepare_lcb_codegen_tasks.py")
-    p.add_argument("--output-dir", default=str(here / "suite_lcb_insert"))
+    p.add_argument("--output-dir", default=str(here / "outputs" / "lcb" / "suite_lcb_insert"))
 
     p.add_argument("--system-prompt-file", default=str(here / "prompts" / "system_lcb_r1_insert_v2.txt"))
     p.add_argument("--inject-text-file", default=str(here / "prompts" / "inject_think_codegen_aime_like_v2.txt"))

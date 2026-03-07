@@ -21,12 +21,12 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument(
         "--tasks-file",
-        default=str(here / "tasks_aime2025.jsonl"),
+        default=str(here / "data" / "tasks_aime2025.jsonl"),
         help="AIME task jsonl path.",
     )
     p.add_argument(
         "--output-dir",
-        default=str(here / "suite_aime2025_insert"),
+        default=str(here / "outputs" / "aime" / "suite_aime2025_insert"),
         help="Output directory for results/summary.",
     )
 

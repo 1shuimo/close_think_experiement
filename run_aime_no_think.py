@@ -20,8 +20,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model-paths", required=True, help="Comma-separated local model paths.")
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
 
-    p.add_argument("--tasks-file", default=str(here / "tasks_aime2025.jsonl"))
-    p.add_argument("--output-dir", default=str(here / "suite_aime2025_no_think_insert"))
+    p.add_argument("--tasks-file", default=str(here / "data" / "tasks_aime2025.jsonl"))
+    p.add_argument("--output-dir", default=str(here / "outputs" / "aime" / "suite_aime2025_no_think_insert"))
 
     p.add_argument(
         "--system-prompt-file",

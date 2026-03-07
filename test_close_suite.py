@@ -28,6 +28,7 @@ from think_branch_common import (
     load_model,
     load_tasks_jsonl,
     longest_suffix_prefix_overlap,
+    model_label,
     prefill_kv,
     think_balance_ok,
 )
@@ -77,8 +78,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--model-paths", required=True, help="Comma-separated model paths.")
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
 
-    p.add_argument("--tasks-file", default="tasks_aime2025.jsonl")
-    p.add_argument("--output-dir", default="suite_outputs")
+    p.add_argument("--tasks-file", default="data/tasks_aime2025.jsonl")
+    p.add_argument("--output-dir", default="outputs/tmp/suite_outputs")
 
     p.add_argument("--system-prompt", default=DEFAULT_SYSTEM_PROMPT)
     p.add_argument("--system-prompt-file", default=None, help="Load system prompt text from file.")
@@ -1121,7 +1122,8 @@ def main() -> None:
         tokenizer, model, device = loaded.tokenizer, loaded.model, loaded.device
 
         model_records: List[Dict[str, object]] = []
-        task_dump_root = output_dir / f"{_safe_name(model_path)}.task_texts"
+        model_tag = model_label(model_path)
+        task_dump_root = output_dir / f"{model_tag}.task_texts"
         if args.save_task_texts:
             task_dump_root.mkdir(parents=True, exist_ok=True)
 
@@ -1230,7 +1232,7 @@ def main() -> None:
                     encoding="utf-8",
                 )
 
-        safe_name = re.sub(r"[^A-Za-z0-9._-]", "_", model_path)
+        safe_name = model_tag
         jsonl_path = output_dir / f"{safe_name}.results.jsonl"
         summary_path = output_dir / f"{safe_name}.summary.json"
 

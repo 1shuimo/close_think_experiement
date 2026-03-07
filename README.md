@@ -1,253 +1,327 @@
 # close_think_experiement
 
-这个仓库当前聚焦两个数据集：
-- AIME（含 AIME2025 与 4 题 hard 集）
+这个仓库当前只关注一条核心实验线：
+
+- 在模型已经开始生成之后，
+- 在中途选一个位置插入新的 `<think>`，
+- 观察模型是否会重新进入原生 `<think> ... </think>` 思考分布，
+- 并在 `</think>` 之后从目标位置继续往下写。
+
+当前只保留两个 benchmark：
+
+- AIME
 - LiveCodeBench
 
-核心实验目标：验证“同一条生成轨迹中，中间插入 `<think>` 后”的稳定性与效果。
+详细命令见 [RUN_COMMANDS.md](/Users/shuimo/Desktop/interleaved/close/RUN_COMMANDS.md)。
 
-## 当前脚本
+默认输出现在统一放在 `outputs/` 下，并且单模型文件名只使用模型目录 basename。
+例如：
 
-- `test_close_suite.py`
-  - 仅插入版（A/B 分叉：A=直接续写，B=中插 `<think>` 后续写）
-  - 不含改错逻辑
-  - 不含 LongProc 逻辑
-- `test_close_suite_corrupt.py`
-  - 改错版（在前缀中做扰动 + 中插 `<think>` + A/B）
-  - 不含 LongProc 逻辑
-- `run_aime.py`
-  - AIME 一键入口（调用 `test_close_suite.py`）
-- `run_aime_corrupt.py`
-  - AIME 改错一键入口（调用 `test_close_suite_corrupt.py`）
-- `run_live_code.py`
-  - LiveCodeBench 官方 runner 对接脚本
-- `prepare_lcb_codegen_tasks.py`
-  - 从 LiveCodeBench 导出题目为本仓库可跑的 `tasks.jsonl`
-- `evaluate_lcb_from_suite.py`
-  - 把 close 分支输出转成 LCB 评分输入并执行 codegen 评测
-- `run_lcb_insert.py`
-  - LiveCodeBench 专用插入脚本（默认只跑 Branch B，不改错）
+- `/scratch-ssd/guoeng/huggingface/models/Qwen3-32B`
+- 会写成 `Qwen3-32B.results.jsonl`
+- 不再写成整条 `_scratch-ssd_...` 路径
 
-## 任务文件
+## 背景
 
-- `tasks_aime2025.jsonl`：AIME2025（30题）
-- `tasks_math_hard_steps.jsonl`：4题 hard 集（Aya/Hyperbola/Complex/Token game）
+这条实验线要回答的问题是：
 
-## 快速开始
+1. 如果模型在一次生成过程中已经写到一半，能不能通过中途插入一个新的 `<think>`，把它重新拉回原生的思考轨迹？
+2. 这种插入，能不能让模型在局部不确定点重新检查最近的推理步骤，而不是直接复读前文或重新从头开始？
+3. 如果前缀里故意放入一个局部错误，插入后的原生 think 能不能帮助模型修正后续续写？
 
-详细命令见：
-- [`RUN_COMMANDS.md`](./RUN_COMMANDS.md)
+所以这里的重点不是 prompt engineering 本身，而是：
 
-你可以直接按以下最小步骤执行：
+- 中途介入生成轨迹；
+- 在一个局部位置重新触发 think；
+- 看这个 think 对后续 continuation 的影响。
 
-```bash
-cd /path/to/close_think_experiement
-MODEL=/scratch-ssd/guoeng/huggingface/models/Qwen3-32B
-```
+## 方法
 
-四题改错测试：
+### 方法概述
 
-```bash
-python run_aime_corrupt.py \
-  --model-paths "$MODEL" \
-  --tasks-file tasks_math_hard_steps.jsonl \
-  --output-dir suite_math_hard_4q_corrupt \
-  --corrupt-mode anchor_number_shift \
-  --corrupt-after-first-think \
-  --corrupt-prefer-sign-flip \
-  --force-inject-at-corrupt \
-  --force-inject-at-sentence-end \
-  --apply-match-cover
-```
+三个核心入口是：
 
-LiveCodeBench 对接：
+- [run_aime_plain.py](/Users/shuimo/Desktop/interleaved/close/run_aime_plain.py)
+- [run_aime.py](/Users/shuimo/Desktop/interleaved/close/run_aime.py)
+- [run_aime_corrupt.py](/Users/shuimo/Desktop/interleaved/close/run_aime_corrupt.py)
+- [run_lcb_insert.py](/Users/shuimo/Desktop/interleaved/close/run_lcb_insert.py)
 
-```bash
-python run_live_code.py \
-  --lcb-root /path/to/LiveCodeBench \
-  --model Qwen3-32B \
-  --local-model-path "$MODEL" \
-  --scenario codegeneration \
-  --release-version release_v6 \
-  --evaluate \
-  --n 10 \
-  --temperature 0.2
-```
+它们背后分别调用：
 
-LiveCodeBench 评分前去 think（可选）：
+- [test_close_suite.py](/Users/shuimo/Desktop/interleaved/close/test_close_suite.py)
+- [test_close_suite_corrupt.py](/Users/shuimo/Desktop/interleaved/close/test_close_suite_corrupt.py)
 
-```bash
-python run_live_code.py \
-  --lcb-root /path/to/LiveCodeBench \
-  --model Qwen3-32B \
-  --compute-scores \
-  --eval-all-file /path/to/eval_all.json \
-  --strip-think-before-score
-```
+公共逻辑在：
 
-LiveCodeBench + 中插 `<think>`（一题联调）：
+- [think_branch_common.py](/Users/shuimo/Desktop/interleaved/close/think_branch_common.py)
 
-```bash
-# 1) 先导出 1 道 LCB 题到 close 任务格式
-python prepare_lcb_codegen_tasks.py \
-  --question-id <LCB_QUESTION_ID> \
-  --limit 1 \
-  --output-jsonl tasks_lcb_1q.jsonl
+### 插入是怎么做的
 
-# 2) 用 LCB 专用插入脚本跑 Branch B（不改错，只定位并插入）
-python run_lcb_insert.py \
-  --model-paths "$MODEL" \
-  --tasks-file tasks_lcb_1q.jsonl \
-  --output-dir suite_lcb_1q_insert \
-  --checkpoint-mode think_end_mid \
-  --checkpoint-mid-min-tokens 220 \
-  --checkpoint-mid-max-tokens 320 \
-  --no-step-fallback-offset-tokens 300 \
-  --save-task-texts
+当前实现不是直接改 hidden state，也不是在已有 KV cache 中间硬插 token。
 
-# 3) 从 Branch B 输出提取代码并做 LCB codegen 评测
-python evaluate_lcb_from_suite.py \
-  --suite-results-jsonl suite_lcb_1q_insert/_scratch-ssd_guoeng_huggingface_models_Qwen3-32B.results.jsonl \
-  --branch b \
-  --strip-think \
-  --problems-json tasks_lcb_1q.jsonl.problems.json \
-  --output-dir suite_lcb_1q_insert/lcb_eval
-```
+实际流程是：
 
-## 输出结果
+1. 先正常构造 prompt，并保留模型原生 thinking。
+2. 让模型先生成一段 prefix，直到某个 checkpoint 停下来。
+3. 在 prefix 中定位一个插入点。
+4. 取插入点左边的文本作为新的 Branch B 前缀。
+5. 把注入文本 `inject_text` 接到这个前缀后面。
+6. 对新的前缀重新 tokenize / prefill，然后继续生成。
 
-每次运行会生成：
-- `*.results.jsonl`：逐题 A/B 详细记录
-- `*.summary.json`：单模型汇总
-- `summary_all_models.json`：本次所有模型总汇总
-- （若开 `--save-task-texts`）每题 `branch_A.full.txt` / `branch_B.full.txt` / `meta.json`
+因此这套方法更准确地说是：
 
-## 说明
+- 用 token 流决定“停在哪里”和“候选插入点在哪里”；
+- 但真正执行插入时，用的是文本切片 + 重新 prefill。
 
-- 目前主流程已移除 LongProc 相关分支和参数。
-- 如果需要保留历史 LongProc 结果目录，可继续保留在仓库中，但不再是当前脚本的运行路径。
+### 插入点怎么定位
 
-## 为什么用 `(?i)step\s*3`
+插入点有两种主要来源：
 
-- `(?i)`：大小写不敏感，`Step` / `step` 都能匹配。
-- `step\s*3`：把 checkpoint 放在模型已经输出到 `Step 3` 附近之后。
-- 目的：避免注入点太早落在 `Step 0/1`，给“先写步骤、再插入 `<think>`”留足上下文。
+1. 文本锚点  
+   对 AIME，优先在 `Step N:` 这类结构化正文里定位。
 
-如果你希望更晚再插入，可以改成 `(?i)step\s*4` 或 `(?i)step\s*5`。
+2. token offset fallback  
+   如果没有合适的 step 锚点，就用 tokenizer 把一个 token offset 近似映射成字符位置，再吸附到最近句末或行尾。
 
-## 新增改错能力
+也就是说：
 
-`run_aime_corrupt.py` / `test_close_suite_corrupt.py` 现支持：
+- tokenizer 会参与“token offset -> 字符位置”的映射；
+- 但最终 `inject_pos` 是一个字符位置；
+- 真正的插入是把文本切成左右两半，再把 `<think>` 放进中间。
 
-- `--corrupt-mode sign_flip`
-  - 仅做符号翻转（`+/-`，以及比较符 fallback：`<= >= == != < >`）。
-- `--locator-only`
-  - 只做插入点定位，不做任何改错（数字/符号都不改）。
-  - 规则：`Step优先`（受 `--corrupt-min-step` 控制）→ `Token兜底`（`--no-step-fallback-offset-tokens`）。
-- `--corrupt-mode sign_then_number`
-  - 先尝试符号翻转，失败再做数字改动。
-- `--corrupt-mode sign_and_number`
-  - 同一题优先做“符号 + 数字”两次改动（若符号不可改，会至少尝试数字）。
-- `--corrupt-min-step N`
-  - 仅在 `Step N` 及之后改错。  
-  - 例如 `--corrupt-min-step 2` 表示跳过 `Step 0/1`，从 `Step 2+` 开始改。
-- `--enable-first-think-max-words`
-  - 开启后才会启用 `--first-think-max-words` 这条硬截断。
-  - 默认关闭。
-- `--first-think-max-words N`
-  - 仅在开启 `--enable-first-think-max-words` 时生效。
-  - 对第一段 `<think>` 做硬截断（并强制补 `</think>`），避免第一段过长占满 prefix。
-- `--step-wait-extra-tokens N`
-  - 在 `think_end_then_regex + --corrupt-after-first-think` 下，如果还没看到 `Step` 行，会继续生成前缀最多 `N` token 再尝试改错/插入。
-- `--no-step-fallback-offset-tokens N`
-  - 如果依然没有 `Step` 行，会在首个 `</think>` 后约 `N` token 先定位，再对齐到附近句末标点（如 `.` `。` `;`）作为注入点，并在附近做数字改动。
-  - 若首个 `</think>` 本身都没出现，会先在该锚点强制闭合第一段 think，再按原流程继续（改错与注入）。
-  - 默认 `300`；设为 `0` 或负数可关闭这个 fallback。
-- `--enable-think-word-limit`
-  - 开启后才会启用 `--think-word-limit` 这条软约束。
-  - 默认关闭（等价于“先注释掉 think-word-limit 逻辑”）。
-- `--think-word-limit N`
-  - 仅在开启 `--enable-think-word-limit` 时生效；用于 system prompt 软提示。
-  - 这是软约束，不是硬截断；硬截断请用 `--first-think-max-words`。
+### checkpoint 机制
 
-## 结果文件（更易读）
+prefix 会先生成到 checkpoint 再停。
 
-除原有 `*.results.jsonl` / `*.summary.json` 外，改错脚本会自动额外生成：
+当前常用模式有：
+
+- `think_end`
+- `regex`
+- `think_end_then_regex`
+- `think_end_mid`
+
+实际最常用的是：
+
+- AIME：先等第一个原生 `</think>`，再在正文里插
+- LCB：先等第一个原生 `</think>`，再向后走更长一段正文 token，再插
+
+### 注入文本
+
+默认注入文本是显式以 `<think>` 开头，但不提前给出 `</think>`。
+
+目的不是替模型写 reasoning，而是把模型重新推回原生的 think 分布，让它自己完成：
+
+- `<think> ... </think>`
+- 然后继续写最终答案或最终代码
+
+相关 prompt 文件：
+
+- [prompts/inject_think_v2.txt](/Users/shuimo/Desktop/interleaved/close/prompts/inject_think_v2.txt)
+- [prompts/inject_think_codegen_aime_like_v2.txt](/Users/shuimo/Desktop/interleaved/close/prompts/inject_think_codegen_aime_like_v2.txt)
+
+## 核心脚本
+
+### `run_aime_plain.py`
+
+用途：
+
+- AIME 原始能力基线
+- 不做插入
+- 不做改错
+
+它回答的问题是：
+
+- 模型在没有任何中插干预时，原始 AIME 能力有多强？
+
+### `run_aime.py`
+
+用途：
+
+- AIME 插入版
+- 只做 Branch B
+- 不做改错
+
+它回答的问题是：
+
+- 单纯中途插入 `<think>`，是否能稳定拉起新的原生 think，并继续解题？
+
+### `run_aime_corrupt.py`
+
+用途：
+
+- AIME 改错版
+- 支持 Branch A / Branch B 对照
+- 在前缀里先做局部扰动，再看中插 `<think>` 的效果
+
+它回答的问题是：
+
+- 如果前缀推理局部出错，Branch B 的插入式 think 是否比直接续写更有机会纠正后续推理？
+
+### `run_lcb_insert.py`
+
+用途：
+
+- LiveCodeBench 插入版
+- 只做 Branch B
+- 不做改错
+
+它回答的问题是：
+
+- 在代码生成已经进行到一半时，能否重新插入 think，并让模型继续输出更稳定的最终代码？
+
+## 数据集
+
+### AIME
+
+当前主要用到这些任务文件：
+
+- [data/tasks_aime2025.jsonl](/Users/shuimo/Desktop/interleaved/close/data/tasks_aime2025.jsonl)
+  - AIME2025 全量题目
+- [data/tasks_math_mix5_corrupt.jsonl](/Users/shuimo/Desktop/interleaved/close/data/tasks_math_mix5_corrupt.jsonl)
+  - 小规模改错对比集
+  - 每题自带 `corrupt_plan`、`corrupt_anchor_regex`、`corrupt_note`
+- [data/tasks_math_hard_steps.jsonl](/Users/shuimo/Desktop/interleaved/close/data/tasks_math_hard_steps.jsonl)
+  - 更难的 step-structured 数学题
+- [data/tasks_aime2_hard2.jsonl](/Users/shuimo/Desktop/interleaved/close/data/tasks_aime2_hard2.jsonl)
+  - AIME + hard 数学混合集
+
+AIME 题目一般有：
+
+- `user_prompt`
+- `expected_regex`
+
+有些改错任务还会额外指定：
+
+- `corrupt_plan`
+- `corrupt_note`
+
+### LiveCodeBench
+
+LCB 这条线使用：
+
+- `livecodebench/code_generation_lite`
+- 默认 release：`release_v6`
+
+题目不是直接手写，而是通过：
+
+- [prepare_lcb_codegen_tasks.py](/Users/shuimo/Desktop/interleaved/close/prepare_lcb_codegen_tasks.py)
+
+导出为本仓库自己的 `tasks.jsonl` 格式，例如：
+
+- [data/tasks_lcb_1q.jsonl](/Users/shuimo/Desktop/interleaved/close/data/tasks_lcb_1q.jsonl)
+
+## 怎么验证
+
+### 1. 插入版验证
+
+对 insertion-only 任务，核心看三件事：
+
+1. 能不能重新形成完整的 `<think> ... </think>`
+2. `</think>` 之后会不会复读刚刚的 prefix
+3. 最终答案 / 最终代码是否仍然有效
+
+对应的主要指标是：
+
+- `think_balanced_rate`
+- `repetition_rate`
+- `avg_overlap_prefix_to_continuation`
+- `expected_hit_rate`
+
+这些汇总会写到：
+
+- `*.summary.json`
+- `summary_all_models.json`
+
+### 2. AIME 改错对比
+
+改错对比是当前最重要的验证方式。
+
+对同一个被扰动过的 prefix，会生成两个分支：
+
+- Branch A：直接续写
+- Branch B：在定位点插入新的 `<think>`，再续写
+
+你真正关心的是：
+
+1. 在同一份错误前缀上，Branch B 是否比 Branch A 更容易恢复正确答案
+2. Branch B 是否比 Branch A 更少复读
+3. Branch B 的 think 是否更容易完整闭合
+
+在 AIME 这条线上，最直接的判据就是：
+
+- `expected_hit`
+- `expected_hit_rate`
+
+如果 Branch B 的 `expected_hit_rate` 高于 Branch A，而且复读不更严重，那么就说明插入式 think 在“改错/补救”这个任务上有价值。
+
+### 3. LiveCodeBench 验证
+
+LCB 不走 `expected_regex` 这条线，而是把 Branch B 最终输出接回官方 code generation 评测。
+
+流程是：
+
+1. 跑 [run_lcb_insert.py](/Users/shuimo/Desktop/interleaved/close/run_lcb_insert.py)
+2. 用 [evaluate_lcb_from_suite.py](/Users/shuimo/Desktop/interleaved/close/evaluate_lcb_from_suite.py) 读取 Branch B
+3. 去掉 `<think> ... </think>`
+4. 提取最终代码块
+5. 计算 LCB codegen metrics，例如 `pass@1`
+
+所以 LCB 这条线验证的是：
+
+- 插入式 think 是否有助于最终可执行代码质量
+
+## 输出文件
+
+每次运行的主输出通常包括：
+
+- `*.results.jsonl`
+- `*.summary.json`
+- `summary_all_models.json`
+
+如果开了 `--save-task-texts`，还会有逐题导出：
+
+- `branch_A.full.txt`
+- `branch_B.full.txt`
+- `meta.json`
+
+对于改错版，还会额外生成：
 
 - `*.branch_b_view.jsonl`
-  - 每题保留 `task_id`、`corrupt_summary`、`branch_B.full_text`，便于程序筛选。
 - `*.branch_b_view.md`
-  - 人类可读版：每题先显示“改了什么”，再显示 Branch B 全文。
 
-当开启 `--save-task-texts` 时，每题目录还会新增：
+这些文件适合快速人工检查：
 
-- `branch_B.view.md`
-  - 单题可读版（改错摘要 + Branch B 全文）。
+- 改错发生在哪里
+- 插入发生在哪里
+- Branch B 最终全文长什么样
 
-## 2 AIME + 2 Hard 数据集
+## 最小运行入口
 
-已提供混合任务文件：
-
-- `tasks_aime2_hard2.jsonl`
-  - `aime2025_i_01`
-  - `aime2025_i_02`
-  - `hard_aya_walk`
-  - `hard_hyperbola_rhombus`
-- `tasks_aime2_hard2_signnum_step2.jsonl`
-  - 在上面 4 题基础上，预写入：
-    - `corrupt_plan=sign_and_number`
-    - `corrupt_min_step=2`
-    - `corrupt_after_first_think=true`
-
-## 推荐命令（四题、符号+数字、Step2 以后改）
+常用入口只有这三个：
 
 ```bash
-cd /path/to/close_think_experiement
-MODEL=/scratch-ssd/guoeng/huggingface/models/Qwen3-32B
-
-python run_aime_corrupt.py \
-  --model-paths "$MODEL" \
-  --tasks-file tasks_aime2_hard2.jsonl \
-  --output-dir suite_aime2_hard2_corrupt \
-  --checkpoint-mode think_end_then_regex \
-  --checkpoint-regex '(?i)step\s*3' \
-  --enable-first-think-max-words \
-  --first-think-max-words 120 \
-  --step-wait-extra-tokens 2000 \
-  --no-step-fallback-offset-tokens 300 \
-  --corrupt-mode sign_and_number \
-  --corrupt-min-step 2 \
-  --corrupt-after-first-think \
-  --force-inject-at-corrupt \
-  --force-inject-at-sentence-end \
-  --apply-match-cover \
-  --save-task-texts
+python run_aime_plain.py ...
+python run_aime.py ...
+python run_aime_corrupt.py ...
+python run_lcb_insert.py ...
 ```
 
-如需再打开软限制，可额外加：
+更完整的命令见：
 
-```bash
---enable-think-word-limit --think-word-limit 60
-```
+- [RUN_COMMANDS.md](/Users/shuimo/Desktop/interleaved/close/RUN_COMMANDS.md)
 
-只做“单分支插入评测（不改错）”建议命令：
+## 当前维护范围
 
-```bash
-python run_aime_corrupt.py \
-  --model-paths "$MODEL" \
-  --tasks-file tasks_aime2025.jsonl \
-  --output-dir corrupt_exp_v1 \
-  --branch-mode b \
-  --locator-only \
-  --corrupt-mode none \
-  --corrupt-min-step 2 \
-  --corrupt-after-first-think \
-  --checkpoint-mode think_end_then_regex \
-  --checkpoint-regex '(?i)step\s*3' \
-  --no-step-fallback-offset-tokens 300 \
-  --save-task-texts
-```
+如果只保留这条核心实验线，真正需要维护的文件是：
 
-评测命中逻辑：看 `branch_B.metrics.expected_hit`（是否命中题目 `expected_regex`）。
-- 该值现在基于“先去掉所有 `<think>...</think>` 片段”后的文本计算。
-- 原始未清洗文本命中可看 `branch_B.metrics.expected_hit_raw`。
+- [run_aime_plain.py](/Users/shuimo/Desktop/interleaved/close/run_aime_plain.py)
+- [run_aime.py](/Users/shuimo/Desktop/interleaved/close/run_aime.py)
+- [run_aime_corrupt.py](/Users/shuimo/Desktop/interleaved/close/run_aime_corrupt.py)
+- [run_lcb_insert.py](/Users/shuimo/Desktop/interleaved/close/run_lcb_insert.py)
+- [test_close_suite.py](/Users/shuimo/Desktop/interleaved/close/test_close_suite.py)
+- [test_close_suite_corrupt.py](/Users/shuimo/Desktop/interleaved/close/test_close_suite_corrupt.py)
+- [think_branch_common.py](/Users/shuimo/Desktop/interleaved/close/think_branch_common.py)
+- [prepare_lcb_codegen_tasks.py](/Users/shuimo/Desktop/interleaved/close/prepare_lcb_codegen_tasks.py)
+- [evaluate_lcb_from_suite.py](/Users/shuimo/Desktop/interleaved/close/evaluate_lcb_from_suite.py)
+
+其它脚本可以视为历史遗留，或者至少不属于这条主线。
