@@ -277,6 +277,7 @@ python run_aime_plain.py \
   --model-paths "$MODEL" \
   --tasks-file data/tasks_aime2025.jsonl \
   --output-dir outputs/aime/suite_aime2025_plain \
+  --max-new-tokens 20000 \
   --save-task-texts
 ```
 
@@ -287,6 +288,7 @@ python run_aime_plain.py \
   --model-paths "$MODEL" \
   --tasks-file data/tasks_aime2025.jsonl \
   --output-dir outputs/aime/suite_aime2025_plain_no_think \
+  --max-new-tokens 20000 \
   --disable-model-thinking
 ```
 

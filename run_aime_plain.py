@@ -78,7 +78,7 @@ def parse_args() -> argparse.Namespace:
         help="Disable native model thinking in apply_chat_template.",
     )
 
-    p.add_argument("--max-new-tokens", type=int, default=2000)
+    p.add_argument("--max-new-tokens", type=int, default=20000)
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
