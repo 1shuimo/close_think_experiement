@@ -73,6 +73,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--corrupt-prefer-sign-flip", action="store_true")
     p.add_argument("--force-inject-at-corrupt", action="store_true")
     p.add_argument("--force-inject-at-sentence-end", action="store_true")
+    p.add_argument(
+        "--align-stop-with-insert",
+        action="store_true",
+        help="Truncate prefix at the located insert position so branch B stops and injects at the same point.",
+    )
 
     p.add_argument("--apply-match-cover", action="store_true")
     p.add_argument("--apply-cross-think-cover", action="store_true")
@@ -135,6 +140,8 @@ def main() -> None:
         cmd.append("--force-inject-at-corrupt")
     if args.force_inject_at_sentence_end:
         cmd.append("--force-inject-at-sentence-end")
+    if args.align_stop_with_insert:
+        cmd.append("--align-stop-with-insert")
     if args.apply_match_cover:
         cmd.append("--apply-match-cover")
     if args.apply_cross_think_cover:

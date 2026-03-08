@@ -64,30 +64,47 @@
 1. 先正常构造 prompt，并保留模型原生 thinking。
 2. 让模型先生成一段 prefix，直到某个 checkpoint 停下来。
 3. 在 prefix 中定位一个插入点。
-4. 取插入点左边的文本作为新的 Branch B 前缀。
+4. 当前推荐模式下，会把 prefix 截断到这个插入点，使 Branch B 的“停点”和“插点”一致。
 5. 把注入文本 `inject_text` 接到这个前缀后面。
 6. 对新的前缀重新 tokenize / prefill，然后继续生成。
 
 因此这套方法更准确地说是：
 
-- 用 token 流决定“停在哪里”和“候选插入点在哪里”；
-- 但真正执行插入时，用的是文本切片 + 重新 prefill。
+- 先生成到 checkpoint，再在这段 prefix 里精确定位插点；
+- 真正执行插入时，用的是文本切片 + 重新 prefill；
+- 当前 AIME 推荐配置下，输出效果上已经可以做到“停点 = 插点”。
+
+当前 AIME 推荐同时打开这三个参数：
+
+- `--force-inject-at-corrupt`
+- `--force-inject-at-sentence-end`
+- `--align-stop-with-insert`
+
+它们组合起来的含义是：
+
+- 必须使用 locator 找到的位置，而不是默认在 prefix 尾部尾插；
+- 如果插点落在句中，就往后吸到句末或行尾；
+- 然后把 Branch B 的 prefix 直接截到这个点，再插入新的 `<think>`。
+
+这意味着当前 Branch B 不再保留“插点右边已经生成过的一小段旧文本”。
+需要注意的是，这仍然不是 sampler 内部的 token-by-token 在线即时停机，而是“先生成到 checkpoint，再截到插点再续写”的实现。
 
 ### 插入点怎么定位
 
 插入点有两种主要来源：
 
 1. 文本锚点  
-   对 AIME，优先在 `Step N:` 这类结构化正文里定位。
+   对 AIME，优先在 `Step N:` 这类结构化正文里定位。当前实现会取 prefix 中最后一个 `Step N:`，并在这句正文结束后插入。
 
 2. token offset fallback  
    如果没有合适的 step 锚点，就用 tokenizer 把一个 token offset 近似映射成字符位置，再吸附到最近句末或行尾。
+   常用设置是 `--no-step-fallback-offset-tokens 300` 到 `400`，例如 `350`。
 
 也就是说：
 
 - tokenizer 会参与“token offset -> 字符位置”的映射；
 - 但最终 `inject_pos` 是一个字符位置；
-- 真正的插入是把文本切成左右两半，再把 `<think>` 放进中间。
+- 真正的插入是把文本切到 `inject_pos` 左边，再把 `<think>` 放进去，然后从那里重新生成后半段。
 
 ### checkpoint 机制
 
@@ -227,6 +244,15 @@ LCB 这条线使用：
 - `avg_overlap_prefix_to_continuation`
 - `expected_hit_rate`
 
+当前 AIME insertion 线的逐题导出和汇总已经做过精简。最常看的字段是：
+
+- `answer`
+- `answer_hit`
+- `answer_hit_where`
+- `matched_text`
+- `think_closed`
+- `trimmed`
+
 这些汇总会写到：
 
 - `*.summary.json`
@@ -283,6 +309,26 @@ LCB 不走 `expected_regex` 这条线，而是把 Branch B 最终输出接回官
 - `branch_A.full.txt`
 - `branch_B.full.txt`
 - `meta.json`
+
+当前 AIME insertion 线里，`meta.json` 只保留：
+
+- `answer`
+- `answer_hit`
+- `answer_hit_where`
+- `matched_text`
+- `think_closed`
+- `trimmed`
+
+当前 `*.summary.json` / `summary_all_models.json` 主要保留：
+
+- `answer_hit_count`
+- `answer_hit_rate`
+- `answer_hit_where_counts`
+- `think_closed_count`
+- `think_closed_rate`
+- `trimmed_count`
+- `trimmed_rate`
+- `avg_trimmed_chars`
 
 对于改错版，还会额外生成：
 

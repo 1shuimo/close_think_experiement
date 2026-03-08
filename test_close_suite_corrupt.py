@@ -211,6 +211,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="When forcing inject at corruption, shift insert point to nearest sentence end after it.",
     )
+    p.add_argument(
+        "--align-stop-with-insert",
+        action="store_true",
+        help="Truncate prefix at the located insert position so branch B stops and injects at the same point.",
+    )
 
     p.add_argument("--save-task-texts", action="store_true", help="Save per-task branch full outputs to txt files.")
     p.add_argument("--print-full-output", action="store_true", help="Print full A/B outputs for each task to stdout.")
@@ -539,7 +544,7 @@ def _locate_insert_pos_no_edit(
     min_step = max(0, int(min_step_no))
     step_spans = [sp for sp in _collect_step_lines(text) if sp[3] >= min_step]
     if step_spans:
-        st, ed, ln, step_no = step_spans[0]
+        st, ed, ln, step_no = step_spans[-1]
         colon = ln.find(":")
         if colon >= 0:
             body_start = st + colon + 1
@@ -880,6 +885,7 @@ def run_task_ab(
     corrupt_prefer_sign_flip: bool,
     force_inject_at_corrupt: bool,
     force_inject_at_sentence_end: bool,
+    align_stop_with_insert: bool,
     apply_match_cover_flag: bool,
     apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
@@ -1230,6 +1236,26 @@ def run_task_ab(
     corrupt_meta["force_sign_only"] = bool(force_sign_only)
     corrupt_meta["corrupt_region_start"] = len(head_prefix)
 
+    locator_inject_pos_global: Optional[int] = None
+    locator_inject_pos_global_raw: Optional[int] = None
+    inject_pos_local_raw = corrupt_meta.get("inject_pos")
+    if bool(corrupt_meta.get("changed")) and inject_pos_local_raw is not None:
+        try:
+            inject_pos_local = int(inject_pos_local_raw)
+            inject_pos_global = len(head_prefix) + inject_pos_local
+            if 0 <= inject_pos_global <= len(edited_text):
+                locator_inject_pos_global_raw = inject_pos_global
+                if force_inject_at_sentence_end and str(corrupt_meta.get("mode")) != "locator_only_step":
+                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
+                locator_inject_pos_global = inject_pos_global
+        except Exception:
+            pass
+
+    prefix_truncated_to_inject = False
+    if bool(align_stop_with_insert) and (locator_inject_pos_global is not None):
+        edited_text = edited_text[:locator_inject_pos_global]
+        prefix_truncated_to_inject = True
+
     inject_opens_think = ("<think>" in inject_text) and ("</think>" not in inject_text)
     prefix_think_gap = _think_balance_delta(edited_text)
     forced_close_for_inject = bool(inject_opens_think and prefix_think_gap > 0)
@@ -1244,24 +1270,19 @@ def run_task_ab(
 
     branch_b_inject_pos = len(edited_text)
     branch_b_force_overlap_applied = False
-    inject_pos_local_raw = corrupt_meta.get("inject_pos")
     force_inject_effective = bool(force_inject_at_corrupt or effective_locator_only)
     if (
+        (not align_stop_with_insert)
+        and
         force_inject_effective
         and (not forced_close_for_inject)
-        and bool(corrupt_meta.get("changed"))
-        and inject_pos_local_raw is not None
+        and (locator_inject_pos_global is not None)
     ):
         try:
-            inject_pos_local = int(inject_pos_local_raw)
-            inject_pos_global = len(head_prefix) + inject_pos_local
-            if 0 <= inject_pos_global <= len(edited_text):
-                raw_inject_pos_global = inject_pos_global
-                if force_inject_at_sentence_end:
-                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
-                branch_b_inject_pos = inject_pos_global
+            if 0 <= locator_inject_pos_global <= len(edited_text):
+                branch_b_inject_pos = locator_inject_pos_global
                 branch_b_force_overlap_applied = True
-                corrupt_meta["branch_b_inject_pos_raw"] = int(raw_inject_pos_global)
+                corrupt_meta["branch_b_inject_pos_raw"] = int(locator_inject_pos_global_raw)
         except Exception:
             pass
 
@@ -1269,6 +1290,10 @@ def run_task_ab(
     branch_b_suffix_text = edited_text[branch_b_inject_pos:]
     corrupt_meta["force_inject_at_corrupt"] = bool(force_inject_at_corrupt)
     corrupt_meta["force_inject_at_corrupt_effective"] = bool(force_inject_effective)
+    corrupt_meta["align_stop_with_insert"] = bool(align_stop_with_insert)
+    corrupt_meta["prefix_truncated_to_inject"] = bool(prefix_truncated_to_inject)
+    corrupt_meta["locator_inject_pos_global_raw"] = locator_inject_pos_global_raw
+    corrupt_meta["locator_inject_pos_global_effective"] = locator_inject_pos_global
     corrupt_meta["branch_b_force_overlap_applied"] = bool(branch_b_force_overlap_applied)
     corrupt_meta["branch_b_inject_pos"] = int(branch_b_inject_pos)
     corrupt_meta["branch_b_suffix_len"] = int(len(branch_b_suffix_text))
@@ -1747,6 +1772,7 @@ def main() -> None:
                 corrupt_prefer_sign_flip=bool(args.corrupt_prefer_sign_flip),
                 force_inject_at_corrupt=bool(args.force_inject_at_corrupt),
                 force_inject_at_sentence_end=bool(args.force_inject_at_sentence_end),
+                align_stop_with_insert=bool(args.align_stop_with_insert),
                 apply_match_cover_flag=bool(args.apply_match_cover),
                 apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,

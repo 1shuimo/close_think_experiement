@@ -186,6 +186,11 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Shift located insert position to nearest sentence end after it.",
     )
+    p.add_argument(
+        "--align-stop-with-insert",
+        action="store_true",
+        help="Truncate prefix at the located insert position so branch B stops and injects at the same point.",
+    )
 
     p.add_argument("--apply-match-cover", action="store_true")
     p.add_argument("--cover-min-exact-overlap", type=int, default=40)
@@ -207,6 +212,31 @@ def _expected_hit(text: str, expected_regex: Optional[str]) -> Optional[bool]:
     if not expected_regex:
         return None
     return re.search(expected_regex, text, re.IGNORECASE | re.DOTALL) is not None
+
+
+def _expected_match(text: str, expected_regex: Optional[str]) -> Dict[str, object]:
+    if not expected_regex:
+        return {"hit": None, "matched_text": None, "span": None}
+    m = re.search(expected_regex, text, re.IGNORECASE | re.DOTALL)
+    if m is None:
+        return {"hit": False, "matched_text": None, "span": None}
+    matched_text = (m.group(0) or "").strip()
+    return {
+        "hit": True,
+        "matched_text": matched_text or (m.group(0) or ""),
+        "span": [int(m.start()), int(m.end())],
+    }
+
+
+def _last_nonempty_line(text: str) -> str:
+    for line in reversed((text or "").splitlines()):
+        s = line.strip()
+        if s:
+            s = re.sub(r"(?i)^(final answer|answer)\s*:\s*", "", s).strip()
+            if len(s) >= 2 and s.startswith("$") and s.endswith("$"):
+                s = s[1:-1].strip()
+            return s
+    return ""
 
 
 def _think_balance_delta(text: str) -> int:
@@ -507,7 +537,7 @@ def _locate_insert_pos_no_edit(
 
     step_spans = _collect_step_lines(text)
     if step_spans:
-        st, ed, ln, step_no = step_spans[0]
+        st, ed, ln, step_no = step_spans[-1]
         colon = ln.find(":")
         if colon >= 0:
             body_start = st + colon + 1
@@ -560,12 +590,27 @@ def evaluate_branch(
     overlap = longest_suffix_prefix_overlap(prefix_text, continuation_text, max_k=300)
     stripped = _strip_all_think_blocks(full_text)
     stripped_text = str(stripped.get("text", ""))
+    raw_match = _expected_match(full_text, expected_regex)
+    stripped_match = _expected_match(stripped_text, expected_regex)
+    hit_where: Optional[str] = None
+    if stripped_match["hit"] is True and raw_match["hit"] is True:
+        hit_where = "raw_and_stripped"
+    elif stripped_match["hit"] is True:
+        hit_where = "stripped_text_only"
+    elif raw_match["hit"] is True:
+        hit_where = "raw_full_text_only"
+    elif expected_regex:
+        hit_where = "none"
     return {
         "think_balanced": think_balance_ok(full_text),
         "overlap_prefix_to_continuation": overlap,
         "repetition_flag": overlap >= 40,
-        "expected_hit_raw": _expected_hit(full_text, expected_regex),
-        "expected_hit": _expected_hit(stripped_text, expected_regex),
+        "expected_hit_raw": raw_match["hit"],
+        "expected_hit": stripped_match["hit"],
+        "expected_hit_where": hit_where,
+        "expected_match_text_raw": raw_match["matched_text"],
+        "expected_match_text": stripped_match["matched_text"],
+        "answer_text": _last_nonempty_line(stripped_text),
         "eval_strip_meta": {
             "removed_blocks": stripped.get("removed_blocks"),
             "unclosed_tail_trimmed": stripped.get("unclosed_tail_trimmed"),
@@ -612,6 +657,7 @@ def run_task_ab(
     corrupt_after_first_think: bool,
     force_inject_at_corrupt: bool,
     force_inject_at_sentence_end: bool,
+    align_stop_with_insert: bool,
     apply_match_cover_flag: bool,
     apply_cross_think_cover_flag: bool,
     cover_min_exact_overlap: int,
@@ -621,6 +667,7 @@ def run_task_ab(
 ) -> Dict[str, object]:
     task_id = task.get("id", "")
     user_prompt = maybe_append_math_step_guidance(task["user_prompt"], math_step_user_guidance)
+    expected_answer = task.get("expected_answer")
     expected_regex = task.get("expected_regex")
     reference_output = task.get("reference_output")
 
@@ -749,6 +796,25 @@ def run_task_ab(
     )
 
     edited_text = head_prefix + target_prefix
+    locator_inject_pos_global: Optional[int] = None
+    locator_inject_pos_global_raw: Optional[int] = None
+    if bool(locator_meta.get("changed")) and (locator_meta.get("inject_pos") is not None):
+        try:
+            inject_pos_local = int(locator_meta.get("inject_pos"))
+            inject_pos_global = len(head_prefix) + inject_pos_local
+            if 0 <= inject_pos_global <= len(edited_text):
+                locator_inject_pos_global_raw = inject_pos_global
+                if force_inject_at_sentence_end and str(locator_meta.get("mode")) != "locator_only_step":
+                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
+                locator_inject_pos_global = inject_pos_global
+        except Exception:
+            pass
+
+    prefix_truncated_to_inject = False
+    if bool(align_stop_with_insert) and (locator_inject_pos_global is not None):
+        edited_text = edited_text[:locator_inject_pos_global]
+        prefix_truncated_to_inject = True
+
     prefix_think_gap = _think_balance_delta(edited_text)
     inject_opens_think = ("<think>" in inject_text) and ("</think>" not in inject_text)
     forced_close_for_inject = bool(inject_opens_think and prefix_think_gap > 0)
@@ -761,18 +827,15 @@ def run_task_ab(
     branch_b_force_overlap_applied = False
     force_inject_effective = bool(force_inject_at_corrupt)
     if (
+        (not align_stop_with_insert)
+        and
         force_inject_effective
         and (not forced_close_for_inject)
-        and bool(locator_meta.get("changed"))
-        and (locator_meta.get("inject_pos") is not None)
+        and (locator_inject_pos_global is not None)
     ):
         try:
-            inject_pos_local = int(locator_meta.get("inject_pos"))
-            inject_pos_global = len(head_prefix) + inject_pos_local
-            if 0 <= inject_pos_global <= len(edited_text):
-                if force_inject_at_sentence_end:
-                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
-                branch_b_inject_pos = inject_pos_global
+            if 0 <= locator_inject_pos_global <= len(edited_text):
+                branch_b_inject_pos = locator_inject_pos_global
                 branch_b_force_overlap_applied = True
         except Exception:
             pass
@@ -957,6 +1020,7 @@ def run_task_ab(
     return {
         "task_id": task_id,
         "user_prompt": user_prompt,
+        "expected_answer": expected_answer,
         "expected_regex": expected_regex,
         "reference_output": reference_output,
         "prompt_mode": prompt_mode,
@@ -989,6 +1053,10 @@ def run_task_ab(
             "locator_meta": locator_meta,
             "force_inject_at_corrupt": bool(force_inject_at_corrupt),
             "force_inject_at_corrupt_effective": bool(force_inject_effective),
+            "align_stop_with_insert": bool(align_stop_with_insert),
+            "prefix_truncated_to_inject": bool(prefix_truncated_to_inject),
+            "locator_inject_pos_global_raw": locator_inject_pos_global_raw,
+            "locator_inject_pos_global_effective": locator_inject_pos_global,
             "branch_b_force_overlap_applied": bool(branch_b_force_overlap_applied),
             "branch_b_inject_pos": int(branch_b_inject_pos),
             "branch_b_suffix_len": int(len(branch_b_suffix_text)),
@@ -1023,17 +1091,27 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             return None
         return sum(1 for v in vals if v) / len(vals)
 
-    s: Dict[str, object] = {"n_tasks": len(records), "branch_A": {}, "branch_B": {}}
+    def _trim_meta(branch_obj: Dict[str, object]) -> Dict[str, object]:
+        cover = branch_obj.get("match_cover", {}) or {}
+        cross = branch_obj.get("cross_think_cover", {}) or {}
+        match_trimmed = int(cover.get("trimmed_chars", 0) or 0)
+        cross_trimmed = int(cross.get("trimmed_chars", 0) or 0)
+        total_trimmed = match_trimmed + cross_trimmed
+        return {
+            "applied": bool(total_trimmed > 0),
+            "match_cover_trimmed_chars": match_trimmed,
+            "cross_think_trimmed_chars": cross_trimmed,
+            "trimmed_chars_total": total_trimmed,
+        }
+
+    s: Dict[str, object] = {"n_tasks": len(records)}
     for branch_key in ("branch_A", "branch_B"):
+        branch_seen = 0
         think_ok: List[bool] = []
-        rep_flags: List[bool] = []
         expected_flags: List[bool] = []
-        overlaps: List[int] = []
+        expected_where_counts: Dict[str, int] = {}
+        trimmed_flags: List[bool] = []
         trimmed_chars: List[int] = []
-        cover_modes: Dict[str, int] = {}
-        cross_trimmed_chars: List[int] = []
-        cross_modes: Dict[str, int] = {}
-        cross_hits: List[bool] = []
 
         for r in records:
             branch_obj = r.get(branch_key)
@@ -1042,39 +1120,56 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
             m = branch_obj.get("metrics")
             if not isinstance(m, dict):
                 continue
+            branch_seen += 1
 
-            think_ok.append(bool(m["think_balanced"]))
-            rep_flags.append(bool(m["repetition_flag"]))
-            overlaps.append(int(m["overlap_prefix_to_continuation"]))
-            eh = m["expected_hit"]
+            think_ok.append(bool(m.get("think_balanced", False)))
+            eh = m.get("expected_hit")
             if eh is not None:
                 expected_flags.append(bool(eh))
+            where = m.get("expected_hit_where")
+            if where is not None:
+                where_s = str(where)
+                expected_where_counts[where_s] = expected_where_counts.get(where_s, 0) + 1
 
-            cover = branch_obj.get("match_cover", {}) or {}
-            trimmed = int(cover.get("trimmed_chars", 0) or 0)
-            trimmed_chars.append(trimmed)
-            mode = str(cover.get("mode", "unknown"))
-            cover_modes[mode] = cover_modes.get(mode, 0) + 1
+            trim_meta = _trim_meta(branch_obj)
+            trimmed_flags.append(bool(trim_meta["applied"]))
+            trimmed_chars.append(int(trim_meta["trimmed_chars_total"]))
 
-            cross = branch_obj.get("cross_think_cover", {}) or {}
-            c_trimmed = int(cross.get("trimmed_chars", 0) or 0)
-            c_mode = str(cross.get("mode", "none"))
-            cross_trimmed_chars.append(c_trimmed)
-            cross_modes[c_mode] = cross_modes.get(c_mode, 0) + 1
-            cross_hits.append(c_mode in {"exact", "fuzzy", "anchor_exact"})
-
+        if branch_seen == 0:
+            continue
         s[branch_key] = {
-            "think_balanced_rate": _rate(think_ok),
-            "repetition_rate": _rate(rep_flags),
-            "avg_overlap_prefix_to_continuation": (sum(overlaps) / len(overlaps)) if overlaps else None,
-            "expected_hit_rate": _rate(expected_flags) if expected_flags else None,
-            "avg_trimmed_chars_by_match_cover": (sum(trimmed_chars) / len(trimmed_chars)) if trimmed_chars else None,
-            "match_cover_mode_counts": cover_modes,
-            "cross_think_match_rate": _rate(cross_hits) if cross_hits else None,
-            "avg_trimmed_chars_by_cross_think_cover": (sum(cross_trimmed_chars) / len(cross_trimmed_chars)) if cross_trimmed_chars else None,
-            "cross_think_cover_mode_counts": cross_modes,
+            "answer_hit_count": sum(1 for v in expected_flags if v),
+            "answer_hit_rate": _rate(expected_flags) if expected_flags else None,
+            "answer_hit_where_counts": expected_where_counts,
+            "think_closed_count": sum(1 for v in think_ok if v),
+            "think_closed_rate": _rate(think_ok),
+            "trimmed_count": sum(1 for v in trimmed_flags if v),
+            "trimmed_rate": _rate(trimmed_flags) if trimmed_flags else None,
+            "avg_trimmed_chars": (sum(trimmed_chars) / len(trimmed_chars)) if trimmed_chars else None,
         }
     return s
+
+
+def build_concise_branch_meta(branch_obj: Dict[str, object]) -> Dict[str, object]:
+    metrics = branch_obj.get("metrics", {}) or {}
+    cover = branch_obj.get("match_cover", {}) or {}
+    cross = branch_obj.get("cross_think_cover", {}) or {}
+    match_trimmed = int(cover.get("trimmed_chars", 0) or 0)
+    cross_trimmed = int(cross.get("trimmed_chars", 0) or 0)
+    total_trimmed = match_trimmed + cross_trimmed
+    return {
+        "answer": metrics.get("answer_text"),
+        "answer_hit": metrics.get("expected_hit"),
+        "answer_hit_where": metrics.get("expected_hit_where"),
+        "matched_text": metrics.get("expected_match_text") or metrics.get("expected_match_text_raw"),
+        "think_closed": metrics.get("think_balanced"),
+        "trimmed": {
+            "applied": bool(total_trimmed > 0),
+            "match_cover_trimmed_chars": match_trimmed,
+            "cross_think_trimmed_chars": cross_trimmed,
+            "trimmed_chars_total": total_trimmed,
+        },
+    }
 
 
 def main() -> None:
@@ -1166,6 +1261,7 @@ def main() -> None:
                 corrupt_after_first_think=bool(args.corrupt_after_first_think),
                 force_inject_at_corrupt=bool(args.force_inject_at_corrupt),
                 force_inject_at_sentence_end=bool(args.force_inject_at_sentence_end),
+                align_stop_with_insert=bool(args.align_stop_with_insert),
                 apply_match_cover_flag=bool(args.apply_match_cover),
                 apply_cross_think_cover_flag=bool(args.apply_cross_think_cover),
                 cover_min_exact_overlap=args.cover_min_exact_overlap,
@@ -1207,28 +1303,16 @@ def main() -> None:
                 (task_dir / "branch_B.full.txt").write_text(
                     rec["branch_B"]["full_text"], encoding="utf-8"
                 )
+                meta_payload: Dict[str, object] = {
+                    "task_id": rec.get("task_id"),
+                    "expected_answer": rec.get("expected_answer"),
+                    "expected_regex": rec.get("expected_regex"),
+                    "branch_B": build_concise_branch_meta(rec["branch_B"]),
+                }
+                if rec["branch_A"].get("full_text") is not None:
+                    meta_payload["branch_A"] = build_concise_branch_meta(rec["branch_A"])
                 (task_dir / "meta.json").write_text(
-                    json.dumps(
-                        {
-                            "task_id": rec.get("task_id"),
-                            "user_prompt": rec.get("user_prompt"),
-                            "reference_output": rec.get("reference_output"),
-                            "expected_regex": rec.get("expected_regex"),
-                            "checkpoint_meta": rec.get("checkpoint_meta", {}),
-                            "insert_meta": rec.get("insert_meta", {}),
-                            "branch_mode": rec.get("branch_mode"),
-                            "branch_A_metrics": rec["branch_A"].get("metrics"),
-                            "branch_B_metrics": rec["branch_B"]["metrics"],
-                            "branch_B_prefix_text": rec["branch_B"].get("prefix_text", ""),
-                            "branch_B_retry": rec["branch_B"].get("retry_info", {}),
-                            "branch_B_stop_reason": rec["branch_B"].get("stop_reason"),
-                            "branch_A_match_cover": rec["branch_A"].get("match_cover", {}),
-                            "branch_B_match_cover": rec["branch_B"].get("match_cover", {}),
-                            "branch_B_cross_think_cover": rec["branch_B"].get("cross_think_cover", {}),
-                        },
-                        ensure_ascii=False,
-                        indent=2,
-                    ),
+                    json.dumps(meta_payload, ensure_ascii=False, indent=2),
                     encoding="utf-8",
                 )
 
@@ -1241,38 +1325,6 @@ def main() -> None:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
         model_summary = summarize(model_records)
-        model_summary["config"] = {
-            "system_prompt_file": args.system_prompt_file,
-            "no_math_step_format_guidance": bool(args.no_math_step_format_guidance),
-            "prompt_mode": args.prompt_mode,
-            "disable_model_thinking": bool(args.disable_model_thinking),
-            "think_word_limit": args.think_word_limit,
-            "enable_think_word_limit": bool(args.enable_think_word_limit),
-            "enable_first_think_max_words": bool(args.enable_first_think_max_words),
-            "first_think_max_words": args.first_think_max_words,
-            "enable_first_think_smooth_close": bool(args.enable_first_think_smooth_close),
-            "first_think_smooth_close_text": args.first_think_smooth_close_text,
-            "branch_mode": args.branch_mode,
-            "min_b_tokens_before_eos": args.min_b_tokens_before_eos,
-            "b_retry_times": args.b_retry_times,
-            "auto_close_unclosed_think": bool(args.auto_close_unclosed_think),
-            "checkpoint_mode": args.checkpoint_mode,
-            "checkpoint_regex": resolved_checkpoint_regex,
-            "checkpoint_mid_min_tokens": args.checkpoint_mid_min_tokens,
-            "checkpoint_mid_max_tokens": args.checkpoint_mid_max_tokens,
-            "checkpoint_mid_avoid_final_regex": resolved_checkpoint_mid_avoid_final_regex,
-            "step_wait_extra_tokens": args.step_wait_extra_tokens,
-            "no_step_fallback_offset_tokens": args.no_step_fallback_offset_tokens,
-            "corrupt_after_first_think": bool(args.corrupt_after_first_think),
-            "force_inject_at_corrupt": bool(args.force_inject_at_corrupt),
-            "force_inject_at_sentence_end": bool(args.force_inject_at_sentence_end),
-            "apply_match_cover": bool(args.apply_match_cover),
-            "apply_cross_think_cover": bool(args.apply_cross_think_cover),
-            "cover_min_exact_overlap": args.cover_min_exact_overlap,
-            "cover_fuzzy_min_len": args.cover_fuzzy_min_len,
-            "cover_fuzzy_max_len": args.cover_fuzzy_max_len,
-            "cover_fuzzy_ratio": args.cover_fuzzy_ratio,
-        }
         summary_path.write_text(
             json.dumps(model_summary, ensure_ascii=False, indent=2),
             encoding="utf-8",

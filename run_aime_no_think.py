@@ -85,6 +85,11 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument("--save-task-texts", action="store_true")
     p.add_argument("--print-full-output", action="store_true")
+    p.add_argument(
+        "--align-stop-with-insert",
+        action="store_true",
+        help="Truncate prefix at the located insert position so branch B stops and injects at the same point.",
+    )
     return p.parse_args()
 
 
@@ -164,6 +169,8 @@ def main() -> None:
 
     if args.enable_think_word_limit:
         cmd.append("--enable-think-word-limit")
+    if args.align_stop_with_insert:
+        cmd.append("--align-stop-with-insert")
     if args.save_task_texts:
         cmd.append("--save-task-texts")
     if args.print_full_output:
