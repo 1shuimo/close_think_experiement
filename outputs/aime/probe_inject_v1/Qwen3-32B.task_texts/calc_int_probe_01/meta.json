@@ -1,0 +1,75 @@
+{
+  "task_id": "calc_int_probe_01",
+  "user_prompt": "Compute the indefinite integral $\\int x e^{x^2}\\,dx$. Provide only the final expression.\n\nOutput format requirement (MUST follow): after reasoning, output one step per line using 'Step 0:', 'Step 1:', 'Step 2:', ...; then output one final line that contains ONLY the final answer value (no extra words).",
+  "reference_output": null,
+  "expected_regex": "(?ix)^\\s*(?:\\\\frac\\s*\\{1\\}\\s*\\{2\\}\\s*e\\^\\{x\\^2\\}|\\\\frac\\s*\\{e\\^\\{x\\^2\\}\\}\\s*\\{2\\}|e\\^\\{x\\^2\\}\\s*/\\s*2|(?:1/2|0\\.5)\\s*e\\^\\{x\\^2\\}|(?:1/2|0\\.5)\\s*\\*\\s*e\\^\\{x\\^2\\})\\s*(?:\\+\\s*C)?\\s*$",
+  "checkpoint_meta": {
+    "checkpoint_mode": "think_end_mid",
+    "checkpoint_regex": null,
+    "seen_anchor": true,
+    "counter_after_anchor": 1,
+    "tokens_after_first_think": 25,
+    "checkpoint_mid_min_tokens": 20,
+    "checkpoint_mid_max_tokens": 30,
+    "checkpoint_mid_target_tokens": 25,
+    "checkpoint_mid_avoid_final_regex": "(?i)\\bfinal\\s*:|\\bfinal answer\\b",
+    "checkpoint_mid_early_stop_on_final": false
+  },
+  "insert_meta": {
+    "inject_text": "<think>\nWait, I should quickly verify the immediately preceding step.\n",
+    "inject_opens_think": true,
+    "prefix_open_think_before_inject": 0,
+    "prefix_auto_closed_think": 0,
+    "prefix_forced_close_for_inject": 0,
+    "after_first_think_scope": {
+      "corrupt_after_first_think": true,
+      "first_think_closed_found": true,
+      "no_step_fallback_offset_tokens_effective": 300
+    },
+    "locator_meta": {
+      "mode": "locator_only_step",
+      "changed": true,
+      "inject_pos": 50,
+      "step_no": 0,
+      "reason": "step_found"
+    },
+    "force_inject_at_corrupt": false,
+    "force_inject_at_corrupt_effective": false,
+    "branch_b_force_overlap_applied": false,
+    "branch_b_inject_pos": 1647,
+    "branch_b_suffix_len": 0,
+    "force_inject_at_sentence_end": false,
+    "inject_clamped_to_tail_due_unclosed_think": false
+  },
+  "branch_mode": "b",
+  "branch_A_metrics": null,
+  "branch_B_metrics": {
+    "think_balanced": true,
+    "overlap_prefix_to_continuation": 58,
+    "repetition_flag": true,
+    "expected_hit_raw": false,
+    "expected_hit": false,
+    "eval_strip_meta": {
+      "removed_blocks": 2,
+      "unclosed_tail_trimmed": false,
+      "stray_tags_removed": 0
+    }
+  },
+  "branch_B_prefix_text": "<think>\nOkay, let's see. I need to compute the indefinite integral of x times e to the x squared dx. Hmm. So the integral is ��x e^{x²} dx. Alright, how do I approach this? Maybe substitution? Let me think. The integrand has x multiplied by e^{x²}. The derivative of x² is 2x, which is similar to the x term here. That seems promising for substitution.\n\nLet me try letting u be x squared. Then du/dx would be 2x. So, du = 2x dx. Hmm, which means that x dx is du over 2. Let me rewrite the integral in terms of u. The original integral is x e^{x²} dx. If u = x², then e^{x²} becomes e^u. And x dx is (1/2) du. So substituting, the integral becomes �� e^u * (1/2) du. That simplifies to (1/2) �� e^u du. The integral of e^u is just e^u plus a constant. So substituting back, it would be (1/2) e^{u} + C, which is (1/2) e^{x²} + C. Let me check if that makes sense. Differentiating (1/2)e^{x²} with respect to x should give me back the original integrand. The derivative of (1/2)e^{u} where u = x² is (1/2)e^{x²} * 2x by the chain rule. The 2x cancels with the 1/2, leaving x e^{x²}, which matches the original function. So that works. Therefore, the integral is (1/2)e^{x²} plus a constant. Since the problem asks for the indefinite integral, I need to include the constant of integration, C. But maybe the answer just wants the antiderivative without specifying the constant? Wait, the problem says \"indefinite integral,\" so yes, we should include + C. Let me make sure I didn't miss any steps. Substitution was the key here. Yep, looks good. So the final answer should be (1/2)e^{x²} + C.\n</think>\n\nStep 0: Let $ u = x^2 $, then $ du = 2x \\, dx $,",
+  "branch_B_retry": {
+    "retry_times": 2,
+    "min_tokens_before_eos": 64,
+    "retry_reasons": [],
+    "forced_close_think": 0
+  },
+  "branch_B_stop_reason": "eos",
+  "branch_A_match_cover": {},
+  "branch_B_match_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  },
+  "branch_B_cross_think_cover": {
+    "mode": "disabled",
+    "trimmed_chars": 0
+  }
+}
