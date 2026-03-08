@@ -1,0 +1,1184 @@
+<think>
+Okay, so Alice and Bob are playing this game with 20-sided dice. The rules are: Bob goes first, each turn they roll a die and multiply all previous rolls. Alice wins if the product is divisible by 6 after her turn; Bob wins if the product is divisible by 10 after his turn. The game can't end in a tie, and they both play optimally. We need to find the probability that Bob wins, expressed as m/n where m and n are coprime, and then give m + n.
+
+First, let me try to understand the game mechanics. Each turn, a player rolls a die (from 1 to 20) and multiplies the current product by the number rolled. The game alternates between Bob and Alice, starting with Bob. The game ends when either the product is divisible by 6 (Alice's win) or 10 (Bob's win). The game can't end in a tie, so eventually, one of these two conditions must be met.
+
+Since both players are trying to maximize their chance of winning, they will use optimal strategies. So, for example, if a player can make a move that guarantees their victory, they will do so. Otherwise, they might choose a move that maximizes their probability of winning given the opponent's optimal play.
+
+To model this, I think we need to consider the state of the game based on the factors of the current product. Since the winning conditions are based on divisibility by 6 and 10, we need to track the factors of 2, 3, and 5 in the product. Because:
+
+- 6 = 2 × 3
+- 10 = 2 × 5
+
+Therefore, the game's state can be represented by the counts of 2s, 3s, and 5s in the prime factorization of the product. However, since the dice rolls can add multiple factors at once, maybe we can simplify the state by tracking whether the product has at least one 2, one 3, or one 5. But actually, since the game ends when the product meets the divisibility condition, maybe we need to track the presence of these factors.
+
+Wait, let's think. For Alice to win, after her turn, the product must be divisible by 6. That means the product must have at least one 2 and one 3. Similarly, for Bob to win, after his turn, the product must be divisible by 10, which requires at least one 2 and one 5.
+
+Therefore, the game's state can be represented by three binary variables:
+
+- A: whether there is at least one 2 in the product
+- B: whether there is at least one 3 in the product
+- C: whether there is at least one 5 in the product
+
+But since the game starts with a product of 1 (before any rolls), initially, A, B, C are all false (no factors). Each die roll can add factors of 2, 3, 5, or none. Depending on the number rolled, the state transitions accordingly.
+
+But since the game ends when either:
+
+- After Alice's turn, the product has both 2 and 3 (so A and B are true)
+- After Bob's turn, the product has both 2 and 5 (so A and C are true)
+
+Therefore, the game can be modeled as a Markov decision process with states representing the current factors (A, B, C). However, since the game is deterministic in terms of transitions (each die roll leads to a specific state), but with probabilities based on the die rolls.
+
+But since players can choose strategies (i.e., if they have multiple options, they can choose which one to take to maximize their chance). Wait, but in this case, the players don't choose the die rolls; they just roll the die. However, since the die is fair, each number from 1 to 20 is equally likely. Therefore, the players don't have any choice in their move; they just roll the die. Wait, but the problem says "both players use optimal strategies to maximize their chance of winning." But if they just roll the die, how can they have a strategy? Unless there's some element of choice here?
+
+Wait, maybe I misread. Let me check again: "On each turn, a player rolls one die and multiplies all previous rolls." So, each player must roll the die; they don't get to choose the number. Therefore, the game is probabilistic, and the players don't have any choices—they just roll the die. However, the problem says "both players use optimal strategies to maximize their chance of winning." That seems contradictory unless there's some hidden choice. Wait, maybe there's a misunderstanding here.
+
+Wait, perhaps the problem is that when a player rolls the die, depending on the result, they might have different outcomes, and depending on whose turn it is, they might want to influence the game state. But since they can't choose the die roll, the only thing they can do is to accept the result and let the game proceed. Therefore, maybe the "optimal strategy" here refers to the fact that if a player can force a win by some action, they do so. But since they can't control the die, maybe the optimal strategy is just to play the game as is, and the probability is calculated based on the game's probabilistic transitions.
+
+But the problem says "both players use optimal strategies to maximize their chance of winning." Maybe there's a different interpretation. For example, maybe players can choose to not roll? But the problem says "on each turn, a player rolls one die," so they have to roll. Therefore, perhaps the term "optimal strategy" here is a red herring, or maybe it refers to the fact that when a player has a chance to end the game, they do so. Wait, but the game ends only when the product meets the divisibility condition. So, for example, if Bob rolls a number that causes the product to be divisible by 10, then he wins immediately. Similarly for Alice. Therefore, the game proceeds until one of these conditions is met.
+
+Therefore, the game is a probabilistic game with states, and we need to compute the probability that Bob wins starting from the initial state, assuming both players play optimally. But since players don't have choices, maybe "optimal strategies" just means that they play the game as per the rules, and the probability is just the probability that Bob's condition is met before Alice's. However, since the game is turn-based, with Bob going first, and the game can end on either player's turn.
+
+But perhaps there's a subtlety here. For example, suppose that on a player's turn, depending on the current state, rolling certain numbers could lead to them winning, or letting the other player have a turn. Since players want to maximize their chance of winning, they might prefer to roll numbers that lead to their own victory rather than the opponent's. But since they can't choose the die roll, maybe the optimal strategy is just to roll the die, and the probability is determined by the game's transitions.
+
+Wait, but maybe there's a concept of "optimal strategy" in terms of whether a player can force a win. For example, if a player can make a move (i.e., roll a number) that guarantees their victory regardless of what the opponent does, they would do so. However, since the die is random, they can't force a win unless there is a number that they can roll which will definitely result in their victory. But since they have to roll randomly, they can't force it. Therefore, maybe "optimal strategy" here is irrelevant, and the problem is just about calculating the probability that Bob wins given the game rules.
+
+But the problem says "both players use optimal strategies to maximize their chance of winning," so maybe there's something more here. Perhaps in some states, a player can choose to roll or not roll? But the problem says they must roll. Alternatively, maybe the players can choose to end the game if they have already won? But the game ends automatically when the product meets the divisibility condition.
+
+Alternatively, maybe the players can choose to stop the game? But the problem says the game cannot end in a tie, so it must continue until one of the two conditions is met.
+
+Wait, maybe the key is that when it's a player's turn, if they can roll in such a way that they can force a win, they do so. But since they can't control the die, maybe they have to consider the probabilities. However, since both players are trying to maximize their own winning probabilities, perhaps in some states, a player might have an optimal strategy of trying to reach a state where they have a higher chance of winning.
+
+But since the game is turn-based and probabilistic, we can model this as a Markov game with states and transitions, where each state is defined by the current factors (A, B, C) as mentioned before. Let me try to formalize this.
+
+First, let's define the states based on the presence of factors 2, 3, and 5. Since the game ends when certain combinations are met, we can categorize the states as follows:
+
+- Terminal states: those where the product is divisible by 6 (Alice wins) or 10 (Bob wins). Once the game reaches a terminal state, it stops.
+
+- Non-terminal states: all other states where neither condition is met.
+
+Our initial state is (no 2, no 3, no 5). Let's denote the state as (a, b, c), where a, b, c are 0 or 1, indicating the presence (1) or absence (0) of factors 2, 3, 5 respectively.
+
+But since the game ends when:
+
+- After Alice's turn: (1,1,x) for any x (since 2 and 3 are present, making it divisible by 6)
+- After Bob's turn: (1,x,1) for any x (since 2 and 5 are present, making it divisible by 10)
+
+Therefore, the game can be in various non-terminal states, and depending on whose turn it is, the transitions will differ.
+
+Wait, but the game alternates between Bob and Alice. Therefore, the state should also include whose turn it is. So actually, the state is (a, b, c, player), where player is either Bob or Alice. However, since the game starts with Bob's turn, and alternates, we can model the state transitions accordingly.
+
+But this seems complex. Let me think if there's a way to simplify.
+
+Alternatively, since the game alternates between players, we can model the game as a turn-based probabilistic game where each state is (a, b, c) and whose turn it is. However, since the game is deterministic in terms of whose turn it is (alternating), we can model it as two separate functions: the probability of Bob winning from a state when it's Bob's turn, and the probability of Bob winning from a state when it's Alice's turn.
+
+Let me denote:
+
+- Let P(a, b, c) be the probability that Bob wins starting from state (a, b, c) on Bob's turn.
+
+- Let Q(a, b, c) be the probability that Bob wins starting from state (a, b, c) on Alice's turn.
+
+Our goal is to compute P(0, 0, 0), since the game starts with Bob's turn and no factors.
+
+Now, we need to define recursive relations for P and Q.
+
+First, for any state (a, b, c):
+
+- If it's Bob's turn (P(a, b, c)):
+
+Bob rolls a die (numbers 1-20, each with probability 1/20). Depending on the number rolled, the state transitions to a new state (a', b', c'), and then it becomes Alice's turn. However, if after Bob's roll, the product is divisible by 10 (i.e., a'=1 and c'=1), then Bob wins immediately, so the probability is 1 for that roll. Otherwise, the game continues with Alice's turn, and the probability becomes Q(a', b', c').
+
+Similarly, for Alice's turn (Q(a, b, c)):
+
+Alice rolls a die. If after her roll, the product is divisible by 6 (a'=1 and b'=1), then Alice wins, so Bob's probability of winning is 0 for that roll. Otherwise, the game continues with Bob's turn, and the probability becomes P(a', b', c').
+
+Therefore, we can write the following recursive equations:
+
+For P(a, b, c):
+
+P(a, b, c) = sum_{k=1}^{20} [ (1/20) * [ if (new state after rolling k has a'=1 and c'=1) then 1 else Q(a', b', c') ] ]
+
+Similarly, for Q(a, b, c):
+
+Q(a, b, c) = sum_{k=1}^{20} [ (1/20) * [ if (new state after rolling k has a'=1 and b'=1) then 0 else P(a', b', c') ] ]
+
+Now, we need to figure out for each die roll k, what is the new state (a', b', c') given the current state (a, b, c). The new state will have:
+
+a' = max(a, has_factor_2(k))
+b' = max(b, has_factor_3(k))
+c' = max(c, has_factor_5(k))
+
+Where has_factor_n(k) is 1 if k is divisible by n, 0 otherwise.
+
+Therefore, for each die roll k, we can compute whether it adds a factor of 2, 3, or 5. Since multiplying by k adds the factors of k to the product.
+
+Therefore, the problem reduces to computing P(0, 0, 0) with these recursive relations.
+
+However, since there are only a limited number of states, we can model this with dynamic programming. Let's figure out how many states there are.
+
+Each of a, b, c can be 0 or 1, so there are 2^3 = 8 possible states for (a, b, c). However, some of these states are terminal:
+
+- For Bob's turn: if the current state before his roll already has a=1 and c=1? Wait, no. The terminal conditions are checked after the player's roll. So during Bob's turn, he rolls the die, and then we check if the new state meets Bob's winning condition (a'=1 and c'=1). Similarly for Alice.
+
+But actually, the game could have already met some conditions before the current player's turn? For example, if before Bob's turn, the product is already divisible by 10. But since the game would have already ended when that condition was met. Therefore, all non-terminal states are those where the product is not yet divisible by 6 or 10. Therefore, in our state definitions, we can assume that the current state (a, b, c) does not yet satisfy the winning conditions for either player. Therefore, we need to exclude states where (a=1 and b=1) or (a=1 and c=1). Wait, but actually, the game is in a non-terminal state if neither player has yet won. Therefore, the non-terminal states are those where:
+
+- It is not the case that (a=1 and b=1) and it is not the case that (a=1 and c=1).
+
+Therefore, when building our state space, we need to exclude states where (a=1 and b=1) or (a=1 and c=1). However, since the game ends when those conditions are met, those states are terminal and not part of our DP.
+
+Therefore, let's list all possible non-terminal states (a, b, c):
+
+Total possible states for (a, b, c): 8.
+
+Terminal states are:
+
+- (1,1,0)
+- (1,1,1)
+- (1,1,x) for x=0 or 1 (since a=1 and b=1)
+- (1,0,1)
+- (1,x,1) for x=0 or 1 (since a=1 and c=1)
+
+Therefore, the non-terminal states are those where:
+
+- Not (a=1 and b=1) and not (a=1 and c=1)
+
+So let's list them:
+
+1. (0,0,0)
+2. (0,0,1)
+3. (0,1,0)
+4. (0,1,1)
+5. (1,0,0)
+6. (1,0,1) – Wait, but (1,0,1) is a terminal state because a=1 and c=1. So exclude that.
+7. (1,1,0) – terminal, exclude
+8. (1,1,1) – terminal, exclude
+
+So the non-terminal states are:
+
+(0,0,0), (0,0,1), (0,1,0), (0,1,1), (1,0,0)
+
+Wait, let's check:
+
+- (0,0,0): not terminal
+- (0,0,1): not terminal (no 2 and 3, no 2 and 5)
+- (0,1,0): same
+- (0,1,1): same (has 3 and 5, but no 2)
+- (1,0,0): has 2 but not 3 or 5, so not terminal
+- (1,0,1): has 2 and 5, so terminal (Bob's win)
+- (0,1,1): has 3 and 5, but no 2? Wait, no, (0,1,1) means a=0 (no 2), so no, not terminal. Similarly, (1,0,0) has a 2 but not 3 or 5, so not terminal.
+
+Therefore, there are 5 non-terminal states:
+
+S0: (0,0,0)
+
+S1: (0,0,1)
+
+S2: (0,1,0)
+
+S3: (0,1,1)
+
+S4: (1,0,0)
+
+Now, for each of these states, we need to compute P(state) and Q(state), where P is the probability Bob wins on his turn, and Q is the probability Bob wins on Alice's turn.
+
+Our goal is to compute P(S0).
+
+Let me note that for each state, depending on whether it's Bob's or Alice's turn, we have different equations.
+
+Let me denote:
+
+For each non-terminal state s, define:
+
+P_s = probability Bob wins starting from s on Bob's turn
+
+Q_s = probability Bob wins starting from s on Alice's turn
+
+We need to compute P_{S0}.
+
+Let me first figure out for each state and each possible die roll, what is the resulting state.
+
+First, we need to know for each die roll from 1 to 20, which factors they contribute.
+
+Let me precompute for numbers 1-20:
+
+For each number k in 1-20, determine:
+
+- has_factor_2(k): 1 if even, else 0
+
+- has_factor_3(k): 1 if divisible by 3, else 0
+
+- has_factor_5(k): 1 if divisible by 5, else 0
+
+Let me list them:
+
+Numbers 1-20:
+
+1: 2^0, 3^0, 5^0 → (0,0,0)
+
+2: (1,0,0)
+
+3: (0,1,0)
+
+4: (1,0,0)
+
+5: (0,0,1)
+
+6: (1,1,0)
+
+7: (0,0,0)
+
+8: (1,0,0)
+
+9: (0,1,0)
+
+10: (1,0,1)
+
+11: (0,0,0)
+
+12: (1,1,0)
+
+13: (0,0,0)
+
+14: (1,0,0)
+
+15: (0,1,1)
+
+16: (1,0,0)
+
+17: (0,0,0)
+
+18: (1,1,0)
+
+19: (0,0,0)
+
+20: (1,0,1)
+
+So let's count how many numbers fall into each category.
+
+First, categorize numbers based on their factors:
+
+Let me create a table:
+
+For each number, (has_factor_2, has_factor_3, has_factor_5):
+
+But maybe instead of that, for each state transition, we can compute how many numbers would lead to a certain new state.
+
+But perhaps it's easier to note for each state and each possible die roll, what the new state would be.
+
+But since we have only 5 non-terminal states, maybe we can handle each case.
+
+Alternatively, for each state, we can compute the number of die rolls that would lead to each possible new state or terminal condition.
+
+But since there are only 5 non-terminal states, let's handle them one by one.
+
+First, let's note that for each die roll, given the current state (a, b, c), the new state (a', b', c') is:
+
+a' = max(a, has_factor_2(k))
+
+b' = max(b, has_factor_3(k))
+
+c' = max(c, has_factor_5(k))
+
+Therefore, depending on the current state, rolling a number with certain factors will update the state accordingly.
+
+Let me proceed step by step.
+
+First, let's define for each non-terminal state and for each die roll, whether it leads to a terminal state or which new state.
+
+But since there are 5 states and 20 die rolls, this might be tedious, but manageable.
+
+Alternatively, for each state, we can compute the number of die rolls that would:
+
+- For Bob's turn: result in Bob winning immediately (i.e., new state has a'=1 and c'=1)
+
+- For Bob's turn: result in not Bob winning, so transition to a new state (a', b', c') and then it's Alice's turn.
+
+Similarly for Alice's turn: result in Alice winning (a'=1 and b'=1) or not.
+
+Therefore, for each state and for each player's turn, we can compute the probabilities.
+
+Let me start with the first state: S0 = (0,0,0)
+
+Case 1: State S0 = (0,0,0)
+
+On Bob's turn (P_S0):
+
+Bob rolls a die. Let's see which rolls lead to Bob's immediate win (i.e., new state has a'=1 and c'=1). For that, the die roll must have factors 2 and 5. Looking at numbers 1-20, which numbers have both 2 and 5? These are multiples of 10: 10, 20. So numbers 10 and 20. Therefore, there are 2 numbers. Therefore, with probability 2/20 = 1/10, Bob wins immediately.
+
+For the other 18 numbers, the game transitions to a new state (a', b', c') and it becomes Alice's turn. Let's figure out what those new states are.
+
+For each die roll, depending on the factors:
+
+If the die roll has:
+
+- 2: adds factor 2 (since current a=0)
+- 3: adds factor 3
+- 5: adds factor 5
+
+So for example, rolling a 2 (which is (1,0,0)) leads to new state (1,0,0) = S4.
+
+Similarly, rolling a 3 leads to (0,1,0) = S2.
+
+Rolling a 5 leads to (0,0,1) = S1.
+
+Rolling a 6 (which is (1,1,0)) leads to (1,1,0) which is terminal (Alice's win?), but wait, no. Wait, on Bob's turn, after rolling, we check if Bob's condition is met (a'=1 and c'=1). If not, then the game continues. However, Alice's condition is checked on her turn. Therefore, even if after Bob's roll, the product is divisible by 6 (i.e., a'=1 and b'=1), that doesn't end the game until Alice's turn? Wait no, the problem says:
+
+"Alice wins if the product is divisible by 6 after her turn; Bob wins if the product is divisible by 10 after his turn."
+
+Therefore, the game ends only when it is after a player's turn and the product meets their condition. Therefore, if Bob rolls a number that makes the product divisible by 6, that doesn't end the game. Only if it's divisible by 10. Similarly, if Alice rolls a number that makes it divisible by 10, that doesn't end the game; only if it's divisible by 6.
+
+Therefore, in the above case, if Bob rolls a 6, which adds factors 2 and 3, making the product divisible by 6. However, since it's Bob's turn, Alice's winning condition is not checked. The game continues to Alice's turn. However, when Alice takes her turn, if the product is already divisible by 6, then if she rolls, the product remains divisible by 6, but Alice only wins if after her turn it's divisible by 6. Wait, but if the product is already divisible by 6 before Alice's turn, then when she rolls, the product will still be divisible by 6 (since multiplying by any number preserves divisibility by 6). Therefore, after her turn, it will still be divisible by 6, so Alice will win. Therefore, if during Bob's turn, he rolls a number that causes the product to be divisible by 6, then on Alice's subsequent turn, she automatically wins. Therefore, in effect, if Bob rolls a number that causes the product to be divisible by 6, Alice will win on her next turn. Therefore, from Bob's perspective, rolling such a number is bad for him.
+
+Therefore, in our equations, when Bob is rolling, if he rolls a number that causes the product to be divisible by 6, then Alice will win on her next turn, so Bob's probability of winning in that case is 0. Similarly, if he rolls a number that causes the product to be divisible by 10, he wins immediately. If neither, then we go to Alice's turn with the new state.
+
+Wait, this is an important point. Let me clarify:
+
+The game ends when, after a player's turn, the product meets their winning condition. Therefore, if during Bob's turn, he rolls a number that causes the product to be divisible by 6, since that is Alice's winning condition, but it's Bob's turn, the game does not end. Instead, it proceeds to Alice's turn. However, on Alice's turn, since the product is already divisible by 6, no matter what she rolls, the product will remain divisible by 6 (since multiplying by any integer preserves divisibility). Therefore, after Alice's turn, the product is still divisible by 6, so Alice wins. Therefore, if Bob causes the product to be divisible by 6 on his turn, Alice will win on her next turn. Therefore, for Bob, rolling such a number is equivalent to losing.
+
+Similarly, if Alice rolls a number that causes the product to be divisible by 10 on her turn, since that is Bob's winning condition, but it's Alice's turn, the game does not end. Then Bob's turn comes, and since the product is already divisible by 10, no matter what he rolls, it remains divisible by 10, so Bob wins on his next turn. Therefore, if Alice causes the product to be divisible by 10 on her turn, Bob will win on his next turn. Therefore, for Alice, rolling such a number is equivalent to losing.
+
+Therefore, in our equations, when computing P(a, b, c) (Bob's turn), we need to check if the new state after the roll is divisible by 10 (Bob wins) or not. If not, then check if it's divisible by 6 (Alice will win on her turn, so Bob's probability is 0 for that roll). Otherwise, transition to the new state and compute Q(a', b', c').
+
+Similarly, for Q(a, b, c) (Alice's turn), check if the new state is divisible by 6 (Alice wins, so Bob's probability is 0) or divisible by 10 (Bob will win on his turn, so Bob's probability is 1 for that roll). Otherwise, transition to the new state and compute P(a', b', c').
+
+Therefore, our previous equations need to be adjusted:
+
+For P(a, b, c):
+
+For each die roll:
+
+- If new state is (a'=1, c'=1): Bob wins (prob += 1/20)
+- Else if new state is (a'=1, b'=1): Alice will win on her turn, so Bob's prob is 0 for this roll (prob += 0)
+- Else: prob += (1/20) * Q(a', b', c')
+
+Similarly, for Q(a, b, c):
+
+For each die roll:
+
+- If new state is (a'=1, b'=1): Alice wins, so Bob's prob is 0 (prob += 0)
+- Else if new state is (a'=1, c'=1): Bob will win on his turn, so Bob's prob is 1 (prob += 1/20)
+- Else: prob += (1/20) * P(a', b', c')
+
+Therefore, returning to our earlier example of state S0 = (0,0,0) on Bob's turn:
+
+When Bob rolls:
+
+Numbers that lead to Bob's win (a'=1, c'=1): numbers with both 2 and 5, which are 10, 20 → 2 numbers.
+
+Numbers that lead to Alice's win (a'=1, b'=1): numbers with both 2 and 3. These are numbers divisible by 6: 6, 12, 18. Let's check:
+
+Numbers divisible by 6 between 1-20: 6, 12, 18. So 3 numbers.
+
+Therefore, numbers leading to Bob's win: 2 numbers.
+
+Numbers leading to Alice's win: 3 numbers.
+
+Other numbers: 20 - 2 - 3 = 15 numbers. Wait, but let's check:
+
+Wait total numbers:
+
+Numbers leading to Bob's win: 2 (10, 20)
+
+Numbers leading to Alice's win: numbers that add both 2 and 3. Since current state is (0,0,0), so adding 2 and 3 requires the die roll to have both. Which are numbers divisible by 6: 6, 12, 18. So 3 numbers.
+
+But also, numbers that add 2 and 3 through separate factors? No, because if the die roll has both factors, then it's already counted. For example, if you roll a 6, which is 2*3, so it adds both factors. If you roll a number that adds 2 and another number that adds 3 later... but in one roll, you can't add both unless the number is divisible by both. Therefore, only numbers divisible by 6 will add both factors in one roll.
+
+Therefore, yes, 3 numbers.
+
+Therefore, remaining numbers: 20 - 2 - 3 = 15 numbers. These are numbers that add neither both 2 and 5 nor both 2 and 3. Therefore, they add some combination of factors but not enough for either winning condition. For these, we need to determine the new state and then compute Q(a', b', c').
+
+Therefore, P(S0) = (2/20)*1 + (3/20)*0 + (15/20)*[average Q over new states]
+
+Similarly, we need to compute for each of the 15 numbers, what new state they lead to, and then take the average of Q for those states.
+
+This seems complex, but perhaps manageable if we categorize the die rolls.
+
+First, let's categorize the 15 numbers that don't lead to immediate win for Bob or Alice.
+
+These are numbers that don't have both 2 and 5, and don't have both 2 and 3. Let's find them.
+
+From numbers 1-20, excluding the 2 numbers (10,20) that have both 2 and 5, and excluding the 3 numbers (6,12,18) that have both 2 and 3. However, note that some numbers might be excluded in both categories. For example, 30 would be excluded in both, but since our numbers are only up to 20, there is no overlap between numbers divisible by 6 and numbers divisible by 10 in 1-20 except for 30, which is outside. Therefore, numbers excluded are 2 + 3 = 5 numbers. Therefore, remaining numbers: 20 - 5 = 15 numbers. Let's list them:
+
+Numbers not in {6,10,12,18,20}:
+
+Numbers 1-20 except 6,10,12,18,20. So:
+
+1,2,3,4,5,7,8,9,11,13,14,15,16,17,19.
+
+Let me check:
+
+Original numbers:
+
+1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20.
+
+Remove 6,10,12,18,20:
+
+Left with:
+
+1,2,3,4,5,7,8,9,11,13,14,15,16,17,19. Yes, 15 numbers.
+
+Now, for each of these 15 numbers, determine the new state when rolled from S0=(0,0,0):
+
+Each of these numbers will add their factors. Since starting from (0,0,0), the new state is (has_factor_2(k), has_factor_3(k), has_factor_5(k)).
+
+Let me categorize them:
+
+Let me go through each number:
+
+1: (0,0,0) → new state S0
+
+2: (1,0,0) → S4
+
+3: (0,1,0) → S2
+
+4: (1,0,0) → S4
+
+5: (0,0,1) → S1
+
+7: (0,0,0) → S0
+
+8: (1,0,0) → S4
+
+9: (0,1,0) → S2
+
+11: (0,0,0) → S0
+
+13: (0,0,0) → S0
+
+14: (1,0,0) → S4
+
+15: (0,1,1) → S3
+
+16: (1,0,0) → S4
+
+17: (0,0,0) → S0
+
+19: (0,0,0) → S0
+
+So let's count how many numbers lead to each new state:
+
+- S0: numbers 1,7,11,13,17,19 → 6 numbers
+
+- S1: number 5 → 1 number
+
+- S2: numbers 3,9 → 2 numbers
+
+- S3: number 15 → 1 number
+
+- S4: numbers 2,4,8,14,16 → 5 numbers
+
+Therefore, for the 15 numbers, the transitions are:
+
+- 6/15 to S0 (but wait, no, the total numbers are 15, each with probability 1/20. Wait, actually, in the overall P(S0) calculation, the 15 numbers contribute (15/20) * average Q(...). But we need to compute for each of the 15 numbers, their contribution. However, since we grouped them into transitions to different states, we can compute the probability as follows:
+
+For the 15 numbers, the probability distribution over new states is:
+
+- Probability of transitioning to S0: 6/15
+
+- To S1: 1/15
+
+- To S2: 2/15
+
+- To S3: 1/15
+
+- To S4: 5/15
+
+But since each of these 15 numbers has probability 1/20, the total contribution to P(S0) is:
+
+(15/20) * [ (6/15)*Q(S0) + (1/15)*Q(S1) + (2/15)*Q(S2) + (1/15)*Q(S3) + (5/15)*Q(S4) ) ]
+
+Simplifying, the 15/20 * ... becomes:
+
+(1/20)*[6*Q(S0) + 1*Q(S1) + 2*Q(S2) + 1*Q(S3) + 5*Q(S4)]
+
+Therefore, overall:
+
+P(S0) = (2/20)*1 + (3/20)*0 + (1/20)[6 Q(S0) + Q(S1) + 2 Q(S2) + Q(S3) + 5 Q(S4)]
+
+Therefore:
+
+P(S0) = 1/10 + [6 Q(S0) + Q(S1) + 2 Q(S2) + Q(S3) + 5 Q(S4)] / 20
+
+Similarly, we need to write equations for all P and Q for the 5 states.
+
+This seems complex, but manageable if we do it step by step for each state.
+
+Let me note that for each non-terminal state, we need to define equations for P(state) and Q(state). Let's proceed.
+
+First, let's note all the non-terminal states:
+
+S0: (0,0,0)
+
+S1: (0,0,1)
+
+S2: (0,1,0)
+
+S3: (0,1,1)
+
+S4: (1,0,0)
+
+Now, we need to write equations for P_S0, P_S1, P_S2, P_S3, P_S4 and similarly for Q_S0, Q_S1, Q_S2, Q_S3, Q_S4.
+
+Let me start with S0.
+
+We already started with P(S0). Let's proceed similarly for other states.
+
+But first, let's think about what happens in other states.
+
+For example, take S1: (0,0,1). This means we already have a factor of 5, but no 2 or 3.
+
+On Bob's turn (P_S1):
+
+Bob rolls a die. For Bob to win immediately, he needs to add a factor of 2 (so that a'=1 and c'=1, since c is already 1). Therefore, numbers that add a factor of 2. How many numbers add a factor of 2? All even numbers. From 1-20, there are 10 even numbers (2,4,...,20). However, we need to check if rolling those numbers would lead to Bob's win.
+
+But in state S1=(0,0,1), rolling a number with factor 2 will set a'=1, and since c is already 1, the new state will be (1,0,1), which is terminal (Bob wins). Therefore, any die roll that adds a factor of 2 will result in Bob's win. How many such numbers are there? 10 numbers (even numbers). However, we also need to check if any of these numbers also add other factors. For example, numbers that are even and divisible by 3 or 5. But regardless, as long as they add a factor of 2, they will make a'=1, and since c is already 1, Bob wins.
+
+However, we also need to check if any of these numbers would also add factors leading to Alice's win. But since Alice's win requires a'=1 and b'=1. In this case, if Bob rolls a number that adds a factor of 2 and 3, then b' becomes 1. However, since Bob's win condition is already met (a'=1 and c'=1), the game ends with Bob's win, so Alice's win is not considered. Therefore, numbers that add both 2 and 3 will still result in Bob's win.
+
+Therefore, for P_S1, the number of winning rolls for Bob is the number of numbers with factor 2: 10 numbers. However, we need to check if any of these numbers also cause Alice's win condition. But since Alice's win condition is a'=1 and b'=1. If Bob rolls a number that adds 2 and 3, then yes, but since Bob's win condition is already met, it still counts as Bob's win. Therefore, all 10 even numbers result in Bob's win.
+
+Additionally, numbers that do not add a factor of 2: these are the odd numbers. There are 10 odd numbers (1,3,5,7,...,19). Rolling these numbers will not add a factor of 2, so a' remains 0. However, they might add a factor of 3 or 5. Let's check if any of these numbers would lead to Alice's win condition (a'=1 and b'=1). Since a' remains 0, Alice's win condition is not met. Therefore, these rolls do not lead to immediate win for anyone. Therefore, they transition to new states.
+
+Therefore, for P_S1:
+
+Number of Bob's winning rolls: 10 (even numbers)
+
+Number of Alice's winning rolls: 0 (since Alice's win requires a'=1 and b'=1, which isn't achieved here)
+
+Other rolls: 10 numbers (odd numbers). For these, we need to compute the new state and then Q(...).
+
+Therefore, P_S1 = (10/20)*1 + (0/20)*0 + (10/20)*[average Q over new states from odd numbers]
+
+Now, let's find what new states result from rolling odd numbers in state S1=(0,0,1). The odd numbers are 1,3,5,7,9,11,13,15,17,19.
+
+For each of these numbers, compute new state:
+
+Starting from (0,0,1):
+
+- 1: (0,0,1) → same as S1? Wait, no, because we already have c=1. Rolling 1 adds nothing. So new state is (0,0,1) = S1.
+
+- 3: adds factor 3 → (0,1,1) = S3
+
+- 5: adds factor 5, but already have c=1 → remains (0,0,1) = S1
+
+- 7: same as 1 → S1
+
+- 9: adds factor 3 → S3
+
+- 11: same as 1 → S1
+
+- 13: same as 1 → S1
+
+- 15: adds factor 3 and 5. Since current state is (0,0,1), adding factor 3 gives (0,1,1) = S3. Adding factor 5 doesn't change c. So new state is S3.
+
+Wait, 15 is divisible by 3 and 5. So has_factor_2(15)=0, has_factor_3(15)=1, has_factor_5(15)=1. Since current state is (0,0,1), so new state is (0, max(0,1)=1, max(1,1)=1) → (0,1,1) = S3.
+
+Similarly:
+
+- 17: same as 1 → S1
+
+- 19: same as 1 → S1
+
+Therefore, the transitions from odd numbers:
+
+Numbers leading to S1: 1,5,7,11,13,17,19 → 7 numbers
+
+Numbers leading to S3: 3,9,15 → 3 numbers
+
+Therefore, for the 10 odd numbers:
+
+- 7/10 to S1
+
+- 3/10 to S3
+
+Therefore, P_S1 = (10/20)*1 + (10/20)*[ (7/10)*Q(S1) + (3/10)*Q(S3) ) ]
+
+Simplify:
+
+P_S1 = 1/2 + (1/2)[ (7/10) Q(S1) + (3/10) Q(S3) ) ]
+
+Similarly, moving on.
+
+Now, let's handle Q_S1. Q_S1 is the probability Bob wins starting from S1 on Alice's turn.
+
+For Q_S1: Alice's turn. She rolls a die. For Alice to win, the new state must have a'=1 and b'=1. For Bob to win, the new state must have a'=1 and c'=1.
+
+Current state is S1=(0,0,1). Let's analyze:
+
+For Alice to win: needs a'=1 and b'=1. Since current a=0, b=0, c=1. Therefore, Alice needs to roll a number that adds both 2 and 3. How many such numbers? Numbers divisible by 6: 6,12,18. However, note that in state S1, we already have c=1, but that doesn't affect Alice's condition.
+
+Numbers divisible by 6: 6,12,18. Let's check if they are in 1-20: yes. So 3 numbers.
+
+For Bob to win: needs a'=1 and c'=1. Since c is already 1, needs to add a factor of 2. Therefore, same as before: numbers with factor 2 (even numbers). There are 10 even numbers.
+
+However, note that some numbers may do both: add 2 and 3. For example, 6,12,18. These numbers add both 2 and 3. Therefore, when Alice rolls such a number, it would satisfy both Alice's win condition and Bob's win condition? But according to the rules, Alice wins if after her turn the product is divisible by 6. Since she rolled a number that adds both 2 and 3, making the product divisible by 6, so Alice wins, regardless of Bob's condition. Therefore, in this case, even though the product is also divisible by 10 (since c=1 and a'=1), the game ends with Alice's win because it's after her turn. Therefore, for Q_S1, rolling a number that causes Alice's win (divisible by 6) results in Bob's probability 0, and rolling a number that causes Bob's win (divisible by 10) would result in Bob's probability 1. However, numbers that do both would result in Alice's win.
+
+Therefore, for Q_S1:
+
+Number of Alice's winning rolls: numbers that add both 2 and 3: 3 numbers (6,12,18)
+
+Number of Bob's winning rolls: numbers that add 2 but not 3. Since total numbers adding 2 are 10 (even numbers). From these, subtract those that also add 3: 3 numbers (6,12,18). Therefore, 10 - 3 = 7 numbers.
+
+Other numbers: numbers that don't add 2 (odd numbers) and numbers that add 3 but not 2. Let's see:
+
+Total numbers: 20. Subtract Alice's winning (3) and Bob's winning (7): 20 - 3 -7 = 10 numbers. These are numbers that don't add 2 (so a'=0) and may or may not add 3 or 5.
+
+For these 10 numbers, we need to compute new states and then P(...).
+
+Therefore, Q_S1 = (3/20)*0 + (7/20)*1 + (10/20)*[average P over new states]
+
+Let me find what these 10 numbers are. The numbers not in Alice's winning (6,12,18) or Bob's winning (even numbers except those 3). Wait:
+
+Bob's winning rolls are even numbers not divisible by 3: 10 total even numbers minus 3 (divisible by 6) = 7 numbers. These are even numbers not divisible by 3: 2,4,8,10,14,16,20. Wait:
+
+Original even numbers: 2,4,6,8,10,12,14,16,18,20. Remove 6,12,18: remaining are 2,4,8,10,14,16,20. Yes, 7 numbers.
+
+Therefore, the remaining numbers (10 numbers) are:
+
+All numbers except:
+
+- Alice's winning: 6,12,18
+
+- Bob's winning: 2,4,8,10,14,16,20
+
+So remaining numbers are:
+
+From 1-20, remove the above 3 + 7 = 10 numbers. The remaining 10 numbers are:
+
+1,3,5,7,9,11,13,15,17,19. These are the odd numbers except 5? Wait:
+
+Original odd numbers are 1,3,5,7,9,11,13,15,17,19. Yes, 10 numbers. So these are the numbers that don't add 2. For these numbers, starting from S1=(0,0,1), rolling them will not add a factor of 2, so a remains 0. They may add a factor of 3 or 5.
+
+Let me determine the new states for these numbers:
+
+Starting from (0,0,1):
+
+For each number:
+
+1: (0,0,1) → S1
+
+3: adds 3 → (0,1,1) = S3
+
+5: adds 5, already have 5 → S1
+
+7: same as 1 → S1
+
+9: adds 3 → S3
+
+11: same as 1 → S1
+
+13: same as 1 → S1
+
+15: adds 3 and 5 → (0,1,1) = S3
+
+17: same as 1 → S1
+
+19: same as 1 → S1
+
+Therefore, transitions:
+
+Numbers leading to S1: 1,5,7,11,13,17,19 → 7 numbers
+
+Numbers leading to S3: 3,9,15 → 3 numbers
+
+Therefore, similar to before, for these 10 numbers:
+
+7/10 to S1, 3/10 to S3.
+
+Therefore, Q_S1 = 3/20 * 0 + 7/20 * 1 + 10/20 * [ (7/10) P(S1) + (3/10) P(S3) ) ]
+
+Simplify:
+
+Q_S1 = 7/20 + (1/2)[ (7/10) P(S1) + (3/10) P(S3) ) ]
+
+Okay, moving on. Let's note that we need to create equations for all P and Q for all 5 states. This is going to be a system of 10 equations (5 P and 5 Q). Let's proceed step by step.
+
+Next, let's handle S2: (0,1,0). This state has a factor of 3, but no 2 or 5.
+
+First, P_S2: Bob's turn.
+
+Bob needs to roll to get a'=1 and c'=1 (Bob's win). To do that, he needs to add both 2 and 5. How many numbers add both 2 and 5? As before, numbers divisible by 10: 10,20. So 2 numbers.
+
+Additionally, numbers that add 2 and 3? Well, adding 2 would make a'=1, but c'=0 still. Not enough for Bob's win. Similarly, numbers that add 5 would make c'=1, but a'=0 still. So only numbers with both 2 and 5.
+
+Numbers leading to Bob's win: 2 numbers.
+
+Numbers leading to Alice's win: Alice needs a'=1 and b'=1. Since current b=1, Alice needs to add a factor of 2. Therefore, numbers with factor 2. There are 10 even numbers. However, some of these may also add 5 or 3. But as long as they add 2, since b is already 1, Alice's win condition is met. However, if they also add 5, then Bob's win condition is also met. But since it's Bob's turn, the game would check for Bob's win first? Or does it check both?
+
+Wait, according to the problem statement: "Alice wins if the product is divisible by 6 after her turn; Bob wins if the product is divisible by 10 after his turn." Therefore, on Bob's turn, after he rolls, if the product is divisible by 10, Bob wins. If it's also divisible by 6, it doesn't matter because Alice's win is only checked on her turn. Therefore, if Bob rolls a number that adds both 2 and 5 (making it divisible by 10) and also adds something else (like 3), it's still Bob's win.
+
+Therefore, numbers leading to Alice's win on Bob's turn: numbers that add 2 (so that a'=1, and since b=1 already, product divisible by 6). However, if such a number also adds 5, then Bob's win condition is also met. But since it's Bob's turn, only Bob's condition is checked. Therefore, if Bob rolls a number that adds 2 (and maybe other factors), we check if it meets Bob's condition (divisible by 10). If yes, Bob wins. If not, then even though it meets Alice's condition, it doesn't end the game; it proceeds to Alice's turn. Therefore, numbers that add 2 but not 5 will not trigger Bob's win, but will trigger Alice's win on her turn.
+
+Therefore, for P_S2:
+
+Numbers leading to Bob's win: numbers with both 2 and 5: 2 numbers (10,20)
+
+Numbers leading to Alice's win: numbers that add 2 but not 5. How many? Numbers with factor 2 (10 numbers) minus numbers with both 2 and 5 (2 numbers) = 8 numbers.
+
+Other numbers: numbers that don't add 2 or add 5 but not 2. Let's see:
+
+Total numbers: 20. Subtract 2 (Bob's win) and 8 (Alice's win) = 10 numbers. These are numbers that don't add 2 (so a'=0) or add 5 but not 2.
+
+For these 10 numbers, we need to compute new states and then Q(...).
+
+Therefore, P_S2 = (2/20)*1 + (8/20)*0 + (10/20)*[average Q(...)]
+
+Let me find what these 10 numbers are. The numbers not in Bob's win (10,20) or Alice's win (numbers adding 2 but not 5). The numbers adding 2 but not 5 are the even numbers not divisible by 5. From the 10 even numbers (2,4,6,8,10,12,14,16,18,20), remove those divisible by 5: 10,20. So remaining 8 numbers: 2,4,6,8,12,14,16,18.
+
+Therefore, the remaining 10 numbers are:
+
+All numbers except:
+
+- Bob's win: 10,20
+
+- Alice's win: 2,4,6,8,12,14,16,18
+
+So remaining numbers: 1,3,5,7,9,11,13,15,17,19. These are the odd numbers and 5.
+
+Starting from S2=(0,1,0), rolling these numbers:
+
+For each number:
+
+1: (0,1,0) → S2
+
+3: already has 3, adds nothing → S2
+
+5: adds 5 → (0,1,1) = S3
+
+7: same as 1 → S2
+
+9: same as 3 → S2
+
+11: same as 1 → S2
+
+13: same as 1 → S2
+
+15: adds 5 and 3 (already has 3) → (0,1,1) = S3
+
+17: same as 1 → S2
+
+19: same as 1 → S2
+
+Therefore, transitions:
+
+Numbers leading to S2: 1,3,7,9,11,13,17,19 → 8 numbers
+
+Numbers leading to S3: 5,15 → 2 numbers
+
+Therefore, for the 10 numbers:
+
+8/10 to S2, 2/10 to S3.
+
+Therefore, P_S2 = 2/20 * 1 + 8/20 * 0 + 10/20 * [ (8/10) Q(S2) + (2/10) Q(S3) ) ]
+
+Simplify:
+
+P_S2 = 1/10 + (1/2)[ (4/5) Q(S2) + (1/5) Q(S3) ) ] ?
+
+Wait, 10/20 is 1/2. And 8/10 is 4/5, 2/10 is 1/5. So:
+
+P_S2 = 1/10 + (1/2)[ (4/5) Q(S2) + (1/5) Q(S3) ) ]
+
+Now, moving on to Q_S2: Alice's turn starting from S2=(0,1,0).
+
+For Q_S2, Alice's turn. She wants to roll to get a'=1 and b'=1. Since current state is (0,1,0), Alice needs to add a factor of 2. Therefore, numbers with factor 2. There are 10 even numbers. If she rolls one of them, then a'=1 and b'=1 (since b is already 1), so Alice wins, so Bob's probability is 0. If she rolls a number that doesn't add 2, then the game continues to Bob's turn with new state.
+
+Additionally, Bob can win if after Alice's roll, the product is divisible by 10. For that, the product needs a'=1 and c'=1. Since current state is (0,1,0), to get a'=1 and c'=1, Alice needs to roll a number that adds both 2 and 5. How many such numbers? Numbers divisible by 10: 10,20. So 2 numbers. However, if Alice rolls such a number, then after her turn, the product is divisible by 10. But since it's Alice's turn, Bob's win condition is not checked. The game would continue to Bob's turn. Wait, no: the problem says Bob wins if the product is divisible by 10 after his turn. Therefore, if Alice rolls a number that makes the product divisible by 10, since it's after her turn, Bob does not win. Therefore, Bob's win is only checked on his turn. Therefore, even if Alice's roll makes the product divisible by 10, it doesn't end the game. Therefore, for Q_S2, numbers that add both 2 and 5 would not result in Bob's win, but would transition to a new state.
+
+Wait, let me clarify:
+
+On Alice's turn, after she rolls, if the product is divisible by 6, Alice wins. If not, the game continues to Bob's turn. Bob's win is only checked on his turn. Therefore, if Alice rolls a number that makes the product divisible by 10, since it's after her turn, it doesn't trigger Bob's win. Therefore, for Q_S2:
+
+- Alice's winning rolls: numbers that add 2 (10 numbers). These make the product divisible by 6 (since b=1 already). Therefore, Bob's probability is 0 for these.
+
+- Bob's winning rolls: none, because Bob's win is only checked on his turn.
+
+- Other rolls: numbers that don't add 2. These transition to new states, and then it's Bob's turn.
+
+However, some of these other rolls might add a factor of 5. For example, rolling a 5 would add a factor of 5, leading to state (0,1,1). But since a=0, Bob's win condition (a'=1 and c'=1) is not met. Therefore, game continues.
+
+Therefore, Q_S2 = (number of Alice's winning rolls / 20)*0 + ... ?
+
+Wait, more precisely:
+
+Q_S2 = sum_{k=1}^{20} [ (1/20) * [ if Alice wins after roll k: 0; else if Bob wins after roll k: 1; else P(new state) ] ]
+
+But on Alice's turn, Bob can only win if after her roll, the product is divisible by 10 and it's Bob's turn? No, Bob's win is only checked after his turn. Therefore, even if the product is divisible by 10 after Alice's turn, it doesn't end the game. Therefore, there are no rolls on Alice's turn that result in Bob's win. Therefore, Q_S2 is:
+
+Q_S2 = (number of Alice's winning rolls / 20)*0 + (remaining rolls / 20)*P(new state)
+
+Number of Alice's winning rolls: numbers that add 2: 10 numbers (even numbers). Therefore, remaining rolls: 20 - 10 = 10 numbers (odd numbers). These are the same numbers as before: 1,3,5,7,9,11,13,15,17,19.
+
+For these, starting from S2=(0,1,0), rolling them:
+
+As before, transitions:
+
+Numbers leading to S2: 8 numbers (1,3,7,9,11,13,17,19)
+
+Numbers leading to S3: 2 numbers (5,15)
+
+Therefore, Q_S2 = (10/20)*0 + (10/20)*[ (8/10) P(S2) + (2/10) P(S3) ) ]
+
+Simplify:
+
+Q_S2 = 0 + (1/2)[ (4/5) P(S2) + (1/5) P(S3) ) ]
+
+Okay, moving on to S3: (0,1,1). This state has factors 3 and 5, but no 2.
+
+First, P_S3: Bob's turn. He needs to roll to get a'=1 and c'=1. Since c is already 1, he needs to add a factor of 2. Therefore, numbers with factor 2: 10 numbers. Rolling any of these will set a'=1, so new state is (1,1,1). But (1,1,1) is terminal? Wait, no. Wait, the terminal conditions are:
+
+- After Alice's turn: product divisible by 6 (a=1 and b=1)
+
+- After Bob's turn: product divisible by 10 (a=1 and c=1)
+
+Since it's Bob's turn, if he rolls a number that adds a factor of 2, making a'=1 and c'=1 (since c was already 1), then Bob wins. Therefore, all 10 even numbers result in Bob's win.
+
+Additionally, numbers that add other factors? For example, numbers that add 2 and 3. But since b is already 1, adding 2 and 3 would still result in Bob's win because the condition is met. Therefore, all 10 even numbers result in Bob's win.
+
+Numbers that don't add 2: odd numbers. There are 10 numbers. Rolling these doesn't add a factor of 2, so a remains 0. Therefore, the product is not divisible by 10, so Bob doesn't win. Also, since a=0, Alice's win condition (a'=1 and b'=1) is not met. Therefore, game continues to Alice's turn with new state.
+
+Therefore, P_S3 = (10/20)*1 + (10/20)*[average Q(...)]
+
+For the 10 odd numbers, starting from S3=(0,1,1), rolling them:
+
+Numbers are 1,3,5,7,9,11,13,15,17,19.
+
+For each, new state:
+
+Since current state is (0,1,1). Rolling a number:
+
+- 1: adds nothing → (0,1,1) = S3
+
+- 3: already has 3 → S3
+
+- 5: already has 5 → S3
+
+- 7: same as 1 → S3
+
+- 9: same as 3 → S3
+
+- 11: same as 1 → S3
+
+- 13: same as 1 → S3
+
+- 15: same as 3 and 5 → S3
+
+- 17: same as 1 → S3
+
+- 19: same as 1 → S3
+
+Therefore, all 10 numbers lead to S3. Therefore, P_S3 = 10/20 * 1 + 10/20 * Q(S3)
+
+Simplify:
+
+P_S3 = 1/2 + (1/2) Q(S3)
+
+Now, Q_S3: Alice's turn starting from S3=(0,1,1). Alice needs to roll to get a'=1 and b'=1. Since b is already 1, she needs to add a factor of 2. There are 10 even numbers. Rolling any of them will set a'=1, so Alice wins, so Bob's probability is 0. Numbers that don't add 2: 10 odd numbers. Rolling these doesn't add 2, so a remains 0. Therefore, game continues to Bob's turn with state S3.
+
+Additionally, can Alice's roll result in Bob's win? For that, after her roll, the product must be divisible by 10 (a'=1 and c'=1). Since current state is (0,1,1), to get a'=1 and c'=1, she needs to add a factor of 2. Which is exactly the same as Alice's win condition. Therefore, if she rolls a number that adds 2, it results in Alice's win, not Bob's. If she rolls a number that adds something else, it doesn't. Therefore, Q_S3 is:
+
+Q_S3 = (number of Alice's winning rolls / 20)*0 + (remaining rolls / 20)*P(...)
+
+Number of Alice's winning rolls: 10 (even numbers). Remaining rolls: 10 (odd numbers), leading to S3.
+
+Therefore, Q_S3 = 10/20 * 0 + 10/20 * P(S3) = (1/2) P(S3)
+
+Now, moving on to S4: (1,0,0). This state has a factor of 2, but no 3 or 5.
+
+First, P_S4: Bob's turn. He needs to roll to get a'=1 and c'=1. Since a is already 1, he needs to add a factor of 5. Therefore, numbers with factor 5: 5,10,15,20. Let's count: numbers divisible by 5 in 1-20: 5,10,15,20 → 4 numbers. Therefore, 4 numbers.
+
+Additionally, numbers that add both 2 and 5? Well, since a is already 1, adding 5 will make c'=1. Therefore, numbers with factor 5 will do that. Numbers that add 5 and something else don't matter, as long as they add 5.
+
+Numbers leading to Bob's win: 4 numbers.
+
+Numbers leading to Alice's win: Alice needs a'=1 and b'=1. Since a is already 1, she needs to add a factor of 3. Therefore, numbers divisible by 3: 3,6,9,12,15,18. Let's count: numbers divisible by 3 in 1-20: 3,6,9,12,15,18 → 6 numbers. However, some of these numbers may also add 5 (e.g., 15). If Alice rolls such a number, it adds both 3 and 5. However, since it's Bob's turn, only Bob's win condition is checked. If Bob rolls a number that adds 3, it doesn't trigger Alice's win because it's Bob's turn. Alice's win is only checked after her turn. Therefore, numbers that add 3 do not result in Alice's win on Bob's turn. Therefore, numbers leading to Alice's win on Bob's turn: 0. Wait, no. Wait, on Bob's turn, if he rolls a number that adds 3, then after his turn, the product is divisible by 6? Since a=1 and b'=1 (if he added 3). Therefore, the product is divisible by 6, but since it's Bob's turn, Alice's win is not checked. Therefore, the game continues to Alice's turn. Therefore, for P_S4, numbers that add 3 will not result in immediate win for anyone, but will transition to new states.
+
+Therefore, for P_S4:
+
+Numbers leading to Bob's win: 4 numbers (adding 5)
+
+Numbers leading to Alice's win: 0
+
+Other numbers: 20 - 4 = 16 numbers. These are numbers that don't add 5. For these, we need to check if they add 3 or not, but since they don't add 5, and they may or may not add 3.
+
+Therefore, P_S4 = (4/20)*1 + (0/20)*0 + (16/20)*[average Q(...)]
+
+Let me find what these 16 numbers are. Numbers not adding 5: all numbers except 5,10,15,20. There are 16 numbers.
+
+Starting from S4=(1,0,0), rolling these numbers:
+
+For each number, new state is:
+
+a remains 1 (since already 1), b becomes max(0, has_factor_3(k)), c remains 0 (since we are not adding 5).
+
+Therefore, new state is (1, has_factor_3(k), 0). Depending on whether the number adds a factor of 3 or not.
+
+Therefore, numbers that add 3: numbers divisible by 3: 3,6,9,12,15,18. But since we are considering numbers not adding 5, we exclude 15. Therefore, numbers adding 3 are 3,6,9,12,18. Let's count:
+
+Numbers divisible by 3 and not by 5: 3,6,9,12,18 → 5 numbers.
+
+Other numbers: 16 - 5 = 11 numbers. These are numbers not adding 3 or 5.
+
+Therefore, transitions:
+
+For the 16 numbers:
+
+- 5 numbers lead to (1,1,0): which is terminal? Wait, (1,1,0) is a state where a=1 and b=1, which is Alice's win condition. However, since it's Bob's turn, after his roll, the game does not end. It proceeds to Alice's turn. However, since the product is already divisible by 6, Alice will win on her next turn. Therefore, similar to before, if Bob rolls a number that adds 3, making the product divisible by 6, then Alice will win on her next turn, so Bob's probability is 0 for those rolls.
+
+Wait, but in our equations, for P_S4, when Bob rolls a number that adds 3 (leading to (1,1,0)), since it's Bob's turn, we check if Bob's condition is met (divisible by 10). It is not, since c=0. Then we check if Alice's condition is met (divisible by 6). It is, but since it's Bob's turn, the game does not end. Therefore, it proceeds to Alice's turn, and Alice will win. Therefore, for these rolls, Bob's probability is 0.
+
+Therefore, for the 5 numbers that add 3, leading to (1,1,0), which is non-terminal but will result in Alice's win on her turn. Therefore, in P_S4, these 5 numbers contribute 0.
+
+The other 11 numbers (not adding 3 or 5) lead to state (1,0,0) = S4.
+
+Therefore, P_S4 = 4/20 * 1 + [5/20 * 0 + 11/20 * Q(S4) ] ?
+
+Wait, no. Wait, the 16 numbers are split into 5 numbers leading to (1,1,0) and 11 leading to (1,0,0). But in terms of probabilities:
+
+Original P_S4 has 16/20 probability for these other rolls. The 16 numbers are 5 that add 3 and 11 that don't. Therefore:
+
+P_S4 = 4/20 * 1 + (5/20)*0 + (11/20)*Q(S4)
+
+Wait, but 4 + 5 + 11 = 20. Yes. Therefore:
+
+P_S4 = 4/20 * 1 + 5/20 * 0 + 11/20 * Q(S4) = 1/5 + (11/20) Q(S4)
+
+Now, Q_S4: Alice's turn starting from S4=(1,0,0). Alice needs to roll to get a'=1 and b'=1. Since a is already 1, she needs to add a factor of 3. Numbers divisible by 3: 6 numbers (3,6,9,12,15,18). Rolling any of these will set b'=1, so Alice wins, Bob's probability 0. Numbers not adding 3: 14 numbers. Rolling these doesn't add 3, so game continues to Bob's turn with new state.
+
+Additionally, Bob can win if after Alice's roll, the product is divisible by 10. For that, needs a'=1 and c'=1. Since a is already 1, needs to add a factor of 5. Therefore, numbers divisible by 5: 4 numbers (5,10,15,20). If Alice rolls such a number, then after her turn, the product is divisible by 10. However, since it's Alice's turn, Bob's win is not checked. Therefore, the game continues to Bob's turn with new state (1, b', 1), where b' depends on the roll.
+
+Therefore, for Q_S4:
+
+- Alice's winning rolls: numbers adding 3: 6 numbers → Bob's probability 0.
+
+- Bob's winning rolls: numbers adding 5: 4 numbers. However, since it's Alice's turn, Bob's win is not checked. Therefore, these rolls do not result in Bob's win immediately. They transition to new states.
+
+- Other rolls: numbers not adding 3 or 5: 20 - 6 - 4 = 10 numbers? Wait, total numbers:
+
+Numbers adding 3: 6
+
+Numbers adding 5: 4
+
+Overlap: numbers adding both 3 and 5: 15. So one number (15). Therefore, total unique numbers: 6 + 4 - 1 = 9 numbers. Therefore, remaining numbers: 20 - 9 = 11 numbers. Wait, let me check:
+
+Numbers adding 3: 3,6,9,12,15,18 (6 numbers)
+
+Numbers adding 5: 5,10,15,20 (4 numbers)
+
+Overlap: 15. So total unique numbers that add 3 or 5: 6 + 4 - 1 = 9. Therefore, remaining numbers: 20 - 9 = 11 numbers. These are numbers that add neither 3 nor 5.
+
+Therefore, for Q_S4:
+
+Q_S4 = (6/20)*0 + (remaining rolls / 20)*[ ... ]
+
+But need to consider:
+
+For the 4 numbers adding 5 (but not 3, except 15). Let's separate them:
+
+Numbers adding 5:
+
+- 5: adds 5, not 3
+
+- 10: adds 2 and 5 (but a is already 1, so adding 5 → c'=1. Also, 10 is even, but a is already 1. However, since we are in Q_S4, which is Alice's turn starting from (1,0,0). Rolling 10 adds 2 and 5. But since a is already 1, adding 2 doesn't change it. So new state is (1, 0, 1). Similarly for 20: adds 2 and 5 → same as (1,0,1). For 15: adds 3 and 5. So new state is (1,1,1). For 5: adds 5 → (1,0,1). For 10,20: same.
+
+Therefore, for the 4 numbers adding 5:
+
+- 5,10,15,20. Of these, 15 adds 3 and 5, others add only 5 or 5 and 2.
+
+Therefore, when Alice rolls these numbers:
+
+- 5: leads to (1,0,1)
+
+- 10: leads to (1,0,1)
+
+- 15: leads to (1,1,1)
+
+- 20: leads to (1,0,1)
+
+Therefore, for these 4 numbers:
+
+- 3 numbers lead to (1,0,1)
+
+- 1 number leads to (1,1,1)
+
+But (1,1,1) is terminal? Let's check: (1,1,1) has a=1 and b=1, so after Alice's turn, since it's Alice's turn, the product is divisible by 6, so Alice wins. Therefore, if Alice rolls 15, leading to (1,1,1), then Alice wins, so Bob's probability is 0.
+
+Therefore, for the 4 numbers adding 5:
+
+- 3 numbers (5,10,20) lead to (1,0,1), which is non-terminal. Then it's Bob's turn.
+
+- 1 number (15) leads to Alice's win, so Bob's probability 0.
+
+Therefore, in Q_S4:
+
+For the numbers adding 5:
+
+- 3 numbers contribute to P(...)
+
+- 1 number contributes 0.
+
+For the numbers not adding 3 or 5 (11 numbers): they lead to state (1,0,0) = S4, since they don't add 3 or 5.
+
+Therefore, putting it all together:
+
+Q_S4 = (6/20)*0 + [ (3/20)*P(S5?) + (1/20)*0 + (11/20)*P(S4) ) ] ?
+
+Wait, need to define the states. The new state after rolling 5,10,20 from S4=(1,0,0) is (1,0,1). Is this a new state? Let's check our list of non-terminal states. Earlier, we had S0 to S4:
+
+S0: (0,0,0)
+
+S1: (0,0,1)
+
+S2: (0,1,0)
+
+S3: (0,1,1)
+
+S4: (1,0,0)
+
+Ah, (1,0,1) is not in our list of non-terminal states. Wait, earlier we said that non-terminal states are those where neither (a=1 and b=1) nor (a=1 and c=1). However, (1,0,1) has a=1 and c=1, which is Bob's win condition. Therefore, (1,0,1) is a terminal state. Therefore, if Alice rolls a number leading to (1,0,1), since it's after her turn, the product is divisible by 10, but Bob's win is only checked on his turn. Therefore, the game does not end. However, when Bob takes his turn, since the product is already divisible by 10, he will win automatically. Therefore, for Alice rolling to (1,0,1), Bob's probability is 1, because on his next turn, he will win.
+
+Wait, let me clarify:
+
+If Alice rolls a number that leads to (1,0,1), which is a state where a=1 and c=1 (Bob's win condition). Since it's after Alice's turn, the game does not end. It proceeds to Bob's turn. On Bob's turn, since the product is already divisible by 10, no matter what he rolls, it remains divisible by 10. Therefore, Bob wins. Therefore, if Alice's roll leads to (1,0,1), then Bob's probability is 1. Therefore, for those 3 numbers (5,10,20), the contribution is 1.
+
+Similarly, the number 15 leads to (1,1,1), which is a state where a=1 and b=1 (Alice's win condition). Since it's after Alice's turn, Alice wins, so Bob's probability is 0.
+
+Therefore, Q_S4 = (6/20)*0 + [ (3/20)*1 + (1/20)*0 + (11/20)*P(S4) ) ] ?
+
+Wait, let's re-express:
+
+Total numbers:
+
+- Alice's winning rolls (adding 3): 6 numbers → 0
+
+- Bob's "indirect" winning rolls (adding 5 but not 3): 3 numbers (5,10,20) → 1
+
+- Alice's indirect winning roll (adding 5 and 3): 1 number (15) → 0
+
+- Other numbers (not adding 3 or 5): 11 numbers → P(S4)
+
+But how many numbers are in each category?
+
+Total numbers:
+
+- Adding 3: 6 numbers
+
+- Adding 5 but not 3: 3 numbers (5,10,20)
+
+- Adding 5 and 3: 1 number (15)
+
+- Adding neither: 20 - 6 - 3 - 1 = 10 numbers? Wait earlier we said 11 numbers. Wait, let's recount:
+
+Numbers adding 3: 6 numbers (3,6,9,12,15,18)
+
+Numbers adding 5: 4 numbers (5,10,15,20)
+
+Overlap: 1 number (15)
+
+Therefore, numbers adding 5 but not 3: 4 - 1 = 3 numbers (5,10,20)
+
+Numbers adding 3 but not 5: 6 - 1 = 5 numbers (3,6,9,12,18)
+
+Numbers adding both: 1 number (15)
+
+Numbers adding neither: 20 - (5 + 3 + 1) = 11 numbers.
+
+Therefore, in Q_S4:
+
+- Numbers adding 3 (5 numbers): lead to Alice's win (Bob's 0)
+
+Wait no, in Q_S4, numbers adding 3 are 6 numbers (including 15). Wait:
+
+Actually, in Q_S4, we separated:
+
+- Alice's winning rolls: numbers adding 3 (6 numbers): 3,6,9,12,15,18. Of these, 15 adds 3 and 5, others add only 3.
+
+But earlier, we considered that numbers adding 3 lead to Alice's win. However, when Alice rolls 15, which adds 3 and 5, leading to (1,1,1). Since it's after her turn, Alice's win condition is met (divisible by 6), so Alice wins, Bob's probability 0. Therefore, all 6 numbers adding 3 contribute 0.
+
+Then, numbers adding 5 but not 3: 3 numbers (5,10,20) → lead to Bob's win (probability 1)
+
+Numbers adding both 3 and 5: 1 number (15) → already included in the 6 numbers adding 3.
+
+Numbers adding neither: 11 numbers → lead to P(S4)
+
+Therefore, Q_S4 = [6/20 * 0] + [3/20 * 1] + [1/20 * 0] + [11/20 * P(S4)]
+
+Wait, but where does the 1/20 come from? The numbers adding both 3 and 5 are already in the 6/20. Therefore, total:
+
+Q_S4 = (6/20)*0 + (3/20)*1 + (11/20)*P(S4)
+
+Therefore:
+
+Q_S4 = 3/20 + (11/20) P(S4)
+
+Okay, now we have all equations. Let me recap all equations we have so far:
+
+For P and Q:
+
+1. P(S0) = 1/10 + [6 Q(S0) + Q(S1) + 2 Q(S2) + Q(S3) + 5 Q(S4)] / 20
+
+2. P(S1) = 1/2 + (1/2)[ (7/10) Q(S1) + (3/10) Q(S3) ) ]
+
+3. P(S2) = 1/10 + (1/2)[ (4/5) Q(S2) + (1/5) Q(S3) ) ]
+
+4. P(S3) = 1/2 + (1/2) Q(S3)
+
+5. P(S4) = 1/5 + (11/20) Q(S4)
+
+For Q:
+
+6. Q(S0) = 7/20 + (1/2)[ (7/10) P(S0) + (3/10) P(S3) ) ]
+
+Wait, no, earlier for Q_S0? Wait, no, we haven't done Q_S0 yet. Wait, we have equations for Q_S1, Q_S2, Q_S3, Q_S4, but not Q_S0. Let me check.
+
+Earlier, we started with P(S0), P(S1), P(S2), P(S3), P(S4), and Q_S1, Q_S2, Q_S3, Q_S4. We haven't done Q_S0 yet. Let me handle that now.
+
+Q_S0: Alice's turn starting from S0=(0,0,0). Let's do this.
+
+Q_S0: Alice's turn. She needs to roll to get a'=1 and b'=1. For that, she needs to add both 2 and 3. Numbers divisible by 6: 6,12,18 → 3 numbers. If she rolls one of these, Alice wins, Bob's probability 0.
+
+Bob can win if after her roll, the product is divisible by 10. For that, needs a'=1 and c'=1. Therefore, numbers that add both 2 and 5: 10,20 → 2 numbers. If Alice rolls such a number, since it's her turn, Bob's win is not checked. The game continues to Bob's turn. However, since the product is already divisible by 10, Bob will win on his next turn. Therefore, for these rolls, Bob's probability is 1.
+
+Other numbers: 20 - 3 - 2 = 15 numbers. These are numbers that don't add both 2 and 3 or both 2 and 5. For these, we need to compute new states and then P(...).
+
+Therefore, Q_S0 = (3/20)*0 + (2/20)*1 + (15/20)*[average P(...)]
+
+Let me find what these 15 numbers are. Numbers not in {6,12,18} (Alice's win) or {10,20} (Bob's indirect win). So numbers 1-20 except 6,10,12,18,20 → same as before: 1,2,3,4,5,7,8,9,11,13,14,15,16,17,19.
+
+For these 15 numbers, starting from S0=(0,0,0), rolling them leads to new states as we calculated earlier:
+
+- 6 numbers lead to S0
+
+- 1 to S1
+
+- 2 to S2
+
+- 1 to S3
+
+- 5 to S4
+
+Therefore, similar to P(S0)'s case, except now it's Q_S0, so the average P(...) is [6 P(S0) + 1 P(S1) + 2 P(S2) + 1 P(S3) + 5 P(S4)] / 15
+
+Therefore, Q_S0 = 0 + 2/20 * 1 + 15/20 * [ (6 P(S0) + P(S1) + 2 P(S2) + P(S3) + 5 P(S4)) / 15 ]
+
+Simplify:
+
+Q_S0 = 1/10 + (1/20)[6 P(S0) + P(S1) + 2 P(S2) + P(S3) + 5 P(S4)]
+
+Therefore, equation 6 is:
+
+6. Q(S0) = 1/10 + [6 P(S0) + P(S1) + 2 P(S2) + P(S3) + 5 P(S4)] / 20
+
+Now, we have all equations:
+
+Equations 1-5 for P(S0) to P(S4), and equations 6-9 for Q(S1) to Q(S4) (wait, we have equation 6 for Q(S0), and earlier equations for Q(S1), Q(S2), Q(S3), Q(S4)):
+
+Let me list all equations:
+
+1. P0 = 1/10 + [6 Q0 + Q1 + 2 Q2 + Q3 + 5 Q4]/20
+
+2. P1 = 1/2 + (1/2)[ (7/10) Q1 + (3/10) Q3 ]
+
+3. P2 = 1/10 + (1/2)[ (4/5) Q2 + (1/5) Q3 ]
+
+4. P3

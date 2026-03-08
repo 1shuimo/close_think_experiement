@@ -1,0 +1,574 @@
+<think>
+Okay, so I need to find the nearest integer to the difference between two sums: one is the sum from k=1 to 500 of the ceiling of (2k²)/1000, and the other is the sum from k=1 to 500 of (2k²)/1000. Let me write that down to make sure I understand:
+
+$$
+\left( \sum_{k=1}^{500} \left\lceil \frac{2k^2}{1000} \right\rceil \right) - \left( \sum_{k=1}^{500} \frac{2k^2}{1000} \right)
+$$
+
+And then find the nearest integer to this difference. 
+
+First, I recall that the ceiling function, denoted by ⌈x⌉, is the smallest integer greater than or equal to x. So, for each term in the first sum, we're taking the ceiling of (2k²)/1000, and in the second sum, we're just taking the actual value. The difference between these two sums would then be the sum of the differences between the ceiling of each term and the term itself. 
+
+So, if I denote each term as a_k = (2k²)/1000, then the difference we're looking at is:
+
+$$
+\sum_{k=1}^{500} \left( \lceil a_k \rceil - a_k \right)
+$$
+
+This simplifies the problem to calculating the sum of the fractional parts subtracted from 1, if the fractional part is not zero. Wait, actually, the difference between the ceiling and the original value is equal to 1 minus the fractional part of a_k, unless a_k is already an integer, in which case the difference is zero. Let me verify that.
+
+Suppose x is a real number. Then, ⌈x⌉ - x equals 1 - {x} if x is not an integer, where {x} is the fractional part of x. If x is an integer, then ⌈x⌉ - x = 0. So yes, the difference is 1 - {x} when x is not integer, and 0 otherwise. Therefore, the entire sum is equal to the number of terms where a_k is not an integer multiplied by 1 minus the sum of the fractional parts of a_k. Wait, no. Wait, if I have for each term, if a_k is not integer, then the difference is 1 - {a_k}, and if it is integer, the difference is 0. Therefore, the total sum is:
+
+$$
+\sum_{k=1}^{500} \left( \lceil a_k \rceil - a_k \right) = \sum_{k=1}^{500} \left(1 - \{a_k\}\right) - \text{number of integer terms} \times 1 + \text{number of integer terms} \times 0?
+$$
+
+Wait, maybe I need to think again. Let me take an example. Suppose for a term, a_k is integer. Then, ⌈a_k⌉ - a_k = 0. If a_k is not integer, then ⌈a_k⌉ - a_k = 1 - {a_k}. Therefore, the total sum is equal to the number of non-integer terms times 1 minus the sum of fractional parts of all terms. Because for each non-integer term, we have 1 - {a_k}, so sum over all terms (1 - {a_k}) if non-integer, which is equal to (number of non-integer terms) - sum_{non-integer} {a_k}. Alternatively, since for integer terms, {a_k} = 0, so the total sum can be written as:
+
+$$
+\sum_{k=1}^{500} \left( \lceil a_k \rceil - a_k \right) = \sum_{k=1}^{500} \left(1 - \{a_k\}\right) - \sum_{\substack{k=1 \\ a_k \in \mathbb{Z}}}^{500} 1
+$$
+
+Wait, no. Let me think again. If I take the sum over all k of (⌈a_k⌉ - a_k). For each term, if a_k is integer, then it's 0. If not, it's 1 - {a_k}. Therefore, the total sum is equal to the number of non-integer terms times 1 minus the sum of fractional parts over all terms. Because:
+
+Total sum = sum_{non-integer} (1 - {a_k}) + sum_{integer} 0 = (number of non-integer terms) - sum_{non-integer} {a_k} = (number of non-integer terms) - (sum_{all} {a_k} - sum_{integer} {a_k})). But since for integer terms, {a_k} = 0, so sum_{non-integer} {a_k} = sum_{all} {a_k}. Therefore, Total sum = (number of non-integer terms) - sum_{all} {a_k}.
+
+But also, note that sum_{all} a_k is equal to sum_{all} floor(a_k) + sum_{all} {a_k}. Therefore, sum_{all} {a_k} = sum_{all} a_k - sum_{all} floor(a_k). However, I don't know if that helps here.
+
+Alternatively, maybe there's another way. Let me think. Since the difference between the ceiling and the original value is the amount needed to round up to the next integer. For each term, this difference is between 0 (inclusive) and 1 (exclusive). Therefore, the total difference over all terms is between 0 and 500. But we need to calculate it exactly or approximate it to find the nearest integer.
+
+But calculating this for each term from k=1 to 500 seems tedious. Maybe there's a pattern or formula we can use?
+
+First, let's note that a_k = (2k²)/1000 = k² / 500. So, simplifying, a_k = k² / 500. Therefore, the problem reduces to:
+
+Compute sum_{k=1}^{500} [⌈k² / 500⌉ - k² / 500]
+
+Which is equivalent to sum_{k=1}^{500} [⌈k² / 500⌉ - k² / 500]
+
+So, perhaps I can think of this as the sum over k of the fractional part's complement to 1, except when it's an integer. Therefore, if I can compute how many times the fractional part is zero (i.e., when k² is divisible by 500) and then compute the sum of fractional parts of k² / 500 over all k from 1 to 500, then the total difference would be (number of non-integer terms) - sum_{k=1}^{500} {k² / 500}.
+
+But how do I compute the number of integer terms? That is, how many k in 1 to 500 satisfy that k² is divisible by 500?
+
+Well, 500 factors into prime factors as 2² * 5³. Therefore, for k² to be divisible by 2² * 5³, k must be divisible by lcm(2, 5^(ceil(3/2))) = lcm(2, 5^2) = lcm(2, 25) = 50. Wait, let me think again.
+
+If k² is divisible by 2² * 5³, then in the prime factorization of k, the exponent of 2 must be at least 1 (since 2*1*2 = 2²) and the exponent of 5 must be at least 2 (since 2*2 = 4 ≥ 3? Wait, no. Wait, if k has prime factors, then k² will have exponents doubled. So, if k² has at least 2² * 5³, then k must have exponents such that 2*exponent_of_2_in_k ≥ 2 and 2*exponent_of_5_in_k ≥ 3. Therefore:
+
+For prime 2: exponent_of_2_in_k ≥ 1 (since 2*1 = 2 ≥ 2)
+
+For prime 5: exponent_of_5_in_k ≥ 2 (since 2*2 = 4 ≥ 3). Wait, 2*exponent_of_5_in_k ≥ 3 implies exponent_of_5_in_k ≥ 2 (since 2*1.5 = 3, but exponents are integers). Therefore, exponent_of_5_in_k must be at least 2. Therefore, k must be divisible by 2^1 * 5^2 = 2 * 25 = 50. Therefore, k must be multiples of 50. Therefore, the number of such k between 1 and 500 is floor(500 / 50) = 10. Therefore, there are 10 values of k where k² is divisible by 500, hence a_k is integer. Therefore, the number of non-integer terms is 500 - 10 = 490.
+
+Therefore, the total difference is 490 - sum_{k=1}^{500} {k² / 500}
+
+So, if I can compute sum_{k=1}^{500} {k² / 500}, then subtract that from 490, and that will give me the desired difference. Then take the nearest integer to that value.
+
+So, how do I compute sum_{k=1}^{500} {k² / 500}?
+
+First, note that {k² / 500} = (k² / 500) - floor(k² / 500). Therefore, sum_{k=1}^{500} {k² / 500} = sum_{k=1}^{500} (k² / 500) - sum_{k=1}^{500} floor(k² / 500). Therefore, if I can compute both sums, I can find the fractional part sum.
+
+But we already know that sum_{k=1}^{500} (k² / 500) is equal to (1/500) * sum_{k=1}^{500} k². Let me compute that first.
+
+The formula for the sum of squares from 1 to n is n(n + 1)(2n + 1)/6. Therefore, for n = 500:
+
+sum_{k=1}^{500} k² = 500 * 501 * 1001 / 6
+
+Let me compute that:
+
+First, compute 500 / 6 = 250 / 3 ≈ 83.333... but let me keep it exact for now.
+
+So:
+
+sum = 500 * 501 * 1001 / 6
+
+Let me compute step by step:
+
+First, note that 500 / 6 = 250 / 3. Therefore:
+
+sum = (250 / 3) * 501 * 1001
+
+But 501 is divisible by 3: 501 / 3 = 167. Therefore:
+
+sum = 250 * 167 * 1001
+
+Compute 250 * 167 first:
+
+250 * 167 = 250 * (170 - 3) = 250*170 - 250*3 = 42500 - 750 = 41750
+
+Then multiply by 1001:
+
+41750 * 1001 = 41750 * (1000 + 1) = 41750*1000 + 41750*1 = 41,750,000 + 41,750 = 41,791,750
+
+Therefore, sum_{k=1}^{500} k² = 41,791,750
+
+Therefore, sum_{k=1}^{500} (k² / 500) = 41,791,750 / 500 = let's compute that.
+
+Divide numerator and denominator by 50: 41,791,750 / 50 = 835,835; 500 / 50 = 10. Therefore, 835,835 / 10 = 83,583.5
+
+Wait, let me check:
+
+Alternatively, 41,791,750 divided by 500:
+
+Divide by 100 first: 41,791,750 / 100 = 417,917.5
+
+Then divide by 5: 417,917.5 / 5 = 83,583.5. Yes, same result. So sum_{k=1}^{500} (k² / 500) = 83,583.5
+
+Therefore, sum_{k=1}^{500} {k² / 500} = 83,583.5 - sum_{k=1}^{500} floor(k² / 500)
+
+Therefore, if I can compute sum_{k=1}^{500} floor(k² / 500), then I can find the fractional part sum.
+
+But how?
+
+Well, floor(k² / 500) is equal to (k² - {k² / 500}) / 500. Wait, no. Wait, floor(k² / 500) is equal to integer division of k² by 500. So, perhaps there's a way to compute this sum?
+
+Alternatively, note that for each k, floor(k² / 500) is the integer part of k² divided by 500. Therefore, if I can compute this sum, then I can get the fractional part sum. However, computing floor(k² / 500) for each k from 1 to 500 and summing them up seems tedious. Maybe there's a pattern or periodicity?
+
+Alternatively, note that since we already know that there are 10 values of k where k² is divisible by 500 (i.e., multiples of 50), and for those k, floor(k² / 500) = k² / 500. For other k, floor(k² / 500) = (k² - {k² / 500}) / 500. But I don't know if that helps.
+
+Alternatively, perhaps we can use the fact that sum_{k=1}^{n} floor(f(k)) can sometimes be calculated using properties of f(k). But I don't recall a formula for floor(k² / m). Maybe we can find another approach.
+
+Alternatively, note that the original difference we need is 490 - sum_{k=1}^{500} {k² / 500} = 490 - [83,583.5 - sum_{k=1}^{500} floor(k² / 500)] = 490 - 83,583.5 + sum_{k=1}^{500} floor(k² / 500) = sum_{k=1}^{500} floor(k² / 500) - 83,093.5
+
+Wait, 490 - 83,583.5 is -83,093.5. Therefore, the total difference is sum_floor - 83,093.5. Therefore, if I can compute sum_floor, then subtract 83,093.5 and get the difference. Then take the nearest integer.
+
+But how to compute sum_floor?
+
+Alternatively, note that sum_floor = sum_{k=1}^{500} floor(k² / 500). Let me think about how to compute this.
+
+Perhaps we can note that floor(k² / 500) is equal to the number of integers m such that m ≤ k² / 500 < m + 1. But I don't know if that helps.
+
+Alternatively, maybe we can find for each integer m, the number of k such that floor(k² / 500) = m, and then sum m multiplied by the number of such k. But this seems complicated as well.
+
+Alternatively, perhaps we can use the fact that floor(k² / 500) = (k² - (k² mod 500)) / 500. Therefore, sum_floor = [sum_{k=1}^{500} k² - sum_{k=1}^{500} (k² mod 500)] / 500. Therefore, since sum_{k=1}^{500} k² is 41,791,750 as computed earlier, then sum_floor = [41,791,750 - sum_{k=1}^{500} (k² mod 500)] / 500.
+
+Therefore, if I can compute sum_{k=1}^{500} (k² mod 500), then I can compute sum_floor.
+
+So, sum_floor = [41,791,750 - S] / 500, where S = sum_{k=1}^{500} (k² mod 500). Therefore, our difference is:
+
+Difference = sum_floor - 83,093.5 = [ (41,791,750 - S)/500 ] - 83,093.5
+
+Let me compute that:
+
+First, compute 41,791,750 / 500 = 83,583.5 as before. Therefore:
+
+sum_floor = 83,583.5 - S / 500
+
+Therefore, difference = (83,583.5 - S / 500) - 83,093.5 = 83,583.5 - 83,093.5 - S / 500 = 490 - S / 500
+
+Therefore, the difference is 490 - S / 500. Wait, but earlier we had that the difference is 490 - sum_{k=1}^{500} {k² / 500} and sum_{k=1}^{500} {k² / 500} = 83,583.5 - sum_floor, which led us here. Therefore, the difference is 490 - S / 500. Therefore, if I can compute S, then compute 490 - S / 500, and then take the nearest integer.
+
+Therefore, the problem reduces to computing S = sum_{k=1}^{500} (k² mod 500). Let me focus on computing S.
+
+Now, S is the sum of k² mod 500 for k from 1 to 500. Note that k² mod 500 is the remainder when k² is divided by 500. Therefore, for each k, k² mod 500 is in [0, 499]. Also, note that for k from 1 to 500, when k exceeds 500, but here k is up to 500. However, since we are taking mod 500, perhaps there is some periodicity or symmetry?
+
+But since k ranges from 1 to 500, and 500 is the modulus, perhaps we can note that for k and 500 - k, their squares mod 500 might have some relation?
+
+Let me check. Let me take k and 500 - k. Let me compute (500 - k)^2 mod 500.
+
+(500 - k)^2 = 500² - 2*500*k + k². When mod 500, 500² ≡ 0 mod 500, and -2*500*k ≡ 0 mod 500. Therefore, (500 - k)^2 ≡ k² mod 500. Therefore, (500 - k)^2 mod 500 = k² mod 500. Therefore, the terms for k and 500 - k have the same value mod 500. Therefore, the sum S can be considered as pairs (k, 500 - k) for k from 1 to 499, but since 500 is even? Wait, 500 is even, so 500 - k for k from 1 to 499 would pair each k with 500 - k, but when k = 250, 500 - k = 250. Wait, 500 - 250 = 250. Therefore, k=250 is its own pair. Similarly, k=0 would be 0, but our k starts at 1. Therefore, for k from 1 to 499, paired with 500 - k, and then k=500.
+
+But let's check k=500. For k=500, k² mod 500 = 500² mod 500 = 0. Therefore, S = sum_{k=1}^{500} (k² mod 500) = sum_{k=1}^{499} (k² mod 500) + 0. And sum_{k=1}^{499} (k² mod 500) can be considered as 2 * sum_{k=1}^{249} (k² mod 500) + (250² mod 500). Because for k from 1 to 249, paired with 500 - k (which is from 499 down to 251), and then k=250.
+
+Therefore, S = 2 * sum_{k=1}^{249} (k² mod 500) + (250² mod 500) + 0.
+
+Therefore, if I can compute sum_{k=1}^{249} (k² mod 500), multiply by 2, add (250² mod 500), and that would give me S. However, computing sum_{k=1}^{249} (k² mod 500) still seems tedious. Maybe there's another way?
+
+Alternatively, note that sum_{k=1}^{n} (k² mod m) can be calculated as sum_{k=1}^{n} k² - m * sum_{k=1}^{n} floor(k² / m). But in our case, n = 500 and m = 500. Therefore, sum_{k=1}^{500} (k² mod 500) = sum_{k=1}^{500} k² - 500 * sum_{k=1}^{500} floor(k² / 500). But this is circular because we already have:
+
+sum_floor = [sum_{k=1}^{500} k² - S]/500 => S = sum_{k=1}^{500} k² - 500 * sum_floor. Which is the same as above. Therefore, this approach doesn't help.
+
+Alternative idea: Since k² mod 500 cycles every 500 numbers, but since we are only going up to 500, maybe we can find some formula or find that the sum S is equal to something?
+
+Alternatively, perhaps we can compute S by considering residues mod 500. Since k² mod 500 depends only on k mod 500, and since we are summing over k from 1 to 500, which covers all residues mod 500 exactly once (except 0, which is covered by k=500). Therefore, the sum S is equal to the sum_{r=1}^{499} (r² mod 500) + 0. Which is the same as sum_{r=0}^{499} (r² mod 500) - 0² mod 500 + 0. But since r=0 would be 0² mod 500 = 0, so sum_{r=0}^{499} (r² mod 500) is equal to S + 0 - 0 = S. Therefore, S is equal to the sum of squares mod 500 over a full residue system mod 500. Therefore, if I can compute sum_{r=0}^{499} (r² mod 500), then that is equal to S.
+
+But how to compute this sum? Well, note that for each residue r mod 500, r² mod 500 is some value. However, calculating this directly would require knowing all quadratic residues mod 500 and their frequencies, which seems complex. However, perhaps we can use the Chinese Remainder Theorem? Since 500 factors into 4 * 125, which are 2² and 5³, which are coprime. Therefore, by Chinese Remainder Theorem, the residues mod 500 correspond to pairs of residues mod 4 and mod 125. Therefore, perhaps we can compute the sum mod 4 and mod 125, then combine them? Wait, but we need the actual sum, not mod something. Maybe not helpful.
+
+Alternatively, perhaps we can compute the sum over r=0 to 499 of r² mod 500 as equal to sum_{r=0}^{499} r² - 500 * sum_{r=0}^{499} floor(r² / 500). But again, this is circular because sum_{r=0}^{499} r² is known. Let me compute that:
+
+sum_{r=0}^{499} r² = sum_{r=1}^{499} r² + 0 = [sum_{r=1}^{500} r²] - 500² = 41,791,750 - 250,000 = 41,541,750. Therefore, sum_{r=0}^{499} r² = 41,541,750. Therefore, sum_{r=0}^{499} (r² mod 500) = 41,541,750 - 500 * sum_{r=0}^{499} floor(r² / 500). But again, this is circular because sum_floor for r=0 to 499 is sum_{r=0}^{499} floor(r² / 500). However, note that our original S is sum_{k=1}^{500} (k² mod 500) = sum_{r=0}^{499} (r² mod 500) = same as above. Therefore, if I denote T = sum_{r=0}^{499} floor(r² / 500), then S = 41,541,750 - 500*T. But how does this help?
+
+But we also have that for our original problem, sum_floor (from k=1 to 500) is equal to sum_{k=1}^{500} floor(k² / 500) = sum_{r=0}^{499} floor(r² / 500) - floor(0² / 500) + floor(500² / 500). Wait, no. Wait, when k goes from 1 to 500, and r goes from 0 to 499, then sum_{k=1}^{500} floor(k² / 500) = sum_{r=1}^{500} floor(r² / 500) = sum_{r=1}^{499} floor(r² / 500) + floor(500² / 500). But floor(500² / 500) = floor(500 * 500 / 500) = floor(500) = 500. Also, sum_{r=1}^{499} floor(r² / 500) = sum_{r=0}^{499} floor(r² / 500) - floor(0² / 500) = T - 0 = T. Therefore, sum_floor (original) = T + 500. Therefore, from above, S = 41,541,750 - 500*T. Therefore, substituting into our previous equation:
+
+sum_floor = T + 500. Therefore, from S = 41,541,750 - 500*T, we can write T = (41,541,750 - S)/500. Therefore, sum_floor = (41,541,750 - S)/500 + 500. Therefore, going back to our difference:
+
+Difference = 490 - S / 500. But how does this help? It seems we are going in circles.
+
+Wait, let me recap:
+
+We have:
+
+Difference = 490 - S / 500.
+
+But we need to find S. However, we also have that:
+
+sum_floor = T + 500, where T = (41,541,750 - S)/500.
+
+But sum_floor is also equal to [sum_{k=1}^{500} k² - S]/500 = [41,791,750 - S]/500.
+
+Therefore:
+
+[41,791,750 - S]/500 = T + 500 = (41,541,750 - S)/500 + 500.
+
+Multiply both sides by 500:
+
+41,791,750 - S = 41,541,750 - S + 250,000
+
+Simplify RHS: 41,541,750 + 250,000 - S = 41,791,750 - S
+
+Which equals LHS. Therefore, this is an identity. Therefore, no new information. Therefore, this approach is not helpful.
+
+Alternative idea: Maybe compute S numerically? Since S is the sum of k² mod 500 for k from 1 to 500. Since 500 isn't too large, maybe we can find a pattern or formula for k² mod 500?
+
+Alternatively, note that k² mod 500 depends on k mod 500, so if we can compute the sum over one period (which is 500), which is exactly what we need. However, computing this manually is impractical. However, perhaps we can find that the average value of k² mod 500 is something?
+
+Alternatively, note that for each modulus m, the average of k² mod m over k=0 to m-1 is equal to [sum_{k=0}^{m-1} k² - m * sum_{k=0}^{m-1} floor(k² / m)] / m. But again, not helpful.
+
+Alternatively, perhaps approximate S? Wait, but we need an exact value to compute the difference and then take the nearest integer. Therefore, approximation might not be sufficient. However, given that the problem is about finding the nearest integer, maybe some approximation is acceptable? But I need to be careful.
+
+Alternatively, think about the fractional parts {k² / 500}. Since the difference is 490 - sum {k² / 500}, and we know that sum {k² / 500} is equal to sum (k² / 500) - sum floor(k² / 500) = 83,583.5 - sum_floor. Therefore, if I can approximate sum_floor?
+
+But how?
+
+Alternatively, note that floor(k² / 500) ≈ k² / 500 - {k² / 500}. Therefore, sum_floor ≈ sum (k² / 500) - sum {k² / 500} = 83,583.5 - sum {k² / 500}. But again, this is circular.
+
+Alternatively, think of the average value of {k² / 500}. If the fractional parts {k² / 500} are uniformly distributed, then the average would be 0.5, and the total sum would be approximately 500 * 0.5 = 250. However, we know that there are 10 terms where {k² / 500} = 0, so the actual average would be slightly less. But this is a rough estimate. However, with 490 non-integer terms, the sum of fractional parts would be approximately 490 * 0.5 = 245. Therefore, difference ≈ 490 - 245 = 245. But this is a very rough estimate. However, the actual value could be different. But maybe we can get a better estimate?
+
+Alternatively, note that quadratic residues modulo 500 have certain properties. However, I don't recall specifics. Alternatively, note that for modulus m, the sum of quadratic residues can be calculated... but again, not sure.
+
+Alternatively, perhaps split the modulus into 4 and 125, since 500 = 4 * 125, and use the Chinese Remainder Theorem. For each k, k can be represented as (a, b) where a = k mod 4 and b = k mod 125. Then, k² mod 4 and k² mod 125 can be considered separately. However, since we need k² mod 500, which is determined by k mod 4 and k mod 125, but combining them would require knowing the actual value. However, maybe we can compute the sum over all residues mod 4 and mod 125?
+
+This seems complicated, but let me try.
+
+First, note that the number of solutions for each combination of residues mod 4 and mod 125 is 1, since 4 and 125 are coprime. Therefore, for each residue a mod 4 and residue b mod 125, there is exactly one residue r mod 500 such that r ≡ a mod 4 and r ≡ b mod 125. Therefore, the total number of residues is 4 * 125 = 500, which matches.
+
+Therefore, the sum S = sum_{r=0}^{499} (r² mod 500) can be calculated as sum_{a=0}^3 sum_{b=0}^{124} [( (number corresponding to (a,b))² mod 500 )]. However, calculating this seems complex, but maybe we can find the sum over a and b.
+
+Alternatively, note that r² mod 500 = r² - 500 * floor(r² / 500). Therefore, sum_{r=0}^{499} (r² mod 500) = sum_{r=0}^{499} r² - 500 * sum_{r=0}^{499} floor(r² / 500) = 41,541,750 - 500*T, as before. But again, stuck.
+
+Alternative idea: Since we need S, and we know that the difference we need is 490 - S / 500, and we need to find the nearest integer to this difference. Suppose I can approximate S?
+
+If I assume that the fractional parts {k² / 500} are uniformly distributed over [0,1), except for the 10 cases where they are zero, then the average of the fractional parts would be roughly ( (500 - 10) * 0.5 + 10 * 0 ) / 500 = (490 * 0.5) / 500 = 245 / 500 = 0.49. Therefore, the total sum of fractional parts would be approximately 0.49 * 500 = 245. Therefore, difference ≈ 490 - 245 = 245. However, this is a rough estimate. However, the actual value might be different. But maybe close?
+
+But how accurate is this assumption? The fractional parts {k² / m} for quadratic residues are not uniformly distributed in general. For example, for m being a square, there might be more concentration at certain points. However, 500 is not a perfect square. However, without knowing the exact distribution, it's hard to say. However, given that the problem is from a competition or something similar, maybe there is an exact value or a trick to compute S.
+
+Wait, going back to the original problem. The difference we need is equal to the sum_{k=1}^{500} (⌈a_k⌉ - a_k). Which is the same as the sum of the "ceil differences". Each term is between 0 and 1. The total sum is between 0 and 500. However, since there are 10 integer terms, the sum is 500 - 10 - sum of fractional parts? Wait, no. Wait earlier we had:
+
+Total difference = 490 - sum {a_k}
+
+But sum {a_k} = sum_{k=1}^{500} {k² / 500} = 83,583.5 - sum_floor. And we also have that difference = 490 - sum {a_k} = 490 - (83,583.5 - sum_floor) = sum_floor - 83,583.5 + 490 = sum_floor - 83,093.5.
+
+But sum_floor = [sum k² - S]/500 = [41,791,750 - S]/500. Therefore:
+
+Difference = [41,791,750 - S]/500 - 83,093.5
+
+Let me compute 41,791,750 / 500 = 83,583.5 as before. Therefore:
+
+Difference = 83,583.5 - S / 500 - 83,093.5 = 490 - S / 500. Same as before.
+
+Therefore, if I can find S / 500, then subtract it from 490. But how?
+
+Alternatively, maybe I can compute S modulo something? Not sure.
+
+Wait, here's an idea. Since S = sum_{k=1}^{500} (k² mod 500), and we know that k² mod 500 = k² - 500 * floor(k² / 500). Therefore, S = sum_{k=1}^{500} k² - 500 * sum_{k=1}^{500} floor(k² / 500) = 41,791,750 - 500 * sum_floor. Therefore, if I can find sum_floor, then I can find S. But how?
+
+But earlier we had that sum_floor = [sum k² - S]/500. Which is again circular. However, if I can relate sum_floor to something else?
+
+Wait, let's think about the original difference. The difference is equal to sum_{k=1}^{500} (⌈a_k⌉ - a_k). Each term is in [0,1). Therefore, the total difference is in [0, 500). Since there are 500 terms. However, we need to find the nearest integer to this difference. Given that my rough estimate was around 245, but I need to be more precise.
+
+Alternatively, maybe I can compute S numerically for smaller ranges and find a pattern?
+
+For example, compute S for k from 1 to 500. But since I can't compute it manually, maybe find a formula or use properties of quadratic residues.
+
+Alternatively, note that for modulus 500, which is 4 * 125, and since 4 and 125 are coprime, we can use the Chinese Remainder Theorem. Let me think about splitting the modulus.
+
+Let me consider that for each k, k can be uniquely represented as k = 4m + n, where n = 0,1,2,3 and m ranges appropriately. But not sure.
+
+Alternatively, since 500 = 4 * 125, and using the fact that the sum over residues mod 4 and mod 125 can be considered separately. However, since we need k² mod 500, which depends on both mod 4 and mod 125, it's complicated.
+
+Alternatively, note that k² mod 4 can be 0 or 1. Because:
+
+- If k is even, k = 2m: k² = 4m² ≡ 0 mod 4.
+
+- If k is odd, k = 2m + 1: k² = 4m² + 4m + 1 ≡ 1 mod 4.
+
+Similarly, for mod 125, it's more complex. However, if I can compute the sum of k² mod 4 and k² mod 125 separately, but I don't see a direct way to combine them for mod 500.
+
+Alternatively, maybe approximate the sum S by considering that for each k, k² mod 500 is roughly uniformly distributed between 0 and 499, but with some bias. However, without knowing the exact distribution, it's hard to say.
+
+Wait, here's another idea. Since we know that the average value of {k² / 500} is equal to [sum {k² / 500}]/500. And we also know that the average of {k² / 500} is equal to the average of k² / 500 minus the average of floor(k² / 500). But the average of k² / 500 is 83,583.5 / 500 = 167.167. And the average of floor(k² / 500) is sum_floor / 500. Therefore, average {k² / 500} = 167.167 - sum_floor / 500. But also, average {k² / 500} is between 0 and 1. Wait, no, because {k² / 500} is between 0 and 1, so the average is between 0 and 1. But 167.167 is way larger than 1. Wait, no, the average of k² / 500 is 83,583.5 / 500 = 167.167, which is correct, since k² / 500 for k up to 500 is up to 500² / 500 = 500. So the average of floor(k² / 500) would be roughly the average of k² / 500 minus 0.5, if the fractional parts are uniform. So approximately 167.167 - 0.5 = 166.667. Therefore, sum_floor ≈ 166.667 * 500 = 83,333.33. Therefore, difference ≈ 490 - (S / 500). But S = 41,791,750 - 500 * sum_floor ≈ 41,791,750 - 500 * 83,333.33 ≈ 41,791,750 - 41,666,665 = 125,085. Therefore, S / 500 ≈ 125,085 / 500 ≈ 250.17. Therefore, difference ≈ 490 - 250.17 ≈ 239.83. So approximately 240. But this is still an approximation. However, if the actual value is around 240, then the nearest integer is 240. But I need to verify.
+
+But how accurate is this approximation? The assumption that average {k² / 500} ≈ 0.5 is likely not exact. For quadratic residues, the fractional parts might not be uniformly distributed. For example, for modulus m, the distribution of k² mod m is not uniform. For example, for m=4, only 0 and 1 appear as quadratic residues. For m=5, quadratic residues are 0, 1, 4. So, not uniform. Therefore, for m=500, the distribution of k² mod 500 is not uniform, so the average of {k² / 500} is not 0.5. Therefore, my previous approximation is flawed.
+
+Therefore, I need another approach.
+
+Let me think again about the original problem. The difference we need is equal to the sum_{k=1}^{500} (⌈k² / 500⌉ - k² / 500). This is equal to the sum_{k=1}^{500} (1 - {k² / 500}) when {k² / 500} ≠ 0, and 0 otherwise. Therefore, the total difference is equal to the number of non-integer terms (which is 490) minus the sum of {k² / 500} over all k. 
+
+Now, if I can compute the sum of {k² / 500} over all k, then I can find the difference. To compute this sum, note that {k² / 500} = (k² mod 500)/500. Therefore, sum_{k=1}^{500} {k² / 500} = (1/500) * sum_{k=1}^{500} (k² mod 500) = S / 500, where S is as before. Therefore, the difference is 490 - S / 500. 
+
+Therefore, if I can compute S, I can find the difference. To compute S, note that S = sum_{k=1}^{500} (k² mod 500). Let me try to compute this sum by considering the periodicity or by breaking it into parts.
+
+Since k ranges from 1 to 500, and 500 = 4 * 125, perhaps I can compute the sum for k from 1 to 500 by considering the residues mod 4 and mod 125. However, this seems complex. Alternatively, since 500 = 2^2 * 5^3, maybe there's a formula for the sum of quadratic residues mod 500?
+
+Alternatively, note that for each residue r mod 500, the number of solutions to k² ≡ r mod 500 is either 0 or some number, and then multiply by r and sum over r. But this requires knowing the number of solutions for each r, which is non-trivial.
+
+Alternatively, since I know that for modulus 4, quadratic residues are 0 and 1, and for modulus 125, quadratic residues can be calculated, maybe I can use the Chinese Remainder Theorem to combine them.
+
+Let me try this approach. 
+
+First, decompose the modulus 500 into 4 and 125. For each k, k can be uniquely represented as k ≡ a mod 4 and k ≡ b mod 125, where a ∈ {0,1,2,3} and b ∈ {0,1,...,124}. Then, k² mod 4 is determined by a² mod 4, and k² mod 125 is determined by b² mod 125. By Chinese Remainder Theorem, k² mod 500 is uniquely determined by these two residues. Therefore, to compute the sum S, we can compute for each possible combination of a and b, the value of k² mod 500, multiply by the number of k's that correspond to that combination (which is 1, since each (a,b) corresponds to exactly one residue mod 500), and sum them all up. However, since we are summing over all k from 0 to 499 (which corresponds to all (a,b) combinations), this would give us the sum S for k from 0 to 499, which is the same as our S (since k=500 is 0 mod 500, which is included in the 0 to 499 range).
+
+Therefore, S = sum_{a=0}^3 sum_{b=0}^{124} [( (number corresponding to (a,b))² mod 500 )]. But how to compute this?
+
+Let me denote that for each a and b, there is a unique number r in [0, 499] such that r ≡ a mod 4 and r ≡ b mod 125. Then, r² mod 500 is what we need to sum. However, calculating this for all a and b is still complex, but maybe we can find the sum by separating the contributions from mod 4 and mod 125.
+
+Let me consider that r² mod 500 = r² - 500 * floor(r² / 500). But this doesn't help directly. Alternatively, since r ≡ a mod 4 and r ≡ b mod 125, then r² ≡ a² mod 4 and r² ≡ b² mod 125. Therefore, r² mod 500 is the unique number between 0 and 499 that is congruent to a² mod 4 and b² mod 125. Therefore, if I can compute for each a and b, the value of r² mod 500, then sum them up. But how?
+
+Alternatively, note that the sum over all r of r² mod 500 is equal to the sum over all r of r² - 500 * floor(r² / 500). But this is again circular.
+
+Wait, here's an idea. Let me compute the sum over all r of r² mod 500 by using the fact that it is equal to the sum over all r of r² - 500 * floor(r² / 500). But we already know that sum r² from 0 to 499 is 41,541,750. Therefore, if I can compute sum floor(r² / 500) from r=0 to 499, then S = 41,541,750 - 500 * T, where T is that sum. But how to compute T?
+
+But T is sum_{r=0}^{499} floor(r² / 500). Note that floor(r² / 500) is the number of integers m such that m ≤ r² / 500 < m + 1, which is the same as the integer division of r² by 500. But how to compute this sum?
+
+Alternatively, note that for r from 0 to 499, r² ranges from 0 to 499² = 249,001. Therefore, floor(r² / 500) ranges from 0 to floor(249,001 / 500) = floor(498.002) = 498. Therefore, the values of floor(r² / 500) are integers from 0 to 498. 
+
+But how to count how many r's give each value of m = floor(r² / 500)? For each m, the number of r such that m ≤ r² / 500 < m + 1, i.e., r ∈ [sqrt(500m), sqrt(500(m + 1))). Therefore, for each m, the number of integers r in this interval is floor(sqrt(500(m + 1)) - 1) - ceil(sqrt(500m)) + 1. But this seems complex to compute for all m from 0 to 498, but maybe we can find a pattern or approximate it?
+
+However, this seems too time-consuming to do manually. Given that this is a problem likely designed to have a neat solution, perhaps there is a trick I'm missing.
+
+Wait, going back to the original problem: the difference is the sum of (ceil(a_k) - a_k) from k=1 to 500. This is equal to the sum of (1 - {a_k}) for non-integer a_k. Since there are 490 non-integer terms, and the sum of {a_k} over all k is S / 500, then the difference is 490 - S / 500. If I can find S, I can find the difference.
+
+But S is the sum of k² mod 500 for k from 1 to 500. Note that k² mod 500 is the same as (k mod 500)² mod 500. Therefore, since k ranges from 1 to 500, it's the same as sum_{r=1}^{500} r² mod 500, which is the same as sum_{r=0}^{499} r² mod 500 (since r=0 corresponds to k=500). Therefore, S is equal to the sum of r² mod 500 for r from 0 to 499.
+
+Now, note that for r from 0 to 499, r² mod 500 is the same as (500 - r)² mod 500, as we saw earlier. Therefore, the sum from r=0 to 499 of r² mod 500 is equal to 2 * sum_{r=1}^{249} r² mod 500 + 250² mod 500. Because for r from 1 to 249, each pair r and 500 - r contribute the same value, and r=250 is its own pair.
+
+Let me compute this:
+
+S = 2 * sum_{r=1}^{249} (r² mod 500) + (250² mod 500)
+
+Now, let's compute 250² mod 500:
+
+250² = 62,500. 62,500 divided by 500 is 125, so 62,500 mod 500 = 0. Therefore, the last term is 0. Therefore, S = 2 * sum_{r=1}^{249} (r² mod 500).
+
+Now, the problem reduces to computing sum_{r=1}^{249} (r² mod 500). Let's focus on this sum.
+
+Let me note that for r from 1 to 249, r² mod 500 is just r², since r² < 500? No, wait, 249² = 62,001, which is much larger than 500. So, no, r² mod 500 is r² - 500 * floor(r² / 500). Therefore, it's not simply r². Therefore, this approach doesn't simplify it.
+
+But perhaps I can split the range from 1 to 249 into ranges where r² < 500 and r² ≥ 500.
+
+For r such that r² < 500, r² mod 500 is just r². For r such that r² ≥ 500, it's r² - 500 * m, where m is floor(r² / 500).
+
+Let me find the smallest r where r² ≥ 500. sqrt(500) ≈ 22.36. Therefore, for r ≥ 23, r² ≥ 529 > 500. Therefore, for r from 1 to 22, r² < 500, so r² mod 500 = r². For r from 23 to 249, r² mod 500 = r² - 500 * m, where m = floor(r² / 500).
+
+Therefore, sum_{r=1}^{249} (r² mod 500) = sum_{r=1}^{22} r² + sum_{r=23}^{249} (r² - 500 * floor(r² / 500)).
+
+Let me compute the first part: sum_{r=1}^{22} r². The formula for sum_{r=1}^n r² is n(n + 1)(2n + 1)/6. For n=22:
+
+22 * 23 * 45 / 6 = let's compute:
+
+22 * 23 = 506
+
+506 * 45 = let's compute 506 * 45: 500*45 + 6*45 = 22,500 + 270 = 22,770
+
+Divide by 6: 22,770 / 6 = 3,795.
+
+So sum_{r=1}^{22} r² = 3,795.
+
+Now, the second part is sum_{r=23}^{249} (r² - 500 * floor(r² / 500)) = sum_{r=23}^{249} r² - 500 * sum_{r=23}^{249} floor(r² / 500).
+
+Let me compute sum_{r=23}^{249} r². This is equal to sum_{r=1}^{249} r² - sum_{r=1}^{22} r² = [249*250*499 / 6] - 3,795.
+
+Let me compute sum_{r=1}^{249} r²:
+
+Using the formula n(n + 1)(2n + 1)/6, with n=249:
+
+249 * 250 * 499 / 6.
+
+Let me compute this step by step.
+
+First, note that 249 = 250 - 1, 499 = 500 - 1.
+
+Let me compute 249 * 250 * 499.
+
+First, compute 249 * 250 = 249 * 250. 250 * 249 = 250*(250 - 1) = 250² - 250 = 62,500 - 250 = 62,250.
+
+Then multiply by 499: 62,250 * 499. This is a large number. Let me see if I can find a better way.
+
+Alternatively, note that sum_{r=1}^{249} r² = [249*250*499]/6. Let me compute this value.
+
+First, divide 249 by 3: 249 / 3 = 83. Then, divide 250 by 2: 250 / 2 = 125. So, the expression becomes (83 * 125 * 499). Let me compute this:
+
+First, 83 * 125: 83 * 100 = 8,300; 83 * 25 = 2,075; total = 8,300 + 2,075 = 10,375.
+
+Then, 10,375 * 499. Let me compute this as 10,375 * (500 - 1) = 10,375 * 500 - 10,375 = 5,187,500 - 10,375 = 5,177,125.
+
+Therefore, sum_{r=1}^{249} r² = 5,177,125.
+
+Therefore, sum_{r=23}^{249} r² = 5,177,125 - 3,795 = 5,173,330.
+
+Therefore, the second part is 5,173,330 - 500 * sum_{r=23}^{249} floor(r² / 500).
+
+Therefore, the total sum_{r=1}^{249} (r² mod 500) = 3,795 + 5,173,330 - 500 * sum_{r=23}^{249} floor(r² / 500) = 5,177,125 - 500 * sum_{r=23}^{249} floor(r² / 500).
+
+But this is equal to S / 2, since S = 2 * sum_{r=1}^{249} (r² mod 500) = 2 * [5,177,125 - 500 * sum_{r=23}^{249} floor(r² / 500)].
+
+But this seems to lead us back to needing to compute sum_{r=23}^{249} floor(r² / 500), which is still difficult.
+
+However, let's recall that our original goal is to find S, which is 2 * sum_{r=1}^{249} (r² mod 500). And we have:
+
+sum_{r=1}^{249} (r² mod 500) = 5,177,125 - 500 * sum_{r=23}^{249} floor(r² / 500).
+
+But how to find sum_{r=23}^{249} floor(r² / 500)? Let's denote this as T2. Then, S = 2 * [5,177,125 - 500 * T2] = 10,354,250 - 1000 * T2.
+
+But how to find T2?
+
+Let me note that floor(r² / 500) is the integer part of r² / 500. For r from 23 to 249, this is equal to floor((r²)/500). Let me note that for each r, floor(r² / 500) = m if 500m ≤ r² < 500(m + 1). Therefore, for each m, the number of r in [23, 249] such that floor(r² / 500) = m is equal to the number of r in that interval satisfying sqrt(500m) ≤ r < sqrt(500(m + 1)).
+
+Therefore, T2 = sum_{m=1}^{M} m * N_m, where N_m is the number of r in [23, 249] such that floor(r² / 500) = m, and M is the maximum value of floor(r² / 500) for r in [23, 249].
+
+Let me find M. For r=249, r² = 62,001. 62,001 / 500 = 124.002, so floor(r² / 500) = 124. Therefore, M = 124.
+
+Therefore, T2 = sum_{m=1}^{124} m * N_m.
+
+To compute this, I need to find for each m from 1 to 124, the number of integers r in [23, 249] such that sqrt(500m) ≤ r < sqrt(500(m + 1)).
+
+This is still a lot of work, but perhaps we can find a pattern or find a way to compute this sum.
+
+Let me note that for each m, the number of r is approximately sqrt(500(m + 1)) - sqrt(500m). But since r must be integer, it's the floor of sqrt(500(m + 1)) - 1) - ceil(sqrt(500m)) + 1.
+
+However, doing this for m from 1 to 124 is impractical manually. But perhaps we can find a relationship or approximate it?
+
+Alternatively, note that the sum T2 is equal to sum_{r=23}^{249} floor(r² / 500). Let me note that this is equal to sum_{r=23}^{249} floor(r² / 500) = sum_{r=1}^{249} floor(r² / 500) - sum_{r=1}^{22} floor(r² / 500). But for r from 1 to 22, r² < 500, so floor(r² / 500) = 0. Therefore, T2 = sum_{r=1}^{249} floor(r² / 500) - 0 = sum_{r=1}^{249} floor(r² / 500).
+
+But earlier, we had that sum_{r=0}^{499} floor(r² / 500) = T, and sum_floor (original) = T + 500. And we also had that S = 41,541,750 - 500*T. But this is again circular.
+
+Wait, let me recall that sum_{r=0}^{499} floor(r² / 500) = T, and S = 41,541,750 - 500*T. Also, S = 2 * sum_{r=1}^{249} (r² mod 500) = 2 * [5,177,125 - 500*T2] = 10,354,250 - 1000*T2. But T2 = sum_{r=1}^{249} floor(r² / 500). And sum_{r=0}^{499} floor(r² / 500) = T = sum_{r=0}^{249} floor(r² / 500) + sum_{r=250}^{499} floor(r² / 500). But due to symmetry, floor(r² / 500) for r and 500 - r might have some relation?
+
+Let me check for r and 500 - r. Let r be in [1, 249], and let s = 500 - r, which is in [251, 499]. Then, s² = (500 - r)² = 500² - 1000r + r². Therefore, floor(s² / 500) = floor(500 - 2r + r² / 500) = 500 - 2r + floor(r² / 500). Because 500 - 2r is integer, and r² / 500 is the fractional part. Therefore, floor(s² / 500) = 500 - 2r + floor(r² / 500).
+
+Therefore, for each r in [1, 249], floor(s² / 500) = 500 - 2r + floor(r² / 500), where s = 500 - r.
+
+Therefore, sum_{r=251}^{499} floor(r² / 500) = sum_{r=1}^{249} [500 - 2r + floor(r² / 500)].
+
+Therefore, T = sum_{r=0}^{499} floor(r² / 500) = floor(0² / 500) + sum_{r=1}^{249} floor(r² / 500) + sum_{r=250}^{499} floor(r² / 500) = 0 + T2 + [sum_{r=1}^{249} (500 - 2r + floor(r² / 500)) + floor(250² / 500)].
+
+But 250² = 62,500, and 62,500 / 500 = 125, so floor(250² / 500) = 125.
+
+Therefore, T = T2 + [sum_{r=1}^{249} (500 - 2r + floor(r² / 500)) + 125] = T2 + [sum_{r=1}^{249} 500 - 2r + sum_{r=1}^{249} floor(r² / 500) + 125] = T2 + [500*249 - 2*sum_{r=1}^{249} r + T2 + 125] = 2*T2 + 500*249 - 2*(249*250)/2 + 125.
+
+Let me compute this:
+
+First, 500*249 = 124,500.
+
+Second, 2*sum_{r=1}^{249} r = 2*(249*250)/2 = 249*250 = 62,250.
+
+Third, the constant term is 125.
+
+Therefore, T = 2*T2 + 124,500 - 62,250 + 125 = 2*T2 + 62,250 + 125 = 2*T2 + 62,375.
+
+But we also have from earlier that S = 41,541,750 - 500*T. And S = 10,354,250 - 1000*T2. Therefore:
+
+10,354,250 - 1000*T2 = 41,541,750 - 500*T
+
+But T = 2*T2 + 62,375. Substitute this into the equation:
+
+10,354,250 - 1000*T2 = 41,541,750 - 500*(2*T2 + 62,375)
+
+Simplify the right-hand side:
+
+41,541,750 - 1000*T2 - 500*62,375
+
+Wait, no:
+
+500*(2*T2 + 62,375) = 1000*T2 + 500*62,375
+
+Therefore, the equation becomes:
+
+10,354,250 - 1000*T2 = 41,541,750 - 1000*T2 - 500*62,375
+
+Add 1000*T2 to both sides:
+
+10,354,250 = 41,541,750 - 500*62,375
+
+Compute the right-hand side:
+
+First, compute 500*62,375 = 31,187,500
+
+Then, 41,541,750 - 31,187,500 = 10,354,250
+
+Which matches the left-hand side. Therefore, this equation is an identity, and provides no new information. Therefore, this approach is not helping.
+
+At this point, I realize that I'm going in circles and need to find another way. Given the time I've spent and the lack of progress, perhaps I should consider that the difference is approximately 245, as my initial rough estimate, and given that the problem asks for the nearest integer, maybe the exact value is 250 or something close. But how to verify?
+
+Wait, let's recall that the difference is 490 - S / 500. And S = sum_{k=1}^{500} (k² mod 500). Let me try to compute S for a smaller range and see if I can find a pattern or formula.
+
+For example, let's take a small n instead of 500, say n=2, and see what S would be, then see if there's a pattern.
+
+But this might not be helpful. Alternatively, let me think about the average value of k² mod 500. If I can estimate it, then multiply by 500 to get S.
+
+But earlier, I tried assuming uniform distribution, but it's not valid. However, for large m, the distribution of k² mod m might be approximately uniform, but 500 is not very large, and k goes up to 500.
+
+Alternatively, note that the average of k² mod 500 over k=1 to 500 is equal to (S) / 500. And we know that the average of k² / 500 is 83,583.5 / 500 = 167.167. The average of floor(k² / 500) is (sum_floor) / 500, and the average of {k² / 500} is 167.167 - (sum_floor / 500). But since {k² / 500} is between 0 and 1, the average must be between 0 and 1, so 167.167 - (sum_floor / 500) is between 0 and 1, which implies that sum_floor / 500 is between 166.167 and 167.167, so sum_floor is between 166.167 * 500 = 83,083.5 and 167.167 * 500 = 83,583.5. But we know that sum_floor = [41,791,750 - S]/500. Therefore, 83,083.5 ≤ [41,791,750 - S]/500 ≤ 83,583.5. Multiply all parts by 500:
+
+41,541,750 ≤ 41,791,750 - S ≤ 41,791,750
+
+Wait, this doesn't make sense. Wait, let me re-express:
+
+If 166.167 ≤ sum_floor / 500 ≤ 167.167, then multiplying by 500:
+
+83,083.5 ≤ sum_floor ≤ 83,583.5
+
+But sum_floor = [41,791,750 - S]/500, so:
+
+83,083.5 ≤ [41,791,750 - S]/500 ≤ 83,583.5
+
+Multiply all parts by 500:
+
+41,541,750 ≤ 41,791,750 - S ≤ 41,791,750
+
+Subtract 41,791,750:
+
+-250,000 ≤ -S ≤ 0
+
+Multiply by -1 (reverse inequalities):
+
+0 ≤ S ≤ 250,000
+
+Which is true, since S is the sum of 500 terms each between 0 and 499, so maximum S is 500 * 499 = 249,500, which is less than 250,000. So this gives us that S is between 0 and 249,500. Therefore, the difference is 490 - S / 500, and S / 500 is between 0 and 249,500 / 500 = 499. Therefore, the difference is between 490 - 499 = -9 and 490 - 0 = 490. But we know it's positive, since each term in the difference is non-negative. Wait, no, the difference is the sum of non-negative terms, so it must be between 0 and 500. But our earlier bounds were too broad.
+
+But this doesn't help much. Given that I'm stuck, perhaps I should look for another approach.
+
+Let me recall that the original difference is the sum of (ceil(a_k) - a_k) for k=1 to 500. This is equal to the number of terms where a_k is not integer minus the sum of {a_k} for non-integer terms. Since there are 490 non-integer terms, and each {a_k} is in (0,1), the sum of {a_k} is between 0 and 490. Therefore, the difference is between 0 and 490. But we need a better estimate.
+
+Let me consider that for each k, the value of {k² / 500} is equal to (k² mod 500)/500. Therefore, the sum of {k² / 500} is equal to (1/500) * S, and the difference is 490 - S/500. If I can find S, I can find the difference.
+
+Let me try to compute S for a smaller range, say k from 1 to 10, and see if I can find a pattern.
+
+For example, let's take n=10, m=10, and compute S = sum_{k=1}^{10} (k² mod 10).
+
+k: 1-10, k²: 1, 4, 9, 16, 25, 36, 49, 64, 81, 100. Mod 10: 1, 4, 9, 6, 5, 6, 9, 4, 1, 0. Sum: 1+4+9+6+5+6+9+4+1+0 = 45. Now, sum k² from 1-10 is 385. Then, S = 45, and 385 - 10 * sum_floor = 45. Therefore, sum_floor = (385 - 45)/10 = 340/10 = 34. Let's check: floor(1/10) = 0, floor(4/10) = 0, floor(9/10) = 0, floor(16/10) = 1, floor(25/10) = 2, floor(36/10) = 3, floor(49/10) = 4, floor(64/10) = 6, floor(81/10) = 8, floor(100/10) = 10. Sum: 0+0+0+1+2+3+4+6+8+10 = 34. Correct. So this works.
+
+But how does this help for m=500? It shows the method is correct, but doesn't help with the calculation.
+
+Given that I'm stuck, perhaps I should consider that the difference is approximately 250, and given that the problem is likely designed to have a nice answer, maybe it's 250. But how to verify?
+
+Wait, let's recall that the average value of {k² / 500} is (S / 500) / 500 = S / 250,000. Wait, no, the average of {k² / 500} is (S / 500) / 500 = S / 250,000? No, the average is (S / 500) / 500? No, the average of {k² / 500} is (sum {k² / 500}) / 500 = (S / 500) / 500? No, no. Wait, sum {k² / 500} is S / 500, and there are 500 terms, so the average is (S / 500) / 500 = S / 250,000. But this is not helpful.
+
+Alternatively, let me think about the total sum of {k² / 500} over all k. Since each {k² / 500} is between 0 and 1, and there are 500 terms, the total sum is between 0 and 500. But we know that there are 10 terms where it is 0, and the rest are between 0 and 1. So the total sum is between 0 and 490. Therefore, the difference is between 0 and 490. But this is too broad.
+
+Given that I'm stuck, and considering the time I've spent, perhaps I should make an educated guess based on the earlier approximation of 240, and consider that the exact value might be 250. But how?
+
+Wait, let me recall that the sum of {k² / 500} is equal to the sum of k² / 500 - floor(k² / 500). And we know that sum k² / 500 is 83,583.5, and sum floor(k² / 500) is sum_floor. Therefore, sum {k² / 500} = 83,583.5 - sum_floor. And the difference we need is 490 - (83,583.5 - sum_floor) = sum_floor - 83,093.5.
+
+But sum_floor = [sum k² - S]/500 = [41,791,750 - S]/500. Therefore, the difference is [41,791,750 - S]/500 - 83,093.5 = 83,583.5 - S/500 - 83,093.5 = 490 - S/500, as before.
+
+If I assume that S is approximately 250,000, then S/500 = 500, and the difference would be 490 - 500 = -10, which is impossible since the difference is non-negative. Therefore, S must be less than 490 * 500 = 245,000. Wait, no, because S is the sum of k² mod 500, which is between 0 and 500*499 = 249,500. If S is, say, 245,000, then S/500 = 490, and the difference is 490 - 490 = 0, which is possible only if all {k² / 500} = 1, which is not possible. Therefore, this suggests that my earlier assumption is wrong.
+
+Wait, let me think again. If the difference is 490 - S/500, and the difference is the sum of (1 - {a_k}) for non-integer terms, which is at least 0 and at most 490. Therefore, S/500 is between 0 and 490, so S is between 0 and 245,000. Given that S is the sum of k² mod 500, which is between 0 and 249,500, this is consistent.
+
+If I assume that the average value of {k² / 500} is 0.5, then S/500 = 500 * 0.5 = 250, and the difference would be 490 - 250 = 240. This is the same as my earlier estimate. Given that this is a common approximation, and given that the problem is likely designed to have a clean answer, I might guess that the nearest integer is 250 or 240. But how to decide?
+
+Alternatively, let me consider that for each k, the fractional part {k² / 500} is (k² mod 500)/500. The sum of these is S/500. If I can find S, I can find the difference. Let me try to compute S for a few values of k and see if I can find a pattern or estimate.
+
+For example, let's take k from 1 to 22, where k² < 500, so k² mod 500 = k². The sum is 3,795 as calculated earlier. For k from 23 to 249, the sum is 5,173,330 - 500*T2, where T2 is sum_{r=23}^{249} floor(r² / 500). If I can estimate T2, I can estimate S.
+
+Let me estimate T2. For r from 23 to 249, floor(r² / 500) is approximately r² / 500 - 0.5, assuming the fractional part is on average 0.5. Therefore, T2 ≈ sum_{r=23}^{249} (r² / 500 - 0.5) = (1/500) * sum_{r=23}^{249} r² - 0.5 * (249 - 22).
+
+We already calculated sum_{r=23}^{249} r² = 5,173,330. The number of terms is 249 - 22 = 227. Therefore, T2 ≈ (5,173,330 / 500) - 0.5 * 227 = 10,346.66 - 113.5 = 10,233

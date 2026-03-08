@@ -1,0 +1,733 @@
+<think>
+Okay, so I need to figure out how many three-digit numbers are divisible by 11 and have at least one digit that's a 2. Let me start by recalling some math concepts here. 
+
+First, three-digit numbers range from 100 to 999. So, I need to consider numbers in that range. The problem is asking for numbers divisible by 11, so maybe I can first find all three-digit numbers divisible by 11, and then among those, count how many have at least one digit equal to 2. Alternatively, maybe there's a smarter way to combine both conditions? Hmm. Let me think.
+
+Divisibility by 11: I remember that a number is divisible by 11 if the difference between the sum of the digits in the odd positions and the sum of the digits in the even positions is a multiple of 11 (including zero). For a three-digit number, let's denote it as ABC, where A is the hundreds digit, B is the tens digit, and C is the ones digit. Then the rule would be (A + C) - B must be divisible by 11. Since A, B, C are digits (0-9), the maximum value of (A + C) - B would be (9 + 9) - 0 = 18, and the minimum would be (0 + 0) - 9 = -9. The only multiples of 11 in that range are -11, 0, 11. But since (A + C) - B can't be less than -9 or more than 18, the possible values are -11, 0, 11. However, -11 is not possible because (A + C) - B can't be less than -9. Similarly, 11 is possible? Let's check. If (A + C) - B = 11, then A + C = B + 11. Since A is at least 1 (because it's a three-digit number), and B and C are digits (0-9). Let's see, the maximum A + C can be is 9 + 9 = 18. So B + 11 ≤ 18 => B ≤ 7. Similarly, if (A + C) - B = 0, then A + C = B. And if (A + C) - B = -11, which would mean A + C = B - 11. But since A is at least 1, B - 11 ≥ 1 => B ≥ 12, but B is a single digit (0-9), so this is impossible. Therefore, only two cases: A + C = B and A + C = B + 11.
+
+Therefore, three-digit numbers divisible by 11 must satisfy either A + C = B or A + C = B + 11. 
+
+So maybe I can generate all three-digit numbers divisible by 11 by considering these two cases. Then, from those numbers, count how many have at least one digit equal to 2. Alternatively, maybe I can find the total number of three-digit numbers divisible by 11, and then subtract those that don't have any 2s? That might be an inclusion-exclusion approach. Let me think which is easier.
+
+First, let me find how many three-digit numbers are divisible by 11. The smallest three-digit number divisible by 11 is 110 (since 11*10=110), and the largest is 990 (since 11*90=990). Wait, 11*90 is 990, but 11*90 + 11 = 11*91 = 1001, which is four digits. So the three-digit numbers divisible by 11 are from 11*10 up to 11*90. Therefore, the total number is 90 - 10 + 1 = 81 numbers. Wait, 90 - 10 is 80, plus 1 is 81. So there are 81 three-digit numbers divisible by 11. 
+
+Alternatively, using the formula for the number of terms in an arithmetic sequence: The first term a1 = 110, last term an = 990, common difference d = 11. The number of terms is ((an - a1)/d) + 1 = ((990 - 110)/11) + 1 = (880 / 11) + 1 = 80 + 1 = 81. Yep, same result. 
+
+So there are 81 three-digit numbers divisible by 11. Now, if I can find how many of these 81 numbers have at least one digit equal to 2, that would be the answer. Alternatively, maybe it's easier to calculate the total number of three-digit numbers divisible by 11 without any 2s, and subtract that from 81? That might be a better approach because sometimes counting "at least one" can be tricky, but counting the complement (none) is easier. 
+
+So let me try that approach. Let me first find how many three-digit numbers divisible by 11 have no 2s in any digit, then subtract that from 81 to get the numbers with at least one 2. 
+
+So, how to compute numbers divisible by 11 with no 2s? Let's think. Since we already have the two cases for divisibility by 11: A + C = B or A + C = B + 11. Let me handle each case separately, and count how many numbers in each case have no 2s. 
+
+First, let me recall that A is from 1-9 (since it's the hundreds digit), B and C are from 0-9. But with the restriction that none of A, B, C is 2. So A ∈ {1,3,4,5,6,7,8,9}, B ∈ {0,1,3,4,5,6,7,8,9}, same for C. 
+
+Case 1: A + C = B. 
+
+Case 2: A + C = B + 11. 
+
+Let me handle Case 1 first: A + C = B. Since A is from 1-9 (excluding 2), C is from 0-9 (excluding 2), and B is from 0-9 (excluding 2). Also, since B is a single digit, A + C must be between 0 and 9. However, since A is at least 1, A + C is at least 1. Therefore, B must be between 1 and 9 (but not 2). 
+
+So for each valid A and C (without 2s) such that their sum is between 1 and 9 (and also B is not 2), we can have a valid number. 
+
+But since B = A + C, and B cannot be 2, we need to ensure that A + C ≠ 2. 
+
+Wait, but since A is at least 1, and C is at least 0 (but not 2). Let me think. Let me first count all numbers in Case 1 (A + C = B) with digits not containing 2, then subtract those where B is 2? Or maybe directly count them?
+
+Alternatively, since B is determined by A + C, and B cannot be 2, so we need to count the number of (A, C) pairs where A ∈ {1,3,4,5,6,7,8,9}, C ∈ {0,1,3,4,5,6,7,8,9}, such that A + C is in {1,3,4,5,6,7,8,9} (since B can't be 2). 
+
+Wait, but A + C can be from 1 + 0 = 1 up to 9 + 9 = 18. But since in Case 1, A + C = B, which is a single digit (0-9). But since A ≥ 1, A + C ≥ 1. Therefore, A + C ∈ {1, ..., 9}. However, B cannot be 2, so A + C cannot be 2. Therefore, we need to count the number of (A, C) pairs where A ∈ {1,3,4,5,6,7,8,9}, C ∈ {0,1,3,4,5,6,7,8,9}, A + C ∈ {1,3,4,5,6,7,8,9}.
+
+Alternatively, maybe it's easier to first count all (A, C) pairs where A and C don't have 2s, and A + C is between 1 and 9 inclusive, and then subtract those pairs where A + C = 2. 
+
+But maybe even better: Let me compute for each possible value of s = A + C (from 1 to 9, excluding 2), the number of (A, C) pairs with A and C not containing 2, and A + C = s. Then sum over s.
+
+So s can be 1, 3, 4, 5, 6, 7, 8, 9. Let me compute for each s:
+
+First, s=1: A + C = 1. Since A ≥ 1, possible only if A=1 and C=0. Check if A and C are allowed. A=1 is allowed (since not 2), C=0 is allowed. So 1 way.
+
+s=3: A + C = 3. A can be from 1,3,... (excluding 2). Let's list all possible (A, C):
+
+Possible A values: 1, 3, 4, 5, 6, 7, 8, 9. For each A, C = 3 - A. But C must be between 0-9, not 2, and non-negative.
+
+So:
+
+A=1: C=2. But C=2 is not allowed. So invalid.
+
+A=3: C=0. Valid.
+
+A=4: C= -1. Invalid.
+
+So only A=3, C=0. So 1 way? Wait, but maybe other A's?
+
+Wait, A can't be more than 3 because A + C = 3. If A=1, C=2 (invalid). A=3, C=0. A=2 is invalid. So only 1 way. So s=3: 1 way.
+
+Wait, but maybe I missed something? For example, if A=1 and C=2 is invalid. If A=0, but A can't be 0. So yes, only 1 way.
+
+s=4: A + C = 4. Let's see:
+
+A can be 1, 3, 4, ..., up to 4 (since A + C = 4). Let's check:
+
+A=1: C=3. Valid (C=3 is allowed). 
+
+A=3: C=1. Valid.
+
+A=4: C=0. Valid.
+
+A=2: invalid. 
+
+A=5: C= -1: invalid. 
+
+So three possibilities: (1,3), (3,1), (4,0). All valid? Yes. So 3 ways.
+
+s=4: 3 ways.
+
+s=5: A + C = 5.
+
+Possible A's:
+
+A=1: C=4. Valid.
+
+A=3: C=2. Invalid (C=2).
+
+A=4: C=1. Valid.
+
+A=5: C=0. Valid.
+
+A=6: C=-1. Invalid.
+
+So A=1, 4, 5. So three possibilities? Wait:
+
+Wait A=1, C=4; A=3, C=2 (invalid); A=4, C=1; A=5, C=0. So three valid. So 3 ways? Wait, but what about A=2? Not allowed. So yes, 3 ways.
+
+Wait, but hold on, maybe there are more? For example, A=3 and C=2 is invalid. What about A= something else?
+
+No, since A can't be 2. So yes, 3 ways.
+
+s=5: 3 ways.
+
+s=6: A + C = 6.
+
+Possible A's:
+
+A=1: C=5. Valid.
+
+A=3: C=3. Valid.
+
+A=4: C=2. Invalid.
+
+A=5: C=1. Valid.
+
+A=6: C=0. Valid.
+
+A=7: C=-1. Invalid.
+
+So A=1, 3, 5, 6. So four possibilities. Let's check:
+
+(1,5), (3,3), (5,1), (6,0). All valid? Yes. So 4 ways.
+
+s=6: 4 ways.
+
+s=7: A + C = 7.
+
+A=1: C=6. Valid.
+
+A=3: C=4. Valid.
+
+A=4: C=3. Valid.
+
+A=5: C=2. Invalid.
+
+A=6: C=1. Valid.
+
+A=7: C=0. Valid.
+
+A=8: C=-1. Invalid.
+
+So A=1,3,4,6,7. So five possibilities:
+
+(1,6), (3,4), (4,3), (6,1), (7,0). All valid. 5 ways.
+
+s=7: 5 ways.
+
+s=8: A + C = 8.
+
+A=1: C=7. Valid.
+
+A=3: C=5. Valid.
+
+A=4: C=4. Valid.
+
+A=5: C=3. Valid.
+
+A=6: C=2. Invalid.
+
+A=7: C=1. Valid.
+
+A=8: C=0. Valid.
+
+A=9: C=-1. Invalid.
+
+So A=1,3,4,5,7,8. Let's check:
+
+(1,7), (3,5), (4,4), (5,3), (7,1), (8,0). All valid. 6 ways.
+
+s=8: 6 ways.
+
+s=9: A + C = 9.
+
+A=1: C=8. Valid.
+
+A=3: C=6. Valid.
+
+A=4: C=5. Valid.
+
+A=5: C=4. Valid.
+
+A=6: C=3. Valid.
+
+A=7: C=2. Invalid.
+
+A=8: C=1. Valid.
+
+A=9: C=0. Valid.
+
+So A=1,3,4,5,6,8,9. Let's count:
+
+(1,8), (3,6), (4,5), (5,4), (6,3), (8,1), (9,0). 7 ways.
+
+s=9: 7 ways.
+
+So for Case 1 (A + C = B), the total number of (A, C) pairs is the sum over s=1,3,4,...,9 of the number of ways:
+
+s=1: 1
+
+s=3: 1
+
+s=4: 3
+
+s=5: 3
+
+s=6: 4
+
+s=7: 5
+
+s=8: 6
+
+s=9: 7
+
+Adding these up: 1 + 1 + 3 + 3 + 4 + 5 + 6 + 7. Let me compute:
+
+1 + 1 = 2; 2 + 3 = 5; 5 + 3 = 8; 8 + 4 = 12; 12 + 5 = 17; 17 + 6 = 23; 23 + 7 = 30. So total 30 numbers in Case 1 with no 2s.
+
+Now, moving on to Case 2: A + C = B + 11. So rearranged, B = A + C - 11. Since B is a digit between 0 and 9 (excluding 2), we have constraints on A and C. Also, A is from 1-9 (excluding 2), C is from 0-9 (excluding 2). 
+
+First, since B must be between 0 and 9 (and not 2), then A + C - 11 must be between 0 and 9. Therefore, A + C must be between 11 and 20. However, since A and C are digits (A from 1-9, C from 0-9, both excluding 2), the maximum A + C can be is 9 + 9 = 18 (if neither is 2). Wait, but if A is 9 and C is 9, but 9 is allowed. So maximum A + C is 9 + 9 = 18. Therefore, A + C ranges from 11 to 18. 
+
+So for each s from 11 to 18, compute the number of (A, C) pairs where A and C don't contain 2, and A + C = s. Then, for each such pair, B = s - 11, which must not be 2. Therefore, we need to ensure that s - 11 ≠ 2 => s ≠ 13. Therefore, when s = 13, B would be 2, which is invalid. Therefore, for s from 11 to 18, except s=13, we can count the number of (A, C) pairs, and for s=13, we need to exclude those pairs where B would be 2. 
+
+So let me proceed:
+
+First, compute for each s from 11 to 18 (excluding 13), the number of (A, C) pairs with A and C not containing 2, and A + C = s. Then, for s=13, compute the number of such pairs and subtract them because they would result in B=2 which is invalid.
+
+Alternatively, compute for all s from 11 to 18, the number of (A, C) pairs, then subtract those with s=13. Let me do that.
+
+First, let me compute for each s from 11 to 18:
+
+s=11:
+
+Find number of (A, C) pairs with A ∈ {1,3,4,5,6,7,8,9}, C ∈ {0,1,3,4,5,6,7,8,9}, A + C = 11.
+
+Similarly for s=12, ..., s=18.
+
+This might take some time, but let's proceed.
+
+Starting with s=11:
+
+A + C = 11. A ranges from 1-9 (excluding 2), C ranges from 0-9 (excluding 2). Let's find all pairs (A, C) such that A + C = 11, with A and C not containing 2.
+
+Possible A values: Let's iterate A from 1 to 9 (excluding 2), and check if C = 11 - A is valid (i.e., not 2 and between 0-9).
+
+A=1: C=10. Invalid (C must be ≤9).
+
+A=3: C=8. Valid (C=8 is allowed).
+
+A=4: C=7. Valid.
+
+A=5: C=6. Valid.
+
+A=6: C=5. Valid.
+
+A=7: C=4. Valid.
+
+A=8: C=3. Valid.
+
+A=9: C=2. Invalid (C=2 is not allowed).
+
+So valid A's: 3,4,5,6,7,8. That's 6 pairs.
+
+s=11: 6 ways.
+
+s=12:
+
+A + C = 12.
+
+A=1: C=11. Invalid.
+
+A=3: C=9. Valid.
+
+A=4: C=8. Valid.
+
+A=5: C=7. Valid.
+
+A=6: C=6. Valid.
+
+A=7: C=5. Valid.
+
+A=8: C=4. Valid.
+
+A=9: C=3. Valid.
+
+Check if any C is 2? For A=3, C=9; A=4, 8; A=5,7; A=6,6; A=7,5; A=8,4; A=9,3. None of the Cs are 2. So all valid. Number of A's: from 3 to 9 (excluding 2). A=3,4,5,6,7,8,9. That's 7 values. So 7 ways.
+
+s=12: 7 ways.
+
+s=13:
+
+A + C = 13. But since B = s - 11 = 2, which is invalid. Therefore, we need to count how many pairs here, and then exclude them. Let's compute it for now.
+
+A + C = 13.
+
+A=1: C=12. Invalid.
+
+A=3: C=10. Invalid.
+
+A=4: C=9. Valid.
+
+A=5: C=8. Valid.
+
+A=6: C=7. Valid.
+
+A=7: C=6. Valid.
+
+A=8: C=5. Valid.
+
+A=9: C=4. Valid.
+
+So A=4,5,6,7,8,9. That's 6 values. Check Cs: 9,8,7,6,5,4. None are 2. Therefore, 6 pairs. However, since B would be 2 here, which is invalid, we need to exclude these. So for Case 2, we will not count these.
+
+s=13: 6 ways (but excluded).
+
+s=14:
+
+A + C = 14.
+
+A=1: C=13. Invalid.
+
+A=3: C=11. Invalid.
+
+A=4: C=10. Invalid.
+
+A=5: C=9. Valid.
+
+A=6: C=8. Valid.
+
+A=7: C=7. Valid.
+
+A=8: C=6. Valid.
+
+A=9: C=5. Valid.
+
+So A=5,6,7,8,9. That's 5 values. Cs: 9,8,7,6,5. All valid. 5 ways.
+
+s=14: 5 ways.
+
+s=15:
+
+A + C = 15.
+
+A=1: C=14. Invalid.
+
+A=3: C=12. Invalid.
+
+A=4: C=11. Invalid.
+
+A=5: C=10. Invalid.
+
+A=6: C=9. Valid.
+
+A=7: C=8. Valid.
+
+A=8: C=7. Valid.
+
+A=9: C=6. Valid.
+
+So A=6,7,8,9. 4 values. Cs: 9,8,7,6. Valid. 4 ways.
+
+s=15: 4 ways.
+
+s=16:
+
+A + C = 16.
+
+A=1: C=15. Invalid.
+
+A=3: C=13. Invalid.
+
+A=4: C=12. Invalid.
+
+A=5: C=11. Invalid.
+
+A=6: C=10. Invalid.
+
+A=7: C=9. Valid.
+
+A=8: C=8. Valid.
+
+A=9: C=7. Valid.
+
+So A=7,8,9. 3 values. Cs: 9,8,7. Valid. 3 ways.
+
+s=16: 3 ways.
+
+s=17:
+
+A + C = 17.
+
+A=1: C=16. Invalid.
+
+A=3: C=14. Invalid.
+
+A=4: C=13. Invalid.
+
+A=5: C=12. Invalid.
+
+A=6: C=11. Invalid.
+
+A=7: C=10. Invalid.
+
+A=8: C=9. Valid.
+
+A=9: C=8. Valid.
+
+So A=8,9. 2 values. Cs: 9,8. Valid. 2 ways.
+
+s=17: 2 ways.
+
+s=18:
+
+A + C = 18.
+
+A=1: C=17. Invalid.
+
+A=3: C=15. Invalid.
+
+A=4: C=14. Invalid.
+
+A=5: C=13. Invalid.
+
+A=6: C=12. Invalid.
+
+A=7: C=11. Invalid.
+
+A=8: C=10. Invalid.
+
+A=9: C=9. Valid.
+
+Only A=9, C=9. Valid. 1 way.
+
+s=18: 1 way.
+
+So for Case 2, total number of (A, C) pairs is sum of s=11,12,14,15,16,17,18. Remember s=13 is excluded because it leads to B=2. 
+
+So adding up:
+
+s=11: 6
+
+s=12: 7
+
+s=14: 5
+
+s=15: 4
+
+s=16: 3
+
+s=17: 2
+
+s=18: 1
+
+Total: 6 + 7 = 13; 13 + 5 = 18; 18 + 4 = 22; 22 + 3 = 25; 25 + 2 = 27; 27 + 1 = 28. So 28 numbers in Case 2 with no 2s.
+
+Therefore, total numbers divisible by 11 with no 2s are Case1 + Case2 = 30 + 28 = 58. 
+
+But wait, total three-digit numbers divisible by 11 are 81. Therefore, numbers with at least one 2 would be 81 - 58 = 23. 
+
+But wait, let me check my math again. Because if total numbers divisible by 11 is 81, and numbers without any 2s is 58, then numbers with at least one 2 is 81 - 58 = 23. Is that correct? Let me verify my counts again because 23 seems a bit low? Maybe I made a mistake in counting.
+
+Let me check the counts for Case 1 and Case 2 again.
+
+First, Case 1: 30 numbers. Let me check the sum again:
+
+s=1:1, s=3:1, s=4:3, s=5:3, s=6:4, s=7:5, s=8:6, s=9:7. Sum is 1+1+3+3+4+5+6+7. Let me add again:
+
+Start from 1 (s=1) + 1 (s=3) = 2. Then +3 (s=4) = 5, +3 (s=5) = 8, +4 (s=6) = 12, +5 (s=7) = 17, +6 (s=8) = 23, +7 (s=9) = 30. Yes, that's correct.
+
+Case 2: 28 numbers. Let me check the sum again:
+
+s=11:6, s=12:7, s=14:5, s=15:4, s=16:3, s=17:2, s=18:1. So 6+7=13, +5=18, +4=22, +3=25, +2=27, +1=28. Correct. So total 30 + 28 = 58. Then 81 - 58 = 23. 
+
+But let me think if there is a possibility that in my counts for Case 1 and Case 2, I might have missed something? For example, maybe overlapping numbers? Wait, no. Because Case 1 and Case 2 are separate: numbers where A + C = B and A + C = B + 11. These are distinct cases because in Case 1, A + C = B (so B is smaller), and in Case 2, A + C is larger. So there is no overlap. Therefore, adding them is correct. 
+
+But let me check with an example. Let's take a number that is divisible by 11 and has a 2. For example, 121. Let's check if it's counted in our total. 
+
+121: digits A=1, B=2, C=1. Since it has a 2, it should be in the 23 numbers. Let's see if it's in Case 1 or 2. 
+
+Check divisibility: A + C - B = 1 + 1 - 2 = 0, which is divisible by 11. So it's in Case 1. Now, in our count for numbers without 2s, we excluded numbers with any 2s, so 121 would not be in the 58 numbers. Therefore, it's in the 23. 
+
+Another example: 220. A=2, B=2, C=0. But since A=2 is excluded in our no-2s count, so it's in the 23. 
+
+Another example: 132. A=1, B=3, C=2. Divisible by 11? Let's check: 1 + 2 - 3 = 0. Yes. So it's in Case 1. Since it has a 2 in C, it's in the 23. 
+
+But how do I know that my count of 58 is correct? Let me check another way. Let me compute total numbers with no 2s in both cases.
+
+Alternatively, maybe I can compute the total numbers with no 2s divisible by 11 by another method? For example, generating all three-digit numbers with no 2s, check divisibility by 11, and count. But that might be tedious, but maybe for a few examples.
+
+Alternatively, let me check the total numbers with no 2s. How many three-digit numbers have no 2s? For A: 8 choices (1-9 except 2). For B: 9 choices (0-9 except 2). For C: 9 choices. Total: 8*9*9 = 648 numbers. Out of these, how many are divisible by 11? According to my previous calculation, 58. Let me see if that seems plausible. Since total numbers divisible by 11 is 81, and numbers without 2s are 648, which is about 648/900 = 72% of all three-digit numbers. So 72% of 81 is roughly 58, which seems plausible. So maybe my calculation is correct. 
+
+Therefore, proceeding with 81 - 58 = 23. But let me check another way. Let me think of how many numbers in Case 1 and Case 2 have at least one 2. Wait, but maybe not necessary. 
+
+Alternatively, maybe I can calculate directly the number of three-digit numbers divisible by 11 with at least one 2. Let me try that approach as a check. 
+
+So, again, three-digit numbers divisible by 11: 81 numbers. Let me think of how many have at least one 2. 
+
+But how to count them directly? Well, perhaps using inclusion-exclusion. Let me think. 
+
+Let me denote:
+
+Let A be the set of numbers with hundreds digit 2.
+
+B be the set with tens digit 2.
+
+C be the set with units digit 2.
+
+We need to find |A ∪ B ∪ C|. Which is |A| + |B| + |C| - |A∩B| - |A∩C| - |B∩C| + |A∩B∩C|.
+
+But all these sets are subsets of the 81 numbers divisible by 11. So if I can compute each of these terms, I can find the answer. 
+
+So let me compute:
+
+First, |A|: numbers with hundreds digit 2 (so A=2) and divisible by 11. How many?
+
+Similarly for |B| and |C|.
+
+But need to be careful here. Let me proceed step by step.
+
+First, |A|: numbers with hundreds digit 2 (so A=2) and divisible by 11. Let me find how many such numbers there are.
+
+A three-digit number with A=2, so numbers from 200 to 299. How many are divisible by 11?
+
+The first number ≥200 divisible by 11: 209 (since 11*19=209). The last number ≤299 divisible by 11: 297 (11*27=297). So numbers are 11*19 up to 11*27. Number of terms: 27 - 19 + 1 = 9 numbers. Let me check:
+
+209, 220, 231, 242, 253, 264, 275, 286, 297. Yes, 9 numbers. So |A| = 9.
+
+Similarly, |B|: numbers with tens digit 2 (B=2) and divisible by 11. How many?
+
+Three-digit numbers where the middle digit is 2. Let me find how many such numbers are divisible by 11.
+
+Let me use the divisibility rule. For a number ABC with B=2, we have (A + C) - 2 must be divisible by 11. So (A + C) - 2 = 0 or ±11. Since A is from 1-9, C from 0-9, A + C ranges from 1+0=1 to 9+9=18. Therefore, (A + C) - 2 can be from -1 to 16. The possible multiples of 11 here are -11, 0, 11. But -11 would require A + C = -9, impossible. 0: A + C = 2. 11: A + C = 13. 
+
+Therefore, numbers with B=2 and divisible by 11 must satisfy A + C = 2 or A + C = 13. 
+
+So let's count how many such numbers.
+
+First, A + C = 2. A is from 1-9, C from 0-9. How many solutions?
+
+Possible A: 1 or 2 (since A ≥1, and A ≤2 because A + C = 2). 
+
+A=1: C=1. Valid.
+
+A=2: C=0. Valid.
+
+So two numbers: 121 and 220. 
+
+Second, A + C = 13. How many solutions?
+
+A ranges from 1-9, C from 0-9. For each A from 4 to 9 (since A must be at least 13 - 9 = 4):
+
+A=4: C=9. Valid.
+
+A=5: C=8. Valid.
+
+A=6: C=7. Valid.
+
+A=7: C=6. Valid.
+
+A=8: C=5. Valid.
+
+A=9: C=4. Valid.
+
+So 6 solutions: 429, 528, 627, 726, 825, 924. 
+
+Therefore, total numbers with B=2 and divisible by 11: 2 + 6 = 8. Therefore, |B| = 8.
+
+Now |C|: numbers with units digit 2 (C=2) and divisible by 11. How many?
+
+Three-digit numbers ending with 2. Let me apply divisibility rule. For ABC with C=2, (A + 2) - B must be divisible by 11. So (A + 2) - B = 0 or ±11. 
+
+Again, A is 1-9, B is 0-9. Let's compute possible values:
+
+(A + 2) - B = 0 => B = A + 2.
+
+Or (A + 2) - B = 11 => B = A + 2 - 11 = A - 9.
+
+Or (A + 2) - B = -11 => B = A + 2 + 11 = A + 13. But since B is a digit (0-9), A + 13 ≤ 9 => A ≤ -4, impossible. So only two cases: B = A + 2 or B = A - 9.
+
+First case: B = A + 2. Since B must be between 0-9, and A is between 1-9:
+
+A can be from 1 to 7 (since if A=7, B=9; if A=8, B=10 invalid). Therefore, A=1 to 7, B=A+2. For each A from 1-7, C=2. So numbers: 1 3 2, 2 4 2,...,7 9 2. That is 7 numbers: 132, 242, 352, 462, 572, 682, 792.
+
+Second case: B = A - 9. Since B ≥ 0, A - 9 ≥ 0 => A ≥ 9. So A=9, then B=0. Therefore, one number: 9 0 2, which is 902. 
+
+Therefore, total numbers with C=2 and divisible by 11: 7 + 1 = 8. Therefore, |C| = 8.
+
+Now, moving on to intersections:
+
+|A ∩ B|: numbers with hundreds digit 2 and tens digit 2 (A=2, B=2). How many such numbers are divisible by 11?
+
+Number is 2 2 C. Let's apply divisibility rule: (A + C) - B = (2 + C) - 2 = C. So C must be divisible by 11. Since C is a digit (0-9), only C=0. Therefore, the number is 220. So only 1 number. Therefore, |A ∩ B| = 1.
+
+|A ∩ C|: numbers with hundreds digit 2 and units digit 2 (A=2, C=2). Number is 2 B 2. Divisibility rule: (A + C) - B = (2 + 2) - B = 4 - B must be divisible by 11. So 4 - B = 0 or ±11. 
+
+Possible:
+
+4 - B = 0 => B=4. Valid.
+
+4 - B = 11 => B = -7. Invalid.
+
+4 - B = -11 => B = 15. Invalid. 
+
+Therefore, only B=4. The number is 242. So |A ∩ C| = 1.
+
+|B ∩ C|: numbers with tens digit 2 and units digit 2 (B=2, C=2). Number is A 2 2. Divisibility rule: (A + 2) - 2 = A must be divisible by 11. Since A is from 1-9, only A=11 invalid. Therefore, no solutions. Wait, A must be between 1-9. So A must be 0 or 11 to satisfy divisibility, but A cannot be 0. Therefore, |B ∩ C| = 0.
+
+Wait, let me check. The divisibility rule is (A + C) - B. For number A 2 2, that is (A + 2) - 2 = A. So A must be divisible by 11. Since A is 1-9, no such numbers. Therefore, |B ∩ C| = 0.
+
+Finally, |A ∩ B ∩ C|: numbers with A=2, B=2, C=2. Number is 222. Check divisibility: (2 + 2) - 2 = 2, not divisible by 11. Therefore, not divisible by 11. So |A ∩ B ∩ C| = 0.
+
+Therefore, applying inclusion-exclusion:
+
+|A ∪ B ∪ C| = |A| + |B| + |C| - |A∩B| - |A∩C| - |B∩C| + |A∩B∩C| = 9 + 8 + 8 - 1 - 1 - 0 + 0 = 23. 
+
+Which matches the previous result of 81 - 58 = 23. Therefore, the answer is 23. 
+
+But let me just verify with some examples. For example, numbers in |A|: 209, 220, 231, 242, 253, 264, 275, 286, 297. Among these, how many have at least one 2? Well, all of them have A=2, so they all have at least one 2. So 9 numbers. 
+
+Numbers in |B|: the 8 numbers we found: 121, 220, 429, 528, 627, 726, 825, 924. However, note that 220 is already counted in |A|. Similarly, numbers in |C|: 132, 242, 352, 462, 572, 682, 792, 902. Again, 242 is already in |A|. 
+
+So when we do inclusion-exclusion, we subtract overlaps. The overlaps are |A ∩ B| = 220 and |A ∩ C| = 242. And |B ∩ C| is 0. So total unique numbers would be 9 + 8 + 8 - 1 -1 = 23. 
+
+Let me list all 23 numbers to check:
+
+From |A|: 209, 220, 231, 242, 253, 264, 275, 286, 297. (9 numbers)
+
+From |B|: 121, 429, 528, 627, 726, 825, 924. (excluding 220 which is already counted). So 7 numbers.
+
+From |C|: 132, 352, 462, 572, 682, 792, 902. (excluding 242 which is already counted). So 7 numbers.
+
+Total: 9 + 7 + 7 = 23 numbers. Let me check if there are duplicates between |B| and |C|. For example, is  any number in both |B| and |C|? For example,  any number with B=2 and C=2? But we saw |B ∩ C| is 0. So no duplicates. Also, numbers from |B| and |C| don't overlap with each other except if a number is in both |B| and |C|, which there aren't. 
+
+So total numbers:
+
+From |A|: 9 numbers.
+
+From |B|: 7 new numbers.
+
+From |C|: 7 new numbers.
+
+Total 23. Let me check if all these numbers are unique and actually divisible by 11 and have at least one 2.
+
+For example:
+
+From |A|: all have 2 in hundreds place. Divisible by 11 as checked before.
+
+From |B|: numbers like 121 (div by 11? 1 - 2 + 1 = 0, yes). 429: 4 - 2 + 9 = 11, yes. Similarly others.
+
+From |C|: 132: 1 - 3 + 2 = 0, yes. 352: 3 - 5 + 2 = 0, yes. Etc. 
+
+Yes, seems okay. Therefore, 23 numbers. 
+
+Therefore, the answer is 23. 
+
+**Final Answer**
+\boxed{23}
+</think>
+
+To determine how many **three-digit positive integers** are divisible by **11** and contain **at least one digit equal to 2**, we proceed with a structured approach.
+
+---
+
+### Step 1: Total Three-Digit Numbers Divisible by 11
+
+The smallest three-digit number divisible by 11 is:
+
+$$
+11 \times 10 = 110
+$$
+
+The largest is:
+
+$$
+11 \times 90 = 990
+$$
+
+So, the total number of such numbers is:
+
+$$
+90 - 10 + 1 = 81
+$$
+
+---
+
+### Step 2: Count Numbers with **No Digit Equal to 2**
+
+We now count how many of these 81 numbers **do not** contain the digit **2** in any position. This is the complement of the desired set, and we can subtract it from 81 to get the final answer.
+
+We use the **divisibility rule for 11** for a three-digit number $ N = 100A + 10B + C $:
+
+$$
+(A + C) - B \equiv 0 \pmod{11}
+$$
+
+This gives two cases:
+
+- **Case 1:** $ A + C = B $
+- **Case 2:** $ A + C = B + 11 $
+
+We count the number of such numbers where **none of the digits A, B, or C is 2**.
+
+#### Case 1: $ A + C = B $
+
+We iterate over all valid digit combinations where $ A \in \{1,3,4,5,6,7,8,9\} $, $ C \in \{0,1,3,4,5,6,7,8,9\} $, and $ B = A + C $, ensuring $ B \in \{0,1,3,4,5,6,7,8,9\} $ (excluding 2). We find:
+
+- Total valid combinations: **30**
+
+#### Case 2: $ A + C = B + 11 $
+
+Here, $ B = A + C - 11 $, and we ensure $ B \in \{0,1,3,4,5,6,7,8,9\} $ (excluding 2). We also exclude any combinations where $ B = 2 $, which occurs when $ A + C = 13 $.
+
+- Total valid combinations: **28**
+
+---
+
+### Step 3: Subtract to Find Numbers with At Least One Digit Equal to 2
+
+Total numbers divisible by 11 with **no digit equal to 2**:
+
+$$
+30 + 28 = 58
+$$
+
+Therefore, the number of three-digit numbers divisible by 11 that **have at least one digit equal to 2** is:
+
+$$
+81 - 58 = \boxed{23}
+$$
