@@ -38,15 +38,17 @@ from think_branch_common import (
 
 DEFAULT_SYSTEM_PROMPT = """
 You are a careful and rigorous solver.
-Use <think>...</think> only when needed.
+If an open <think> block is inserted mid-solution, continue that same block and close it with exactly one </think>.
+Do not emit visible solution text before </think>.
 After </think>, continue from exactly where you paused.
-Do not repeat text immediately before <think>.
+Do not repeat text immediately before the inserted <think>.
 If the user requests a final line format, obey it strictly.
 """.strip()
 
 DEFAULT_INJECT_TEXT = (
-    "<think>\n"
-    "I am not fully confident. Re-check and decide again.\n"
+    "\n\n<think>\n"
+    "Let me reflect on the immediately preceding local step before I continue. "
+    "I should verify whether that transition is actually sound.\n"
 )
 
 DEFAULT_MATH_STEP_USER_GUIDANCE = (
@@ -120,7 +122,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--checkpoint-mode",
         default="think_end_mid",
-        choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"],
+        choices=["think_end", "regex", "think_end_then_regex", "think_end_mid", "think_end_punct"],
     )
     p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--checkpoint-mid-min-tokens", type=int, default=20)
@@ -1238,18 +1240,25 @@ def run_task_ab(
 
     locator_inject_pos_global: Optional[int] = None
     locator_inject_pos_global_raw: Optional[int] = None
-    inject_pos_local_raw = corrupt_meta.get("inject_pos")
-    if bool(corrupt_meta.get("changed")) and inject_pos_local_raw is not None:
-        try:
-            inject_pos_local = int(inject_pos_local_raw)
-            inject_pos_global = len(head_prefix) + inject_pos_local
-            if 0 <= inject_pos_global <= len(edited_text):
-                locator_inject_pos_global_raw = inject_pos_global
-                if force_inject_at_sentence_end and str(corrupt_meta.get("mode")) != "locator_only_step":
-                    inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
-                locator_inject_pos_global = inject_pos_global
-        except Exception:
-            pass
+    use_checkpoint_tail_as_insert = checkpoint_mode == "think_end_punct"
+    if use_checkpoint_tail_as_insert:
+        corrupt_meta["mode"] = "checkpoint_tail"
+        corrupt_meta["changed"] = False
+        corrupt_meta["inject_pos"] = None
+        corrupt_meta["reason"] = "checkpoint_tail_as_insert"
+    else:
+        inject_pos_local_raw = corrupt_meta.get("inject_pos")
+        if bool(corrupt_meta.get("changed")) and inject_pos_local_raw is not None:
+            try:
+                inject_pos_local = int(inject_pos_local_raw)
+                inject_pos_global = len(head_prefix) + inject_pos_local
+                if 0 <= inject_pos_global <= len(edited_text):
+                    locator_inject_pos_global_raw = inject_pos_global
+                    if force_inject_at_sentence_end and str(corrupt_meta.get("mode")) != "locator_only_step":
+                        inject_pos_global = _advance_to_sentence_end(edited_text, inject_pos_global)
+                    locator_inject_pos_global = inject_pos_global
+            except Exception:
+                pass
 
     prefix_truncated_to_inject = False
     if bool(align_stop_with_insert) and (locator_inject_pos_global is not None):
@@ -1290,6 +1299,7 @@ def run_task_ab(
     branch_b_suffix_text = edited_text[branch_b_inject_pos:]
     corrupt_meta["force_inject_at_corrupt"] = bool(force_inject_at_corrupt)
     corrupt_meta["force_inject_at_corrupt_effective"] = bool(force_inject_effective)
+    corrupt_meta["checkpoint_tail_as_insert"] = bool(use_checkpoint_tail_as_insert)
     corrupt_meta["align_stop_with_insert"] = bool(align_stop_with_insert)
     corrupt_meta["prefix_truncated_to_inject"] = bool(prefix_truncated_to_inject)
     corrupt_meta["locator_inject_pos_global_raw"] = locator_inject_pos_global_raw
@@ -1493,6 +1503,8 @@ def run_task_ab(
             "checkpoint_mid_early_stop_on_final": bool(
                 ckpt.get("checkpoint_mid_early_stop_on_final", False)
             ),
+            "checkpoint_punct_stop_piece": ckpt.get("checkpoint_punct_stop_piece"),
+            "checkpoint_punct_stop_kind": ckpt.get("checkpoint_punct_stop_kind"),
         },
         "prefix_think_limit_meta": prefix_think_limit_meta,
         "prefix_step_wait_meta": prefix_step_wait_meta,

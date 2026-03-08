@@ -36,15 +36,17 @@ from think_branch_common import (
 
 DEFAULT_SYSTEM_PROMPT = """
 You are a careful and rigorous solver.
-Use <think>...</think> only when needed.
+If an open <think> block is inserted mid-solution, continue that same block and close it with exactly one </think>.
+Do not emit visible solution text before </think>.
 After </think>, continue from exactly where you paused.
-Do not repeat text immediately before <think>.
+Do not repeat text immediately before the inserted <think>.
 If the user requests a final line format, obey it strictly.
 """.strip()
 
 DEFAULT_INJECT_TEXT = (
-    "<think>\n"
-    "I am not fully confident. Re-check and decide again.\n"
+    "\n\n<think>\n"
+    "Let me reflect on the immediately preceding local step before I continue. "
+    "I should verify whether that transition is actually sound.\n"
 )
 
 DEFAULT_MATH_STEP_USER_GUIDANCE = (
@@ -130,7 +132,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument(
         "--checkpoint-mode",
         default="think_end_mid",
-        choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"],
+        choices=["think_end", "regex", "think_end_then_regex", "think_end_mid", "think_end_punct"],
     )
     p.add_argument("--checkpoint-regex", default="__auto__")
     p.add_argument("--checkpoint-mid-min-tokens", type=int, default=20)
@@ -788,12 +790,21 @@ def run_task_ab(
             target_prefix = ""
             scope_meta["first_think_forced_close_before_inject"] = True
 
-    locator_meta = _locate_insert_pos_no_edit(
-        target_prefix,
-        tokenizer=tokenizer,
-        fallback_token_offset=int(effective_no_step_fallback_offset_tokens),
-        window_chars=220,
-    )
+    use_checkpoint_tail_as_insert = checkpoint_mode == "think_end_punct"
+    if use_checkpoint_tail_as_insert:
+        locator_meta = {
+            "mode": "checkpoint_tail",
+            "changed": False,
+            "inject_pos": None,
+            "reason": "checkpoint_tail_as_insert",
+        }
+    else:
+        locator_meta = _locate_insert_pos_no_edit(
+            target_prefix,
+            tokenizer=tokenizer,
+            fallback_token_offset=int(effective_no_step_fallback_offset_tokens),
+            window_chars=220,
+        )
 
     edited_text = head_prefix + target_prefix
     locator_inject_pos_global: Optional[int] = None
@@ -1038,6 +1049,8 @@ def run_task_ab(
             "checkpoint_mid_early_stop_on_final": bool(
                 ckpt.get("checkpoint_mid_early_stop_on_final", False)
             ),
+            "checkpoint_punct_stop_piece": ckpt.get("checkpoint_punct_stop_piece"),
+            "checkpoint_punct_stop_kind": ckpt.get("checkpoint_punct_stop_kind"),
         },
         "prefix_seen_first_think_end": bool(ckpt["seen_first_think_end"]),
         "prefix_tokens": len(prefix_ids_local),
@@ -1046,6 +1059,7 @@ def run_task_ab(
         "insert_meta": {
             "inject_text": inject_text,
             "inject_opens_think": bool(inject_opens_think),
+            "checkpoint_tail_as_insert": bool(use_checkpoint_tail_as_insert),
             "prefix_open_think_before_inject": max(0, prefix_think_gap),
             "prefix_auto_closed_think": max(0, prefix_think_gap) if auto_close_unclosed_think else 0,
             "prefix_forced_close_for_inject": max(0, prefix_think_gap) if forced_close_for_inject else 0,

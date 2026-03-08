@@ -41,9 +41,6 @@ def parse_args() -> argparse.Namespace:
         help="Injected <think> text file.",
     )
 
-    p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
-    p.add_argument("--think-word-limit", type=int, default=60)
-    p.add_argument("--enable-think-word-limit", action="store_true")
     p.add_argument("--enable-first-think-max-words", action="store_true")
     p.add_argument("--first-think-max-words", type=int, default=120)
     p.add_argument("--enable-first-think-smooth-close", action="store_true")
@@ -51,38 +48,11 @@ def parse_args() -> argparse.Namespace:
         "--first-think-smooth-close-text",
         default="I think this local check is enough, so I will close this think block and continue from this exact point.",
     )
-    p.add_argument("--checkpoint-mode", default="think_end_mid", choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"])
-    p.add_argument("--checkpoint-regex", default="__auto__")
-    p.add_argument("--checkpoint-delay", type=int, default=0)
-    p.add_argument("--checkpoint-mid-min-tokens", type=int, default=20)
-    p.add_argument("--checkpoint-mid-max-tokens", type=int, default=30)
-    p.add_argument(
-        "--checkpoint-mid-avoid-final-regex",
-        default=r"(?i)\bfinal\s*:|\bfinal answer\b",
-    )
+    p.add_argument("--checkpoint-mid-min-tokens", type=int, default=300)
+    p.add_argument("--checkpoint-mid-max-tokens", type=int, default=400)
 
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
-    p.add_argument("--step-wait-extra-tokens", type=int, default=1200)
-    p.add_argument("--no-step-fallback-offset-tokens", type=int, default=300)
     p.add_argument("--max-new-after", type=int, default=1200)
-    p.add_argument(
-        "--corrupt-after-first-think",
-        dest="corrupt_after_first_think",
-        action="store_true",
-        default=True,
-    )
-    p.add_argument(
-        "--no-corrupt-after-first-think",
-        dest="corrupt_after_first_think",
-        action="store_false",
-    )
-    p.add_argument("--force-inject-at-corrupt", action="store_true")
-    p.add_argument("--force-inject-at-sentence-end", action="store_true")
-    p.add_argument(
-        "--align-stop-with-insert",
-        action="store_true",
-        help="Truncate prefix at the located insert position so branch B stops and injects at the same point.",
-    )
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
@@ -113,36 +83,32 @@ def main() -> None:
         args.output_dir,
         "--system-prompt-file",
         args.system_prompt_file,
+        "--no-math-step-format-guidance",
         "--inject-text",
         inject_text,
         "--prompt-mode",
-        args.prompt_mode,
-        "--think-word-limit",
-        str(args.think_word_limit),
+        "baseline",
         "--first-think-max-words",
         str(args.first_think_max_words),
         "--first-think-smooth-close-text",
         args.first_think_smooth_close_text,
         "--checkpoint-mode",
-        args.checkpoint_mode,
+        "think_end_punct",
         "--checkpoint-regex",
-        args.checkpoint_regex,
+        "__auto__",
         "--checkpoint-delay",
-        str(args.checkpoint_delay),
+        "0",
         "--checkpoint-mid-min-tokens",
         str(args.checkpoint_mid_min_tokens),
         "--checkpoint-mid-max-tokens",
         str(args.checkpoint_mid_max_tokens),
         "--checkpoint-mid-avoid-final-regex",
-        args.checkpoint_mid_avoid_final_regex,
+        r"(?i)\bfinal\s*:|\bfinal answer\b",
         "--max-prefix-tokens",
         str(args.max_prefix_tokens),
-        "--step-wait-extra-tokens",
-        str(args.step_wait_extra_tokens),
-        "--no-step-fallback-offset-tokens",
-        str(args.no_step_fallback_offset_tokens),
         "--max-new-after",
         str(args.max_new_after),
+        "--corrupt-after-first-think",
         "--branch-mode",
         "b",
         "--temperature",
@@ -155,22 +121,10 @@ def main() -> None:
 
     if args.apply_match_cover:
         cmd.append("--apply-match-cover")
-    if args.enable_think_word_limit:
-        cmd.append("--enable-think-word-limit")
     if args.enable_first_think_max_words:
         cmd.append("--enable-first-think-max-words")
     if args.enable_first_think_smooth_close:
         cmd.append("--enable-first-think-smooth-close")
-    if args.corrupt_after_first_think:
-        cmd.append("--corrupt-after-first-think")
-    else:
-        cmd.append("--no-corrupt-after-first-think")
-    if args.force_inject_at_corrupt:
-        cmd.append("--force-inject-at-corrupt")
-    if args.force_inject_at_sentence_end:
-        cmd.append("--force-inject-at-sentence-end")
-    if args.align_stop_with_insert:
-        cmd.append("--align-stop-with-insert")
     if args.apply_cross_think_cover:
         cmd.append("--apply-cross-think-cover")
     if args.save_task_texts:

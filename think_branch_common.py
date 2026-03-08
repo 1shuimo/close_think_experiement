@@ -56,19 +56,19 @@ def compose_system_prompt(
         raise ValueError(f"Unsupported prompt_mode: {prompt_mode}")
 
     limit_line = (
-        f"2) Keep <think> concise (about {think_word_limit} words max)."
+        f"2) Keep the inserted <think> concise (about {think_word_limit} words max)."
         if enable_think_word_limit
-        else "2) Keep <think> concise."
+        else "2) Keep the inserted <think> concise."
     )
 
     appendix = f"""
 
-Add-on protocol for uncertainty handling:
-1) If uncertainty appears, enter <think> with first-person local reasoning.
+Add-on protocol for mid-generation <think> insertion:
+1) If an open <think> block is present, continue that same block naturally.
 {limit_line}
-3) End reasoning with </think> explicitly.
+3) Before any visible solution text, close the block with exactly one </think>.
 4) After </think>, continue exactly from the interrupted position.
-5) Do not repeat the immediate previous text; do not restart the answer.
+5) Do not repeat the immediate previous text, and do not restart the answer.
 6) Preserve output format and language style.
 """.strip()
     return (base_prompt.strip() + "\n\n" + appendix).strip()
@@ -213,6 +213,17 @@ def _ends_with_subseq(tokens: List[int], subseq: List[int]) -> bool:
     return tokens[-len(subseq):] == subseq
 
 
+def _piece_hits_sentence_boundary(piece: str) -> bool:
+    if not piece:
+        return False
+    if "\n" in piece:
+        return True
+    stripped = piece.strip()
+    if not stripped:
+        return False
+    return any(ch in ".!?。！？;；" for ch in stripped)
+
+
 @torch.inference_mode()
 def generate_until_checkpoint(
     model: AutoModelForCausalLM,
@@ -263,9 +274,12 @@ def generate_until_checkpoint(
         else None
     )
     mid_rng = random.Random(seed + 131)
+    punct_stop_piece = None
+    punct_stop_kind = None
     need_regex_text = checkpoint_mode in {"regex", "think_end_then_regex"}
     need_mid_final_text = checkpoint_mode == "think_end_mid" and mid_final_obj is not None
-    need_incremental_text = print_stream or need_regex_text or need_mid_final_text
+    need_punct_piece = checkpoint_mode == "think_end_punct"
+    need_incremental_text = print_stream or need_regex_text or need_mid_final_text or need_punct_piece
 
     for _ in range(max_new_tokens):
         next_token = top_p_sample(logits, temperature, top_p, gen)
@@ -345,8 +359,21 @@ def generate_until_checkpoint(
                         counter_after_anchor = 0
                         if hit_final and not hit_mid_target:
                             mid_early_stop_on_final = True
+            elif checkpoint_mode == "think_end_punct":
+                if seen_first_think_end:
+                    lo = max(0, int(checkpoint_mid_min_tokens))
+                    hi = max(lo, int(checkpoint_mid_max_tokens))
+                    hit_punct = tokens_after_first_think >= lo and _piece_hits_sentence_boundary(piece)
+                    hit_upper = tokens_after_first_think >= hi
+                    if hit_punct or hit_upper:
+                        seen_anchor = True
+                        counter_after_anchor = 0
+                        punct_stop_piece = piece if piece else None
+                        punct_stop_kind = "sentence_boundary" if hit_punct else "max_tokens"
             else:
                 raise ValueError(f"Unsupported checkpoint_mode: {checkpoint_mode}")
+            if seen_anchor and int(delay_tokens_after_first_think_end) <= 0:
+                break
         else:
             counter_after_anchor += 1
             if counter_after_anchor >= delay_tokens_after_first_think_end:
@@ -372,6 +399,8 @@ def generate_until_checkpoint(
         "checkpoint_mid_target_tokens": int(mid_target_tokens) if mid_target_tokens is not None else None,
         "checkpoint_mid_avoid_final_regex": checkpoint_mid_avoid_final_regex,
         "checkpoint_mid_early_stop_on_final": bool(mid_early_stop_on_final),
+        "checkpoint_punct_stop_piece": punct_stop_piece,
+        "checkpoint_punct_stop_kind": punct_stop_kind,
         "regex_window_chars": int(regex_window_chars),
     }
 

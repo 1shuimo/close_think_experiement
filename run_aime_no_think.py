@@ -34,11 +34,11 @@ def parse_args() -> argparse.Namespace:
         help="Injected <think> text file.",
     )
 
-    p.add_argument("--prompt-mode", default="enhanced", choices=["baseline", "enhanced"])
+    p.add_argument("--prompt-mode", default="baseline", choices=["baseline", "enhanced"])
     p.add_argument("--think-word-limit", type=int, default=60)
     p.add_argument("--enable-think-word-limit", action="store_true")
 
-    p.add_argument("--checkpoint-mode", default="regex", choices=["think_end", "regex", "think_end_then_regex", "think_end_mid"])
+    p.add_argument("--checkpoint-mode", default="regex", choices=["think_end", "regex", "think_end_then_regex", "think_end_mid", "think_end_punct"])
     p.add_argument("--checkpoint-regex", default=r"(?!)", help="Default impossible regex to avoid early anchor stop.")
     p.add_argument("--checkpoint-delay", type=int, default=0)
     p.add_argument("--checkpoint-mid-min-tokens", type=int, default=20)

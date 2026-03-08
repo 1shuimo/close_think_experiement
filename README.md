@@ -63,8 +63,8 @@
 
 1. 先正常构造 prompt，并保留模型原生 thinking。
 2. 让模型先生成一段 prefix，直到某个 checkpoint 停下来。
-3. 在 prefix 中定位一个插入点。
-4. 当前推荐模式下，会把 prefix 截断到这个插入点，使 Branch B 的“停点”和“插点”一致。
+3. 当前 AIME 默认会直接把 checkpoint 尾部当作插入点。
+4. 也就是说，命中停机条件的那个位置，就是 Branch B 的实际插入点。
 5. 把注入文本 `inject_text` 接到这个前缀后面。
 6. 对新的前缀重新 tokenize / prefill，然后继续生成。
 
@@ -74,37 +74,30 @@
 - 真正执行插入时，用的是文本切片 + 重新 prefill；
 - 当前 AIME 推荐配置下，输出效果上已经可以做到“停点 = 插点”。
 
-当前 AIME 推荐同时打开这三个参数：
+当前 AIME 默认推荐的是 `think_end_punct`：
 
-- `--force-inject-at-corrupt`
-- `--force-inject-at-sentence-end`
-- `--align-stop-with-insert`
+- 先等模型的第一个原生 `</think>`；
+- 然后继续生成正文；
+- 当正文走到大约 `300-400` token 窗口时，等下一个句号类 token；
+- 命中后就在这个 token 处停下，并直接从这里插入新的 `<think>`。
 
-它们组合起来的含义是：
-
-- 必须使用 locator 找到的位置，而不是默认在 prefix 尾部尾插；
-- 如果插点落在句中，就往后吸到句末或行尾；
-- 然后把 Branch B 的 prefix 直接截到这个点，再插入新的 `<think>`。
-
-这意味着当前 Branch B 不再保留“插点右边已经生成过的一小段旧文本”。
-需要注意的是，这仍然不是 sampler 内部的 token-by-token 在线即时停机，而是“先生成到 checkpoint，再截到插点再续写”的实现。
+因此当前 AIME 默认配置下，输出效果上已经可以做到“停点 = 插点”，而且不再依赖 step 锚点。
 
 ### 插入点怎么定位
 
-插入点有两种主要来源：
+当前 AIME 默认插入点主要来自 token 级 checkpoint：
 
-1. 文本锚点  
-   对 AIME，优先在 `Step N:` 这类结构化正文里定位。当前实现会取 prefix 中最后一个 `Step N:`，并在这句正文结束后插入。
+1. `think_end_punct`  
+   第一个原生 `</think>` 之后，走到 `checkpoint_mid_min_tokens` 到 `checkpoint_mid_max_tokens` 这段窗口，然后等待下一个句号类 token 作为停点和插点。
 
-2. token offset fallback  
-   如果没有合适的 step 锚点，就用 tokenizer 把一个 token offset 近似映射成字符位置，再吸附到最近句末或行尾。
-   常用设置是 `--no-step-fallback-offset-tokens 300` 到 `400`，例如 `350`。
+2. 旧 locator 逻辑  
+   仓库里仍然保留 step / token fallback 的文本定位逻辑，主要是兼容旧实验和改错版。
 
 也就是说：
 
-- tokenizer 会参与“token offset -> 字符位置”的映射；
-- 但最终 `inject_pos` 是一个字符位置；
-- 真正的插入是把文本切到 `inject_pos` 左边，再把 `<think>` 放进去，然后从那里重新生成后半段。
+- AIME 当前默认是 token 级停机，然后直接尾插；
+- 旧 locator 路径仍然是字符位置切分 + 重新 prefill；
+- 两条路径最终都会回到“插入 `<think>` 后重新生成后半段”。
 
 ### checkpoint 机制
 
@@ -116,15 +109,20 @@ prefix 会先生成到 checkpoint 再停。
 - `regex`
 - `think_end_then_regex`
 - `think_end_mid`
+- `think_end_punct`
 
 实际最常用的是：
 
-- AIME：先等第一个原生 `</think>`，再在正文里插
+- AIME：先等第一个原生 `</think>`，再在正文 `300-400` token 附近等句号类 token 停下并插
 - LCB：先等第一个原生 `</think>`，再向后走更长一段正文 token，再插
 
 ### 注入文本
 
-默认注入文本是显式以 `<think>` 开头，但不提前给出 `</think>`。
+system prompt 和 inject text 现在分工明确：
+
+- system prompt 只负责约束“插入的 `<think>` 需要闭合，并且 `</think>` 之后继续正文”；
+- inject text 负责告诉模型这段新 think 要做什么，例如反思、复核最近一步；
+- inject text 默认还会在 `<think>` 前先放一小段过渡 token，用来让中途插入更平滑。
 
 目的不是替模型写 reasoning，而是把模型重新推回原生的 think 分布，让它自己完成：
 
@@ -162,6 +160,8 @@ prefix 会先生成到 checkpoint 再停。
 
 - 单纯中途插入 `<think>`，是否能稳定拉起新的原生 think，并继续解题？
 
+当前 `run_aime.py` 顶层 CLI 已经收敛到这条主实验线，旧的 step / regex / locator 细粒度参数只保留在底层 `test_close_suite.py` 里做兼容。
+
 ### `run_aime_corrupt.py`
 
 用途：
@@ -173,6 +173,8 @@ prefix 会先生成到 checkpoint 再停。
 它回答的问题是：
 
 - 如果前缀推理局部出错，Branch B 的插入式 think 是否比直接续写更有机会纠正后续推理？
+
+当前 `run_aime_corrupt.py` 顶层 CLI 也已经收敛到主改错线，旧的 regex / locator-only / step-anchor 细粒度参数不再从主入口暴露。
 
 ### `run_lcb_insert.py`
 

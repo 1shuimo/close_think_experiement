@@ -47,6 +47,8 @@
   - 先等第一个 `</think>`，然后只在 `</think>` 后面的正文里找 regex
 - `think_end_mid`
   - 先等第一个 `</think>`，然后再往后走一小段正文 token，在正文中段停下来
+- `think_end_punct`
+  - 先等第一个 `</think>`，再在正文 token 走到给定窗口后，等下一个句号类 token 直接停下
 
 ### 2.3 选择插入位置
 
@@ -54,9 +56,9 @@
 
 对 AIME：
 
-- 默认优先在第一个 `</think>` 之后的正文里找位置；
-- 能找到 step/body 锚点就优先用锚点；
-- 找不到时再退回到 token offset，比如 `300`。
+- 当前默认直接用 `think_end_punct` 的 checkpoint 尾部作为插点；
+- 也就是先在第一个 `</think>` 后走到大约 `300-400` token；
+- 然后等下一个句号类 token，当场停下并从这里插入。
 
 对 LiveCodeBench：
 
@@ -66,7 +68,11 @@
 
 ### 2.4 注入文本
 
-注入文本通常以 `<think>` 开头，要求模型做一次局部复查。
+system prompt 和 inject text 现在分工明确：
+
+- system prompt 只负责“插入的 `<think>` 需要闭合，然后继续正文”；
+- inject text 负责这段新 think 里具体做什么；
+- 默认 inject text 会先给一小段过渡 token，再进入 `<think>`。
 
 AIME 默认注入文件：
 
@@ -141,7 +147,9 @@ LCB 默认注入文件：
 - system prompt：`prompts/system_enhanced_v1.txt`
 - inject text：`prompts/inject_think_v2.txt`
 - `branch-mode` 固定为 `b`
-- 默认 checkpoint 模式：`think_end_mid`
+- 默认 checkpoint 模式：`think_end_punct`
+- 默认窗口：`checkpoint_mid_min_tokens = 300`，`checkpoint_mid_max_tokens = 400`
+- 默认不再额外追加 step-format user guidance
 
 适用场景：
 
@@ -168,8 +176,14 @@ LCB 默认注入文件：
 - inject text：`prompts/inject_think_v2.txt`
 - 默认 `branch-mode = ab`
 - 默认 `corrupt-mode = anchor_number_shift`
-- 默认锚点：`(?i)step\\s*\\d+`
-- 默认 `corrupt-min-step = 2`
+- 默认 `prompt-mode = baseline`
+- 默认 checkpoint 固定为 `think_end_mid`
+- 默认窗口：`checkpoint_mid_min_tokens = 20`，`checkpoint_mid_max_tokens = 30`
+- 默认固定在第一个 `</think>` 之后做改错
+- 默认固定开启：
+  - `force-inject-at-corrupt`
+  - `force-inject-at-sentence-end`
+  - `align-stop-with-insert`
 
 适用场景：
 
@@ -209,46 +223,40 @@ LCB 默认注入文件：
 
 ## 4. 真正重要的参数
 
-如果你只关心“插入位置”和“插入后效果”，下面这些参数最重要。
+如果你只关心当前这条 AIME 主线，`run_aime.py` 顶层现在只保留下面这些参数。
 
 ### 4.1 prefix 截在哪里
 
-- `--checkpoint-mode`
-- `--checkpoint-regex`
 - `--checkpoint-mid-min-tokens`
 - `--checkpoint-mid-max-tokens`
-- `--checkpoint-delay`
+- `--max-prefix-tokens`
 
 理解方式：
 
 - 插得太早，就把 `checkpoint-mid-*` 调大；
-- 插得太晚，就把 `checkpoint-mid-*` 调小，或者改用 regex anchor。
+- 插得太晚，就把 `checkpoint-mid-*` 调小。
 
-### 4.2 插在哪
+### 4.2 第一个原生 think 保留多少
 
-- `--corrupt-after-first-think`
-- `--no-step-fallback-offset-tokens`
-- `--force-inject-at-corrupt`
-- `--force-inject-at-sentence-end`
-
-理解方式：
-
-- `--corrupt-after-first-think` 表示定位插入点时，优先只看第一个 `</think>` 之后的正文；
-- `--no-step-fallback-offset-tokens` 是找不到更好锚点时的 token 级兜底位置；
-- `--force-inject-at-corrupt` 表示 Branch B 不再简单 append 到尾部，而是强制插在定位到的位置上。
-
-### 4.3 第一个原生 think 保留多少
-
-- `--enable-think-word-limit`
-- `--think-word-limit`
 - `--enable-first-think-max-words`
 - `--first-think-max-words`
 - `--enable-first-think-smooth-close`
+- `--first-think-smooth-close-text`
 
 理解方式：
 
-- 如果模型第一个原生 think 太长，把真正的插入点推得太靠后，这组参数就很重要；
-- 它们控制的是 prefix 里第一个原生 think，而不是你后插进去的 think。
+- 这组参数控制原始第一段 think 要不要裁短，以及裁短时是否加平滑闭合过渡。
+
+### 4.3 插入后还给多少预算
+
+- `--max-new-after`
+- `--temperature`
+- `--top-p`
+
+理解方式：
+
+- `max-new-after` 决定插入后的续写预算；
+- `temperature / top-p` 决定插入后的探索强度。
 
 ### 4.4 复读抑制
 
@@ -258,6 +266,8 @@ LCB 默认注入文件：
 理解方式：
 
 - 如果模型在 `</think>` 后总是重复左边刚写过的内容，就打开这两个开关试。
+
+旧的 step / regex / locator 相关超参数仍然保留在底层 `test_close_suite.py` 里，主要用于兼容旧实验；但它们已经不再是 `run_aime.py` 这条主入口的默认接口。
 
 ## 5. 最小运行命令
 
@@ -304,35 +314,13 @@ python run_aime.py \
   --save-task-texts
 ```
 
-推荐的“先等原生 think 结束，再在正文中段插入”配置：
+默认行为已经固定为这条主线：
 
-```bash
-python run_aime.py \
-  --model-paths "$MODEL" \
-  --tasks-file data/tasks_aime2025.jsonl \
-  --output-dir outputs/aime/suite_aime2025_insert \
-  --checkpoint-mode think_end_mid \
-  --checkpoint-mid-min-tokens 20 \
-  --checkpoint-mid-max-tokens 30 \
-  --no-step-fallback-offset-tokens 300 \
-  --corrupt-after-first-think \
-  --save-task-texts
-```
-
-如果你想按 Step 锚点插：
-
-```bash
-python run_aime.py \
-  --model-paths "$MODEL" \
-  --tasks-file data/tasks_aime2025.jsonl \
-  --output-dir outputs/aime/suite_aime2025_insert_step3 \
-  --checkpoint-mode think_end_then_regex \
-  --checkpoint-regex '(?i)step\\s*3' \
-  --no-step-fallback-offset-tokens 300 \
-  --corrupt-after-first-think \
-  --force-inject-at-corrupt \
-  --save-task-texts
-```
+- `prompt-mode = baseline`
+- `checkpoint-mode = think_end_punct`
+- 第一个原生 `</think>` 之后，在正文 `300-400` token 窗口等待下一个句号类 token
+- 命中后直接在那个停点插入新的 `<think>`
+- 不再从顶层暴露 step / regex / old locator 相关参数
 
 ### 5.3 AIME 改错版
 
@@ -344,9 +332,6 @@ python run_aime_corrupt.py \
   --tasks-file data/tasks_aime2025.jsonl \
   --output-dir outputs/aime/suite_aime2025_corrupt \
   --corrupt-mode anchor_number_shift \
-  --corrupt-after-first-think \
-  --force-inject-at-corrupt \
-  --force-inject-at-sentence-end \
   --save-task-texts
 ```
 
@@ -359,28 +344,8 @@ python run_aime_corrupt.py \
   --output-dir outputs/math/suite_math_mix5_corrupt \
   --corrupt-mode anchor_number_shift \
   --corrupt-prefer-sign-flip \
-  --corrupt-min-step 2 \
-  --corrupt-after-first-think \
-  --force-inject-at-corrupt \
-  --force-inject-at-sentence-end \
   --save-task-texts \
   --print-full-output
-```
-
-如果你只想定位插入点，不真正改 prefix：
-
-```bash
-python run_aime_corrupt.py \
-  --model-paths "$MODEL" \
-  --tasks-file data/tasks_aime2025.jsonl \
-  --output-dir outputs/aime/suite_aime2025_locator_only \
-  --locator-only \
-  --corrupt-mode none \
-  --corrupt-after-first-think \
-  --checkpoint-mode think_end_then_regex \
-  --checkpoint-regex '(?i)step\\s*3' \
-  --no-step-fallback-offset-tokens 300 \
-  --save-task-texts
 ```
 
 ### 5.4 LiveCodeBench 插入版
