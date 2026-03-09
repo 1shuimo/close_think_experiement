@@ -1,938 +1,242 @@
 <think>
-Okay, so I need to find how many integer coordinate points (a, b) satisfy the equation [(a+2)^2 + (b+3)^2] * [(a-2)^2 + (b-3)^2] = 5000. Hmm, let me think about how to approach this.
+Okay, so I need to find $ r^2 + s^2 $ for an isosceles trapezoid that has an inscribed circle with radius 3 and area 72. The trapezoid has parallel sides of lengths $ r $ and $ s $, and they aren't equal. Let me start by recalling some properties of trapezoids with inscribed circles.
 
-First, I notice that the equation is a product of two expressions: one is the square of the distance from the point (a, b) to (-2, -3), and the other is the square of the distance from (a, b) to (2, 3). So, if I denote D1 = (a+2)^2 + (b+3)^2 and D2 = (a-2)^2 + (b-3)^2, then the equation becomes D1 * D2 = 5000.
+First, I remember that for a trapezoid to have an inscribed circle (be tangential), the sum of the lengths of the two parallel sides must equal the sum of the lengths of the two non-parallel sides. So, if the trapezoid has bases $ r $ and $ s $, and legs of length $ l $, then $ r + s = 2l $. Wait, is that right? Let me check. In a tangential quadrilateral, the sums of the two pairs of opposite sides are equal. So, for a trapezoid, which has two sides parallel (the bases) and two sides non-parallel (the legs), the condition is that the sum of the bases equals the sum of the legs. So yes, $ r + s = l_1 + l_2 $. But since it's an isosceles trapezoid, the legs are equal, so $ l_1 = l_2 = l $, so $ r + s = 2l $. Got that.
 
-Since both D1 and D2 are squares of distances, they are non-negative integers. Therefore, their product is 5000, which is a positive integer. So, I need to find all integer pairs (D1, D2) such that D1 * D2 = 5000, and then for each such pair, find the number of integer points (a, b) that satisfy both D1 and D2.
+Next, the area of a trapezoid is given by the formula $ \frac{1}{2} \times (r + s) \times h $, where $ h $ is the height. In this case, the area is 72, and since there's an inscribed circle, the radius is 3. Wait, how does the radius relate to the height? In a tangential quadrilateral, the area can also be expressed as $ \text{semiperimeter} \times r $, but wait, no, actually, for a tangential quadrilateral, the area is $ \text{inradius} \times \text{semiperimeter} $? Wait, no, hold on. Let me recall. For a circle inscribed in a quadrilateral, the area is actually equal to the inradius multiplied by the semiperimeter? Wait, no, that's not right. For a triangle, the area is $ r \times s $, where $ s $ is the semiperimeter. For a tangential quadrilateral, the area is $ r \times (a + c) $, where $ a $ and $ c $ are two opposite sides? Wait, no, more accurately, since the semiperimeter $ s = \frac{a + b + c + d}{2} $, and for a tangential quadrilateral, $ a + c = b + d $, so the semiperimeter would be $ a + c $, or $ b + d $. Therefore, the area is $ r \times \text{semiperimeter} $. Wait, let me check.
 
-But first, let me factorize 5000 to find all possible pairs (D1, D2). Let me recall that 5000 = 5^4 * 2^3. So, the number of positive divisors is (4+1)*(3+1) = 20. Therefore, there are 20 positive divisors, which would lead to 10 pairs (since each pair is unordered). However, since D1 and D2 are both positive integers, we need to consider all factor pairs (d, 5000/d) where d divides 5000.
+Yes, according to what I remember, for a tangential quadrilateral, the area $ K = r \times s $, where $ s $ is the semiperimeter. Wait, but in a trapezoid, the area is also $ \frac{1}{2} \times (r + s) \times h $. Therefore, equating these two expressions for area?
 
-But before listing all factor pairs, maybe I can find some constraints on D1 and D2. For example, since D1 and D2 are squares of distances, they must be integers. However, since (a, b) are integers, D1 and D2 will automatically be integers. So, the main thing is to find all factor pairs of 5000 and then for each pair, find the number of integer solutions (a, b) to the system:
+Wait, but in this case, the trapezoid is tangential, so let me write down both expressions.
 
-(a + 2)^2 + (b + 3)^2 = d
+First, the standard trapezoid area: $ \frac{1}{2} \times (r + s) \times h = 72 $.
 
-(a - 2)^2 + (b - 3)^2 = 5000/d
+Second, the tangential quadrilateral area: $ K = r_{in} \times \text{semiperimeter} $. Wait, but here the inradius is given as 3. However, I need to be careful with notation because the problem uses $ r $ and $ s $ for the bases. Let me clarify:
 
-But solving this system for each factor pair might be complicated. Maybe there's a better way. Let me think about expanding the product D1 * D2.
+Let me denote the inradius as $ r_{in} = 3 $. Then the area is $ K = r_{in} \times \text{semiperimeter} $. But the semiperimeter $ s_{quad} = \frac{r + s + 2l}{2} $. But earlier, from the tangential condition, we have $ r + s = 2l $, so substituting that into the semiperimeter:
 
-Alternatively, perhaps I can find a relationship between D1 and D2. Let me try expanding both expressions.
+$ s_{quad} = \frac{2l + 2l}{2} = \frac{4l}{2} = 2l $. Therefore, the area is $ K = 3 \times 2l = 6l $. But we also have from the trapezoid area formula: $ \frac{1}{2} \times (r + s) \times h = \frac{1}{2} \times 2l \times h = l \times h = 72 $. Therefore, we have two expressions:
 
-First, expand D1:
+1. $ l \times h = 72 $
+2. $ 6l = 72 $
 
-(a + 2)^2 + (b + 3)^2 = a^2 + 4a + 4 + b^2 + 6b + 9 = a^2 + b^2 + 4a + 6b + 13.
+From the second equation, $ 6l = 72 $ implies $ l = 12 $. Then substituting back into the first equation, $ 12 \times h = 72 $, so $ h = 6 $. Wait, but the inradius is given as 3. How does the inradius relate to the height?
 
-Similarly, expand D2:
+In a trapezoid, the inradius is related to the height. For a tangential trapezoid, the inradius is equal to the height divided by 2? Wait, let me think. If the area is both $ r_{in} \times \text{semiperimeter} $ and $ \frac{1}{2} \times (r + s) \times h $, and we found that $ r + s = 2l $, so substituting into the area:
 
-(a - 2)^2 + (b - 3)^2 = a^2 - 4a + 4 + b^2 - 6b + 9 = a^2 + b^2 - 4a - 6b + 13.
+$ \frac{1}{2} \times 2l \times h = l h $, and also $ r_{in} \times 2l $. Therefore, equating:
 
-Let me denote S = a^2 + b^2. Then D1 = S + 4a + 6b + 13 and D2 = S - 4a - 6b + 13. Let me compute D1 * D2:
+$ l h = 2 l r_{in} \implies h = 2 r_{in} $. Therefore, since $ r_{in} = 3 $, then $ h = 6 $. Which matches our previous result. So that's consistent. Therefore, the height is 6. So that's settled.
 
-D1 * D2 = [S + 4a + 6b + 13][S - 4a - 6b + 13] = [S + 13 + (4a + 6b)][S + 13 - (4a + 6b)] = (S + 13)^2 - (4a + 6b)^2.
+So we know the height is 6, and the legs are length $ l = 12 $. Now, we need to find $ r^2 + s^2 $. Let me recall that in an isosceles trapezoid, the legs are equal, and the non-parallel sides. Also, the height can be related to the difference in the bases.
 
-So, according to the problem, this equals 5000. Therefore:
+Let me draw an isosceles trapezoid with bases $ r $ and $ s $, with $ r > s $, say. Then, if we drop perpendiculars from the endpoints of the shorter base $ s $ to the longer base $ r $, we form two right triangles on either side. The base of each right triangle would be $ \frac{r - s}{2} $, since the total overhang on both sides is $ r - s $, and since it's isosceles, it's split equally. The height of these triangles is the height of the trapezoid, which is 6, and the hypotenuse is the leg length, which is 12.
 
-(S + 13)^2 - (4a + 6b)^2 = 5000.
+Therefore, by the Pythagorean theorem, we have:
 
-This looks like a difference of squares. Let me write it as:
+$ \left( \frac{r - s}{2} \right)^2 + 6^2 = 12^2 $
 
-(S + 13)^2 - (4a + 6b)^2 = 5000.
+Let me compute that:
 
-Let me denote X = S + 13 and Y = 4a + 6b. Then the equation becomes X^2 - Y^2 = 5000, which factors as (X - Y)(X + Y) = 5000.
+$ \left( \frac{r - s}{2} \right)^2 + 36 = 144 $
 
-So, now we have another equation: (X - Y)(X + Y) = 5000, where X = S + 13 and Y = 4a + 6b. Also, S = a^2 + b^2. Therefore, X = a^2 + b^2 + 13.
+Subtract 36:
 
-So, we can think of this as a system:
+$ \left( \frac{r - s}{2} \right)^2 = 108 $
 
-X - Y = m
+Multiply both sides by 4:
 
-X + Y = n
+$ (r - s)^2 = 432 $
 
-such that m * n = 5000, and m and n have the same parity because X - Y and X + Y must both be even or both be odd. Since 5000 is even, both m and n must be even because if one is even and the other is odd, their product would be even, but their sum and difference would be odd, which would make X and Y not integers? Wait, let me check.
+So $ (r - s)^2 = 432 $. Also, from earlier, we know that $ r + s = 2l = 24 $. Because $ r + s = 2l $, and $ l = 12 $, so $ r + s = 24 $. Therefore, we have:
 
-If m and n are both integers, then X = (m + n)/2 and Y = (n - m)/2. Therefore, m and n must have the same parity so that X and Y are integers. Since 5000 is even, m and n must both be even. Because if one is even and the other is odd, their product is even, but their sum and difference would be odd, leading to X and Y not integers. Therefore, m and n must both be even numbers.
-
-Therefore, we need to find all pairs (m, n) such that m * n = 5000, m ≤ n, and m and n are both even. Then, for each such pair, compute X and Y, and then solve for a and b.
-
-But first, let me find all factor pairs (m, n) with m ≤ n, m * n = 5000, and m and n both even.
-
-First, factorize 5000. As mentioned before, 5000 = 2^3 * 5^4. For m and n to be both even, each must have at least one factor of 2. Therefore, we can write m = 2m', n = 2n', so that m' * n' = 5000 / 4 = 1250. Wait, 5000 divided by 4 is 1250. Therefore, m' * n' = 1250, with m' ≤ n', and m' and n' positive integers. Therefore, the number of such pairs is equal to the number of divisors of 1250 up to sqrt(1250).
-
-But first, let me check if this approach is correct. If m and n are both even, then m = 2m', n = 2n', so m' * n' = 5000 / 4 = 1250. However, 5000 divided by 4 is 1250. So yes, that seems correct.
-
-But 1250 = 2 * 5^4. Therefore, the number of positive divisors is (1 + 1)(4 + 1) = 12. Therefore, there are 6 factor pairs (m', n') with m' ≤ n'. Let me list them:
-
-First, list all divisors of 1250:
-
-Divisors of 1250: 1, 2, 5, 10, 25, 50, 125, 250, 625, 1250. Wait, but 1250 is 2 * 5^4. Let me compute all divisors:
-
-The exponents for 2: 0 or 1.
-
-Exponents for 5: 0, 1, 2, 3, 4.
-
-Therefore, divisors are:
-
-For 2^0 * 5^k: 1, 5, 25, 125, 625.
-
-For 2^1 * 5^k: 2, 10, 50, 250, 1250.
-
-Therefore, total 10 divisors. Wait, but earlier I thought there are 12? Wait, no, the number of divisors is (1 + 1)(4 + 1) = 12? Wait, no, 2^1 * 5^4. The number of divisors is (1 + 1)(4 + 1) = 12? Wait, no, exponents are 1 for 2 and 4 for 5. So the number of divisors is (1 + 1)(4 + 1) = 2 * 5 = 10. So there are 10 divisors. Therefore, the factor pairs (m', n') with m' ≤ n' are:
-
-(1, 1250), (2, 625), (5, 250), (10, 125), (25, 50). Wait, since sqrt(1250) is approx 35.35, so up to 35. So the pairs are:
-
-1 * 1250
-
-2 * 625
-
-5 * 250
-
-10 * 125
-
-25 * 50
-
-Then, since 35.35 is between 25 and 50, so those are all. Therefore, 5 factor pairs. Wait, but there are 10 divisors, so 5 pairs. Therefore, the original m and n pairs are:
-
-(2*1, 2*1250) = (2, 2500)
-
-(2*2, 2*625) = (4, 1250)
-
-(2*5, 2*250) = (10, 500)
-
-(2*10, 2*125) = (20, 250)
-
-(2*25, 2*50) = (50, 100)
-
-Wait, but 2* m' and 2* n', so yes. Therefore, the factor pairs (m, n) are:
-
-(2, 2500), (4, 1250), (10, 500), (20, 250), (50, 100). Also, since m and n can be positive integers with m ≤ n, but since 5000 is positive, both m and n are positive. Also, note that m and n can be negative? Wait, but since D1 and D2 are squares of distances, they are positive, so X and Y... Wait, X = S + 13, which is a^2 + b^2 + 13, which is always positive. Similarly, Y = 4a + 6b. However, Y can be positive or negative. However, in the equation X^2 - Y^2 = 5000, X must be greater than or equal to sqrt(5000) in absolute value? Wait, no, since X^2 - Y^2 = 5000, so X^2 = Y^2 + 5000, so X must be greater than |Y|. Therefore, X is positive, and since X = S + 13, which is positive, and Y can be anything such that Y^2 = X^2 - 5000. Therefore, when we considered (X - Y)(X + Y) = 5000, we can have positive factors or negative factors? Wait, but since X and Y are real numbers, but in our case, X and Y are integers? Wait, X is S + 13, which is integer because S = a^2 + b^2 is integer, and Y = 4a + 6b is also integer. Therefore, X and Y are integers, so m and n are integers. However, since X - Y and X + Y are both positive? Because X > |Y|, so X + Y is positive? Not necessarily. Suppose Y is negative. For example, if Y is negative, then X - Y would be X + |Y|, which is positive, and X + Y could be positive or negative depending on the magnitude. However, since X^2 - Y^2 = 5000, which is positive, so X^2 > Y^2, so |X| > |Y|. Since X is positive (as S + 13 is positive), then X + Y is positive if Y is positive, and X - Y is positive if Y is negative. However, if Y is negative, then X + Y could be positive or negative. Wait, but if X + Y is negative, then m = X - Y and n = X + Y would have different signs? But m * n = 5000, which is positive, so m and n must have the same sign. Therefore, since X + Y and X - Y must both be positive or both be negative. However, since X is positive and |X| > |Y|, if Y is positive, then X + Y is positive and X - Y is positive (since X > Y). If Y is negative, then X + Y is X + Y, which could be positive or negative. However, if X + Y is negative, then since X - Y is X - Y, which would be X - Y. If Y is negative, then -Y is positive, so X - Y = X + |Y|, which is positive. Therefore, if Y is negative, then X + Y could be positive or negative. However, if X + Y is negative, then m = X - Y is positive, n = X + Y is negative, so m * n is negative, which contradicts m * n = 5000 positive. Therefore, we must have that both m and n are positive. Therefore, X + Y must be positive. Therefore, if Y is negative, X + Y > 0. Therefore, in all cases, m and n are positive integers. Therefore, we can restrict ourselves to positive factor pairs (m, n) with m ≤ n, m * n = 5000, and m and n both even. Therefore, the five pairs I found earlier: (2, 2500), (4, 1250), (10, 500), (20, 250), (50, 100). Also, note that there are also pairs where m > n, but since we considered m ≤ n, we can just consider these five.
-
-But wait, actually, since m and n are positive integers with m * n = 5000, and m ≤ n, there are more factor pairs if we don't restrict to both even. However, we already restricted to both even. So, these five pairs. Let me check if there are more. For example, 5000 can be factored as (m, n) where m and n are both even. Let me check if there are more pairs. For example, 5000 divided by 2 is 2500, so (2, 2500). Then 4 * 1250, 8 * 625? But 625 is odd, so that would not satisfy both even. Similarly, 10 * 500, 20 * 250, 25 * 200? Wait, 25 is odd, so no. 50 * 100, 100 * 50, but we already have 50 * 100. Then 100 * 50 is same as 50 * 100. Similarly, 125 * 40? 125 is odd. 250 * 20, same as above. 625 * 8, no. 1250 * 4, same as above. 2500 * 2. So yes, only those five pairs where both factors are even. Therefore, five pairs. Therefore, for each of these five pairs, we can compute X and Y:
-
-For each pair (m, n):
-
-X = (m + n)/2
-
-Y = (n - m)/2
-
-Then, since X = a^2 + b^2 + 13 and Y = 4a + 6b, we can set up equations:
-
-a^2 + b^2 + 13 = X
-
-4a + 6b = Y
-
-Therefore, for each (X, Y), we can solve for a and b.
-
-So, let me go through each of the five pairs.
-
-First pair: (m, n) = (2, 2500)
-
-Compute X = (2 + 2500)/2 = 2502 / 2 = 1251
-
-Y = (2500 - 2)/2 = 2498 / 2 = 1249
-
-Therefore, equations:
-
-a^2 + b^2 + 13 = 1251 => a^2 + b^2 = 1238
+$ r + s = 24 $
 
 and
 
-4a + 6b = 1249
+$ (r - s)^2 = 432 $
 
-But 4a + 6b = 1249. Let me note that 4a + 6b is equal to 2*(2a + 3b). Therefore, 2*(2a + 3b) = 1249 => 2a + 3b = 1249 / 2 = 624.5. But 2a + 3b must be integer because a and b are integers. Therefore, this equation has no solution. Therefore, this pair (2, 2500) gives no solutions.
+We need to find $ r^2 + s^2 $. Recall that $ (r + s)^2 = r^2 + 2rs + s^2 $, and $ (r - s)^2 = r^2 - 2rs + s^2 $. Therefore, adding these two equations:
 
-Second pair: (m, n) = (4, 1250)
+$ (r + s)^2 + (r - s)^2 = 2r^2 + 2s^2 $
 
-X = (4 + 1250)/2 = 1254 / 2 = 627
+Therefore,
 
-Y = (1250 - 4)/2 = 1246 / 2 = 623
+$ r^2 + s^2 = \frac{(r + s)^2 + (r - s)^2}{2} $
 
-Therefore, equations:
+We know $ r + s = 24 $, so $ (r + s)^2 = 576 $, and $ (r - s)^2 = 432 $. Therefore:
 
-a^2 + b^2 = 627 - 13 = 614
+$ r^2 + s^2 = \frac{576 + 432}{2} = \frac{1008}{2} = 504 $.
 
-and
+Therefore, the answer is 504. Let me check if this makes sense.
 
-4a + 6b = 623 => 2a + 3b = 623 / 2 = 311.5, again non-integer. No solutions.
+First, let me verify the steps again. The key steps were:
 
-Third pair: (m, n) = (10, 500)
+1. For a tangential trapezoid, $ r + s = 2l $.
+2. Area is $ \frac{1}{2}(r + s)h = 72 $, and also $ r_{in} \times semiperimeter = 3 \times 2l = 6l = 72 \implies l = 12 $, so $ r + s = 24 $, and $ h = 6 $.
+3. Then, using the Pythagorean theorem on the right triangles formed by the legs, height, and base difference, we found $ (r - s)^2 = 432 $.
+4. Then using the identity $ r^2 + s^2 = \frac{(r + s)^2 + (r - s)^2}{2} $, we calculated 504.
 
-X = (10 + 500)/2 = 510 / 2 = 255
+Let me check if the numbers make sense. Let me try to find $ r $ and $ s $. Since $ r + s = 24 $, and $ (r - s)^2 = 432 $, so $ r - s = \sqrt{432} = 12 \sqrt{3} $. Therefore, solving:
 
-Y = (500 - 10)/2 = 490 / 2 = 245
+$ r + s = 24 $
 
-Therefore, equations:
+$ r - s = 12 \sqrt{3} $
 
-a^2 + b^2 = 255 - 13 = 242
+Adding equations:
 
-and
+$ 2r = 24 + 12 \sqrt{3} \implies r = 12 + 6 \sqrt{3} $
 
-4a + 6b = 245 => 2a + 3b = 245 / 2 = 122.5, again non-integer. No solutions.
+Subtracting equations:
 
-Fourth pair: (m, n) = (20, 250)
+$ 2s = 24 - 12 \sqrt{3} \implies s = 12 - 6 \sqrt{3} $
 
-X = (20 + 250)/2 = 270 / 2 = 135
+Then $ r^2 + s^2 $. Let me compute that:
 
-Y = (250 - 20)/2 = 230 / 2 = 115
+First, $ r = 12 + 6\sqrt{3} $, so $ r^2 = (12)^2 + 2 \times 12 \times 6\sqrt{3} + (6\sqrt{3})^2 = 144 + 144\sqrt{3} + 36 \times 3 = 144 + 144\sqrt{3} + 108 = 252 + 144\sqrt{3} $.
 
-Therefore, equations:
+Similarly, $ s = 12 - 6\sqrt{3} $, so $ s^2 = (12)^2 - 2 \times 12 \times 6\sqrt{3} + (6\sqrt{3})^2 = 144 - 144\sqrt{3} + 108 = 252 - 144\sqrt{3} $.
 
-a^2 + b^2 = 135 - 13 = 122
+Adding them together: $ 252 + 144\sqrt{3} + 252 - 144\sqrt{3} = 504 $. So that checks out. Therefore, the answer is indeed 504.
 
-and
+But let me just make sure that there are no errors in the initial assumptions. For example, that in a tangential trapezoid, the sum of the bases equals the sum of the legs. Let me confirm that.
 
-4a + 6b = 115 => 2a + 3b = 115 / 2 = 57.5, again non-integer. No solutions.
+In general, for a quadrilateral to be tangential, the sums of the lengths of opposite sides must be equal. In a trapezoid, there are two parallel sides (the bases) and two non-parallel sides (the legs). Therefore, for it to be tangential, the sum of the bases must equal the sum of the legs. So, yes, $ r + s = l_1 + l_2 $. Since it's isosceles, $ l_1 = l_2 $, so $ r + s = 2l $. Therefore, that is correct.
 
-Fifth pair: (m, n) = (50, 100)
+Also, the area formulas. The standard area formula for trapezoid is $ \frac{1}{2} \times (r + s) \times h $. For a tangential quadrilateral, area is $ inradius \times semiperimeter $. But in this case, since $ r + s = 2l $, the semiperimeter is $ \frac{r + s + 2l}{2} = \frac{2l + 2l}{2} = 2l $. Therefore, area is $ 3 \times 2l = 6l $, which equals the trapezoid area $ \frac{1}{2} \times 2l \times h = l h $. Therefore, $ l h = 6 l \implies h = 6 $. All steps check out.
 
-X = (50 + 100)/2 = 150 / 2 = 75
+Another way to think about the inradius: in a tangential quadrilateral, the inradius is equal to the area divided by the semiperimeter. So $ r_{in} = K / s_{quad} $. In this case, $ K = 72 $, $ s_{quad} = 2l = 24 $, so $ r_{in} = 72 / 24 = 3 $, which matches the given value. Perfect.
 
-Y = (100 - 50)/2 = 50 / 2 = 25
+Therefore, all steps are consistent and verified. Therefore, the answer is 504.
 
-Therefore, equations:
+**Final Answer**
+\boxed{504}
+</think>
 
-a^2 + b^2 = 75 - 13 = 62
+To solve the problem, we are given an **isosceles trapezoid** with an **inscribed circle** (i.e., a tangential trapezoid), where the **radius of the circle is 3** and the **area of the trapezoid is 72**. We are to find the value of $ r^2 + s^2 $, where $ r $ and $ s $ are the lengths of the two parallel sides (bases), with $ r \neq s $.
 
-and
+---
 
-4a + 6b = 25 => 2a + 3b = 25 / 2 = 12.5, again non-integer. No solutions.
+### Step 1: Use the Tangential Trapezoid Property
 
-Wait, so all five pairs lead to equations where 2a + 3b is a non-integer? That can't be. But according to our earlier logic, we considered only factor pairs where m and n are both even, leading to X and Y integers. But here, Y is integer, but when we divide by 2, we get non-integer? Wait, no. Wait, Y is (n - m)/2. For example, in the first case, n - m = 2500 - 2 = 2498, which divided by 2 is 1249, which is integer. Similarly, for the second pair, 1250 - 4 = 1246, divided by 2 is 623, integer. So Y is integer. However, 4a + 6b is equal to Y, which is integer. However, when I write 4a + 6b = Y, that is okay. But why did I think of dividing by 2? Maybe I confused something here.
+For a trapezoid to be tangential (i.e., have an inscribed circle), the **sum of the lengths of the two bases equals the sum of the lengths of the two legs**. Since the trapezoid is isosceles, the two legs are equal in length, say $ l $. Therefore:
 
-Wait, no, I think I made a mistake here. Let me re-examine. The equations are:
+$$
+r + s = 2l
+$$
 
-From X = a^2 + b^2 + 13 and Y = 4a + 6b. So, given X and Y, we need to solve for integers a, b. However, perhaps I need to approach this system differently. Let me think.
+---
 
-We have two equations:
+### Step 2: Use the Area Formula
 
-1) a^2 + b^2 = X - 13
+The area $ A $ of a trapezoid is given by:
 
-2) 4a + 6b = Y
+$$
+A = \frac{1}{2}(r + s) \cdot h
+$$
 
-So, perhaps I can express one variable in terms of the other from equation 2 and substitute into equation 1.
+We are told the area is 72, so:
 
-Let me try that. Let me solve equation 2 for a or b. Let me solve for a:
+$$
+\frac{1}{2}(r + s) \cdot h = 72
+$$
 
-From 4a + 6b = Y => 2a + 3b = Y / 2. Wait, but Y is integer, so if Y is even, then 2a + 3b is integer. However, if Y is odd, then 2a + 3b is a half-integer, which is impossible because a and b are integers. Therefore, in our previous cases, when Y was odd, there are no solutions. However, in our five pairs, Y was 1249, 623, 245, 115, 25, all odd numbers. Therefore, in these cases, there are no solutions. Therefore, perhaps we need to consider other factor pairs where m and n are both even, but also Y is even? Wait, but how?
+From the tangential property, $ r + s = 2l $, so:
 
-Wait, perhaps my mistake was in assuming that m and n must be both even. However, even if m and n are both even, Y = (n - m)/2 can be odd or even. For example, take m = 2 and n = 2500. Then Y = (2500 - 2)/2 = 2498 / 2 = 1249, which is odd. Similarly, for m = 4, n = 1250, Y = (1250 - 4)/2 = 1246 / 2 = 623, odd. Similarly, m = 10, n = 500: (500 - 10)/2 = 490 / 2 = 245, odd. m = 20, n = 250: (250 - 20)/2 = 230 / 2 = 115, odd. m = 50, n = 100: (100 - 50)/2 = 50 / 2 = 25, odd. Therefore, in all these cases, Y is odd, leading to no solutions. Therefore, perhaps there are no solutions? But that can't be, because the problem asks for the number of integer points, so there must be some solutions. Therefore, my approach is missing something.
+$$
+\frac{1}{2}(2l) \cdot h = 72 \Rightarrow l \cdot h = 72
+$$
 
-Wait, maybe I need to consider negative factors as well? Earlier, I considered only positive factors, but since (X - Y)(X + Y) = 5000, and X and Y are real numbers, but since X and Y are derived from integer coordinates, they are integers. However, perhaps m and n can be negative? Let me think. If m and n are both negative, then their product is positive, and X = (m + n)/2, Y = (n - m)/2. Let me check.
+---
 
-Suppose m and n are both negative. Let me take m = -2, n = -2500. Then X = (-2 + (-2500))/2 = -2502 / 2 = -1251. But X = a^2 + b^2 + 13, which is always positive. Therefore, X cannot be negative. Therefore, m and n cannot both be negative. What if one is positive and one is negative? Then their product is negative, which cannot be 5000. Therefore, only positive factors. Therefore, my previous conclusion that there are no solutions is conflicting with the problem's existence. Therefore, there must be an error in my approach.
+### Step 3: Use the Inradius and Semiperimeter
 
-Wait, maybe I made a mistake in the expansion? Let me check again.
+For a **tangential quadrilateral**, the area is also given by:
 
-Original equation: [(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2] = 5000.
+$$
+A = r_{\text{in}} \cdot s_{\text{quad}}
+$$
 
-I expanded D1 and D2 as:
+Where $ r_{\text{in}} $ is the inradius and $ s_{\text{quad}} $ is the semiperimeter. The semiperimeter of the trapezoid is:
 
-D1 = a^2 + b^2 + 4a + 6b + 13
+$$
+s_{\text{quad}} = \frac{r + s + 2l}{2}
+$$
 
-D2 = a^2 + b^2 - 4a - 6b + 13
+But since $ r + s = 2l $, the semiperimeter becomes:
 
-Then, I set S = a^2 + b^2, so D1 = S + 4a + 6b + 13, D2 = S - 4a - 6b + 13.
+$$
+s_{\text{quad}} = \frac{2l + 2l}{2} = 2l
+$$
 
-Then, D1 * D2 = (S + 13 + 4a + 6b)(S + 13 - 4a - 6b) = (S + 13)^2 - (4a + 6b)^2. That seems correct.
+So the area is:
 
-Therefore, (S + 13)^2 - (4a + 6b)^2 = 5000. Then, setting X = S + 13, Y = 4a + 6b, so X^2 - Y^2 = 5000. Then, (X - Y)(X + Y) = 5000. Then, I considered factor pairs (m, n) where m = X - Y, n = X + Y, m * n = 5000, m and n same parity. However, in my approach, I considered only positive factor pairs, but perhaps there are other possibilities?
+$$
+A = r_{\text{in}} \cdot 2l = 3 \cdot 2l = 6l
+$$
 
-Wait, but X and Y are integers. Also, since X = S + 13, which is positive, and Y can be any integer. However, X^2 - Y^2 = 5000 implies that X^2 = Y^2 + 5000, so X must be greater than |Y|. Therefore, X + Y and X - Y are both positive? Let me check:
+Set this equal to the given area:
 
-If Y is positive, then since X > Y, X - Y is positive, and X + Y is positive.
+$$
+6l = 72 \Rightarrow l = 12
+$$
 
-If Y is negative, then X + Y is X + Y. Since X > |Y|, if Y is negative, then X + Y = X - |Y| > 0. Therefore, both X - Y and X + Y are positive regardless of the sign of Y. Therefore, m and n are both positive. Therefore, only positive factor pairs. Therefore, my previous conclusion that there are no solutions is conflicting with the problem's requirement. Therefore, there must be a mistake in my reasoning.
+Then from earlier, $ l \cdot h = 72 \Rightarrow h = 6 $
 
-Wait, but maybe I need to consider that when I set m = X - Y and n = X + Y, m and n don't have to be both even? Wait, earlier I thought that m and n must be both even because X and Y are integers. Let me check:
+---
 
-X = (m + n)/2, Y = (n - m)/2. For X and Y to be integers, m + n and n - m must be even. Therefore, m and n must have the same parity. Therefore, since 5000 is even, m and n must both be even or both be odd. However, 5000 is divisible by 2 but not by 4? Wait, 5000 = 5^4 * 2^3. Therefore, 5000 is divisible by 8? 5000 / 8 = 625. Yes, 8 * 625 = 5000. Therefore, 5000 is divisible by 8. Therefore, if m and n are both even, then m * n is divisible by 4. However, 5000 is divisible by 8, so m * n is divisible by 8. Therefore, if m and n are both even, then m = 2m', n = 2n', so m' * n' = 5000 / 4 = 1250. However, 1250 is 2 * 5^4, which is even, so m' and n' can be both even or one even and one odd? Wait, no, m' and n' can be any integers as long as their product is 1250. However, if m and n are both even, then m' and n' can be integers. However, if m and n are both odd, then m * n would be odd, but 5000 is even, so there are no such pairs. Therefore, only pairs where m and n are both even. Therefore, my previous approach is correct. However, in all those cases, Y is odd, leading to no solutions. Therefore, maybe there are no solutions? But the problem says "how many points...", implying there is at least one. Therefore, there must be an error in my reasoning.
+### Step 4: Use the Geometry of the Isosceles Trapezoid
 
-Wait, let me check with specific numbers. Let me take a simple case. Suppose there exists a point (a, b) that satisfies the original equation. Let me try to find such a point.
+In an isosceles trapezoid, the legs form right triangles with the height and the difference in the bases. The base of each right triangle is:
 
-Alternatively, maybe my mistake is in the expansion? Let me check again.
+$$
+\frac{r - s}{2}
+$$
 
-Original equation:
+Using the Pythagorean Theorem:
 
-[(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2] = 5000.
+$$
+\left( \frac{r - s}{2} \right)^2 + h^2 = l^2
+$$
 
-Let me try plugging in some points. For example, suppose (a, b) is equidistant from (-2, -3) and (2, 3). Wait, but that would mean the point lies on the perpendicular bisector of the segment joining (-2, -3) and (2, 3). The midpoint is (0, 0), and the slope of the segment is (3 - (-3))/(2 - (-2)) = 6/4 = 3/2, so the perpendicular bisector has slope -2/3. Therefore, the equation is y = -2/3 x. However, if a point lies on this line, then D1 = D2, so D1^2 = 5000 => D1 = sqrt(5000). However, sqrt(5000) is irrational, so D1 and D2 would not be integers. Therefore, maybe there are no points on the perpendicular bisector. Alternatively, maybe there are points not on the perpendicular bisector where D1 * D2 = 5000.
+Substitute $ h = 6 $, $ l = 12 $:
 
-Alternatively, maybe I need to consider that D1 and D2 are integers, but their product is 5000. Therefore, D1 and D2 are divisors of 5000. However, D1 and D2 are sums of squares. Therefore, they must be numbers that can be expressed as sum of squares. Therefore, maybe I should factor 5000 into two factors, each of which can be expressed as a sum of squares, and then find the number of integer solutions for each factor.
+$$
+\left( \frac{r - s}{2} \right)^2 + 36 = 144 \Rightarrow \left( \frac{r - s}{2} \right)^2 = 108
+$$
 
-This seems like a different approach. Let me try this.
+Multiply both sides by 4:
 
-First, factor 5000 into two positive integers D1 and D2 such that D1 * D2 = 5000, and both D1 and D2 can be expressed as sum of squares. Then, for each such pair, find the number of integer solutions (a, b) to D1 = (a + 2)^2 + (b + 3)^2 and D2 = (a - 2)^2 + (b - 3)^2, and sum them up.
+$$
+(r - s)^2 = 432
+$$
 
-This approach might be more feasible. Let me try.
+We also know from earlier that:
 
-First, factor 5000 into D1 * D2, where D1 and D2 are positive integers. For each factor pair, check if D1 and D2 can be expressed as sum of squares. If yes, then find the number of integer solutions for each equation, and then find the intersection (i.e., points (a, b) that satisfy both equations). However, this seems complicated, but maybe manageable.
+$$
+r + s = 24
+$$
 
-First, let me note that a number can be expressed as a sum of two squares if and only if in its prime factorization, every prime congruent to 3 mod 4 appears with even exponent. Since 5000 = 2^3 * 5^4. The prime 2 is okay, and 5 is 1 mod 4. Therefore, all factors of 5000 can be expressed as sum of squares. Because any factor will have primes 2 and 5 only, which are 1 mod 4 or 2, so they can be expressed as sum of squares. Therefore, all factor pairs (D1, D2) will have D1 and D2 expressible as sum of squares. Therefore, for each factor pair, we can find the number of integer solutions to each equation, and then find the number of common solutions.
+---
 
-However, the problem is that for each factor pair, the number of solutions to D1 = (a + 2)^2 + (b + 3)^2 and D2 = (a - 2)^2 + (b - 3)^2 may be zero or more. However, solving for both equations simultaneously is non-trivial. However, maybe we can use the previous approach but correct the mistake.
+### Step 5: Compute $ r^2 + s^2 $
 
-Earlier, I tried to use the identity leading to X^2 - Y^2 = 5000, but ended up with no solutions. However, maybe there are other factor pairs where m and n are not both even? Wait, but earlier reasoning said that m and n must be both even or both odd. Since 5000 is even, they can't be both odd. Therefore, they must be both even. However, in those cases, Y was odd. Therefore, maybe there is a mistake in assuming that all factor pairs (m, n) with m and n both even are generated by m = 2m', n = 2n', m' * n' = 1250. However, perhaps there are other factor pairs where m and n are both even but not generated by dividing by 2? No, because if m and n are both even, then m = 2m', n = 2n', and m' * n' = 1250. Therefore, all such pairs are covered. Therefore, why in those cases Y is odd?
+We use the identity:
 
-Wait, let me check with an example. Suppose I take m = 2 and n = 2500. Then Y = (n - m)/2 = (2500 - 2)/2 = 1249, which is odd. However, equation 4a + 6b = 1249. Let me check if this equation has solutions. Since 4a + 6b = 1249. Let me divide both sides by 2: 2a + 3b = 624.5. Since left side is integer, right side is not. Therefore, no solution. Similarly for other pairs. Therefore, according to this approach, there are no solutions. But the problem says "how many points...", so there must be some solutions. Therefore, my mistake must be somewhere else.
+$$
+r^2 + s^2 = \frac{(r + s)^2 + (r - s)^2}{2}
+$$
 
-Wait, let me check my expansion again. Let me re-derive the equations.
+Substitute the known values:
 
-Original equation:
+$$
+r^2 + s^2 = \frac{24^2 + 432}{2} = \frac{576 + 432}{2} = \frac{1008}{2} = 504
+$$
 
-[(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2] = 5000.
+---
 
-Let me compute this product directly for some specific (a, b). For example, take a = 0, b = 0.
+### Final Answer
 
-First term: (0 + 2)^2 + (0 + 3)^2 = 4 + 9 = 13.
-
-Second term: (0 - 2)^2 + (0 - 3)^2 = 4 + 9 = 13.
-
-Product: 13 * 13 = 169 ≠ 5000. Not helpful.
-
-Take a = 2, b = 3. First term: (2 + 2)^2 + (3 + 3)^2 = 16 + 36 = 52. Second term: (2 - 2)^2 + (3 - 3)^2 = 0 + 0 = 0. Product is 0. Not helpful.
-
-Take a = -2, b = -3. Similar to above, product is 0.
-
-Take a = 1, b = 1. First term: (1 + 2)^2 + (1 + 3)^2 = 9 + 16 = 25. Second term: (1 - 2)^2 + (1 - 3)^2 = 1 + 4 = 5. Product: 25 * 5 = 125. Still not 5000.
-
-Take a = 3, b = 4. First term: (3 + 2)^2 + (4 + 3)^2 = 25 + 49 = 74. Second term: (3 - 2)^2 + (4 - 3)^2 = 1 + 1 = 2. Product: 74 * 2 = 148.
-
-Not helpful. Maybe try a larger number. Suppose I take a point that is far away. For example, suppose a = x, b = y such that both distances are large. But this might not help.
-
-Alternatively, maybe there are no solutions? But the problem asks for the number of integer points, so likely there are some. Therefore, my previous approach must have an error.
-
-Wait, going back to the equations:
-
-We had X^2 - Y^2 = 5000, where X = a^2 + b^2 + 13 and Y = 4a + 6b. But maybe there are other ways to factor 5000 into (X - Y)(X + Y). For example, negative factors? But earlier we saw that m and n must be positive. However, suppose we consider negative factors? For example, if we take m = -2 and n = -2500, then X = (-2 + (-2500))/2 = -1251, which is negative, but X = a^2 + b^2 + 13 is positive. Therefore, invalid. Similarly, if we take m positive and n negative, their product is negative, which cannot be 5000. Therefore, no.
-
-Wait, but what if we consider different factorizations where m and n are not necessarily integers? No, because X and Y are integers, so m and n must be integers.
-
-Wait, maybe I made a mistake in the earlier expansion? Let me re-derive the equations.
-
-Let me compute [(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2]. Let me denote u = a, v = b. Let me compute this product.
-
-First, expand each term:
-
-First term: (u + 2)^2 + (v + 3)^2 = u² + 4u + 4 + v² + 6v + 9 = u² + v² + 4u + 6v + 13.
-
-Second term: (u - 2)^2 + (v - 3)^2 = u² - 4u + 4 + v² - 6v + 9 = u² + v² - 4u - 6v + 13.
-
-Let me denote S = u² + v², then first term is S + 4u + 6v + 13, second term is S - 4u - 6v + 13. Multiplying them:
-
-(S + 13 + 4u + 6v)(S + 13 - 4u - 6v) = (S + 13)^2 - (4u + 6v)^2. This is correct, as it's a difference of squares. Therefore, the equation is (S + 13)^2 - (4u + 6v)^2 = 5000. So that's correct.
-
-Let me denote Y = 4u + 6v, then (S + 13)^2 - Y² = 5000. Therefore, (S + 13 - Y)(S + 13 + Y) = 5000. So, same as before.
-
-But earlier, when I considered factor pairs (m, n) with m = S + 13 - Y and n = S + 13 + Y, leading to m * n = 5000, and m and n both even. But in all those cases, Y was odd, leading to no solutions. Therefore, maybe there are no solutions? But the problem says to provide the number of integer points, so likely there is a solution. Therefore, I must have missed something.
-
-Wait, maybe there are other factorizations where m and n are not both even? But earlier reasoning said that since X and Y are integers, m and n must have the same parity. Since 5000 is even, they must both be even. Therefore, no. Therefore, maybe there are no solutions? But that seems unlikely. Let me check with another approach.
-
-Let me consider that D1 * D2 = 5000, where D1 = (a + 2)^2 + (b + 3)^2 and D2 = (a - 2)^2 + (b - 3)^2. Let me think about possible values of D1 and D2.
-
-Since D1 and D2 are both positive integers, their product is 5000. Let me list all possible factor pairs (D1, D2) where D1 ≤ D2 and D1 * D2 = 5000. Then, for each pair, check if there exist integer solutions (a, b) to both equations.
-
-First, list all factor pairs of 5000:
-
-1 * 5000
-
-2 * 2500
-
-4 * 1250
-
-5 * 1000
-
-8 * 625
-
-10 * 500
-
-20 * 250
-
-25 * 200
-
-40 * 125
-
-50 * 100
-
-So these are all factor pairs with D1 ≤ D2.
-
-Now, for each pair, check if there are integer solutions to both equations.
-
-Let me start with the pair (1, 5000). D1 = 1, D2 = 5000.
-
-Solve (a + 2)^2 + (b + 3)^2 = 1. This equation represents a circle with radius 1 centered at (-2, -3). The integer solutions are points at distance 1 from (-2, -3). The integer points on this circle are (-2 ± 1, -3), (-2, -3 ± 1). So four points: (-3, -3), (-1, -3), (-2, -4), (-2, -2). Now, for each of these points, check if they satisfy D2 = 5000.
-
-Take (-3, -3): D2 = (-3 - 2)^2 + (-3 - 3)^2 = (-5)^2 + (-6)^2 = 25 + 36 = 61 ≠ 5000.
-
-Similarly for (-1, -3): D2 = (-1 - 2)^2 + (-3 - 3)^2 = 9 + 36 = 45 ≠ 5000.
-
-For (-2, -4): D2 = (-2 - 2)^2 + (-4 - 3)^2 = 16 + 49 = 65 ≠ 5000.
-
-For (-2, -2): D2 = (-2 - 2)^2 + (-2 - 3)^2 = 16 + 25 = 41 ≠ 5000. So no solutions for this pair.
-
-Next pair: (2, 2500). D1 = 2, D2 = 2500.
-
-Solve (a + 2)^2 + (b + 3)^2 = 2. The integer solutions are points at distance sqrt(2) from (-2, -3). These are points where one coordinate differs by 1 and the other by 1. So four points: (-2 ± 1, -3 ± 1). Let's list them: (-3, -4), (-3, -2), (-1, -4), (-1, -2). Check D2 for each:
-
-For (-3, -4): D2 = (-3 - 2)^2 + (-4 - 3)^2 = 25 + 49 = 74 ≠ 2500.
-
-Similarly for others: same result. No solutions.
-
-Next pair: (4, 1250). D1 = 4, D2 = 1250.
-
-Solve (a + 2)^2 + (b + 3)^2 = 4. This is a circle with radius 2. Integer solutions are points at distance 2 from (-2, -3). Possible points: (-2 ± 2, -3), (-2, -3 ± 2), and the diagonal points? Wait, no, distance 2 can be achieved by (±2, 0), (0, ±2). So translating to the center (-2, -3):
-
-(-2 + 2, -3) = (0, -3)
-
-(-2 - 2, -3) = (-4, -3)
-
-(-2, -3 + 2) = (-2, -1)
-
-(-2, -3 - 2) = (-2, -5)
-
-Also, the diagonal points: (-2 ± 1, -3 ± sqrt(3)), but sqrt(3) is not integer. Wait, no, for integer coordinates, the distance squared is 4. So possible integer solutions are those where the differences are (±2, 0), (0, ±2). Therefore, four points: (0, -3), (-4, -3), (-2, -1), (-2, -5). Check D2 for each:
-
-For (0, -3): D2 = (0 - 2)^2 + (-3 - 3)^2 = 4 + 36 = 40 ≠ 1250.
-
-For (-4, -3): D2 = (-4 - 2)^2 + (-3 - 3)^2 = 36 + 36 = 72 ≠ 1250.
-
-For (-2, -1): D2 = (-2 - 2)^2 + (-1 - 3)^2 = 16 + 16 = 32 ≠ 1250.
-
-For (-2, -5): D2 = (-2 - 2)^2 + (-5 - 3)^2 = 16 + 64 = 80 ≠ 1250. No solutions.
-
-Next pair: (5, 1000). D1 = 5, D2 = 1000.
-
-Solve (a + 2)^2 + (b + 3)^2 = 5. The integer solutions are points where the squared distance is 5. This can be achieved by (±1, ±2) or (±2, ±1). So translating to the center (-2, -3):
-
-Possible points:
-
-(-2 + 1, -3 + 2) = (-1, -1)
-
-(-2 + 1, -3 - 2) = (-1, -5)
-
-(-2 - 1, -3 + 2) = (-3, -1)
-
-(-2 - 1, -3 - 2) = (-3, -5)
-
-Similarly for (±2, ±1):
-
-(-2 + 2, -3 + 1) = (0, -2)
-
-(-2 + 2, -3 - 1) = (0, -4)
-
-(-2 - 2, -3 + 1) = (-4, -2)
-
-(-2 - 2, -3 - 1) = (-4, -4)
-
-So total 8 points. Check D2 for each:
-
-For (-1, -1): D2 = (-1 - 2)^2 + (-1 - 3)^2 = 9 + 16 = 25 ≠ 1000.
-
-For (-1, -5): D2 = (-1 - 2)^2 + (-5 - 3)^2 = 9 + 64 = 73 ≠ 1000.
-
-For (-3, -1): D2 = (-3 - 2)^2 + (-1 - 3)^2 = 25 + 16 = 41 ≠ 1000.
-
-For (-3, -5): D2 = (-3 - 2)^2 + (-5 - 3)^2 = 25 + 64 = 89 ≠ 1000.
-
-For (0, -2): D2 = (0 - 2)^2 + (-2 - 3)^2 = 4 + 25 = 29 ≠ 1000.
-
-For (0, -4): D2 = (0 - 2)^2 + (-4 - 3)^2 = 4 + 49 = 53 ≠ 1000.
-
-For (-4, -2): D2 = (-4 - 2)^2 + (-2 - 3)^2 = 36 + 25 = 61 ≠ 1000.
-
-For (-4, -4): D2 = (-4 - 2)^2 + (-4 - 3)^2 = 36 + 49 = 85 ≠ 1000. No solutions.
-
-Next pair: (8, 625). D1 = 8, D2 = 625.
-
-Solve (a + 2)^2 + (b + 3)^2 = 8. The squared distance is 8, which can be achieved by (±2, ±2) or (±0, ±sqrt(8)), but since we need integer coordinates, only (±2, ±2). So translating to the center (-2, -3):
-
-Possible points:
-
-(-2 + 2, -3 + 2) = (0, -1)
-
-(-2 + 2, -3 - 2) = (0, -5)
-
-(-2 - 2, -3 + 2) = (-4, -1)
-
-(-2 - 2, -3 - 2) = (-4, -5)
-
-Also, (±2, ±2) in other combinations? Wait, (±2, ±2) gives four points, but since the equation is symmetric, these are the four points above. Check D2 for each:
-
-For (0, -1): D2 = (0 - 2)^2 + (-1 - 3)^2 = 4 + 16 = 20 ≠ 625.
-
-For (0, -5): D2 = (0 - 2)^2 + (-5 - 3)^2 = 4 + 64 = 68 ≠ 625.
-
-For (-4, -1): D2 = (-4 - 2)^2 + (-1 - 3)^2 = 36 + 16 = 52 ≠ 625.
-
-For (-4, -5): D2 = (-4 - 2)^2 + (-5 - 3)^2 = 36 + 64 = 100 ≠ 625. No solutions.
-
-Next pair: (10, 500). D1 = 10, D2 = 500.
-
-Solve (a + 2)^2 + (b + 3)^2 = 10. Squared distance 10 can be achieved by (±1, ±3), (±3, ±1). So translating to center (-2, -3):
-
-Possible points:
-
-(-2 + 1, -3 + 3) = (-1, 0)
-
-(-2 + 1, -3 - 3) = (-1, -6)
-
-(-2 - 1, -3 + 3) = (-3, 0)
-
-(-2 - 1, -3 - 3) = (-3, -6)
-
-(-2 + 3, -3 + 1) = (1, -2)
-
-(-2 + 3, -3 - 1) = (1, -4)
-
-(-2 - 3, -3 + 1) = (-5, -2)
-
-(-2 - 3, -3 - 1) = (-5, -4)
-
-Total 8 points. Check D2 for each:
-
-For (-1, 0): D2 = (-1 - 2)^2 + (0 - 3)^2 = 9 + 9 = 18 ≠ 500.
-
-For (-1, -6): D2 = (-1 - 2)^2 + (-6 - 3)^2 = 9 + 81 = 90 ≠ 500.
-
-For (-3, 0): D2 = (-3 - 2)^2 + (0 - 3)^2 = 25 + 9 = 34 ≠ 500.
-
-For (-3, -6): D2 = (-3 - 2)^2 + (-6 - 3)^2 = 25 + 81 = 106 ≠ 500.
-
-For (1, -2): D2 = (1 - 2)^2 + (-2 - 3)^2 = 1 + 25 = 26 ≠ 500.
-
-For (1, -4): D2 = (1 - 2)^2 + (-4 - 3)^2 = 1 + 49 = 50 ≠ 500.
-
-For (-5, -2): D2 = (-5 - 2)^2 + (-2 - 3)^2 = 49 + 25 = 74 ≠ 500.
-
-For (-5, -4): D2 = (-5 - 2)^2 + (-4 - 3)^2 = 49 + 49 = 98 ≠ 500. No solutions.
-
-Next pair: (20, 250). D1 = 20, D2 = 250.
-
-Solve (a + 2)^2 + (b + 3)^2 = 20. Squared distance 20 can be achieved by (±2, ±4), (±4, ±2), (±sqrt(20), 0), but integer solutions are (±2, ±4), (±4, ±2). Translating to center (-2, -3):
-
-Possible points:
-
-(-2 + 2, -3 + 4) = (0, 1)
-
-(-2 + 2, -3 - 4) = (0, -7)
-
-(-2 - 2, -3 + 4) = (-4, 1)
-
-(-2 - 2, -3 - 4) = (-4, -7)
-
-(-2 + 4, -3 + 2) = (2, -1)
-
-(-2 + 4, -3 - 2) = (2, -5)
-
-(-2 - 4, -3 + 2) = (-6, -1)
-
-(-2 - 4, -3 - 2) = (-6, -5)
-
-Total 8 points. Check D2 for each:
-
-For (0, 1): D2 = (0 - 2)^2 + (1 - 3)^2 = 4 + 4 = 8 ≠ 250.
-
-For (0, -7): D2 = (0 - 2)^2 + (-7 - 3)^2 = 4 + 100 = 104 ≠ 250.
-
-For (-4, 1): D2 = (-4 - 2)^2 + (1 - 3)^2 = 36 + 4 = 40 ≠ 250.
-
-For (-4, -7): D2 = (-4 - 2)^2 + (-7 - 3)^2 = 36 + 100 = 136 ≠ 250.
-
-For (2, -1): D2 = (2 - 2)^2 + (-1 - 3)^2 = 0 + 16 = 16 ≠ 250.
-
-For (2, -5): D2 = (2 - 2)^2 + (-5 - 3)^2 = 0 + 64 = 64 ≠ 250.
-
-For (-6, -1): D2 = (-6 - 2)^2 + (-1 - 3)^2 = 64 + 16 = 80 ≠ 250.
-
-For (-6, -5): D2 = (-6 - 2)^2 + (-5 - 3)^2 = 64 + 64 = 128 ≠ 250. No solutions.
-
-Next pair: (25, 200). D1 = 25, D2 = 200.
-
-Solve (a + 2)^2 + (b + 3)^2 = 25. This is a circle with radius 5. Integer solutions are all points at distance 5 from (-2, -3). The integer solutions are points where the squared distance is 25, which can be achieved by (±5, 0), (0, ±5), (±3, ±4), (±4, ±3). Translating to the center (-2, -3):
-
-For (±5, 0):
-
-(-2 + 5, -3 + 0) = (3, -3)
-
-(-2 - 5, -3 + 0) = (-7, -3)
-
-For (0, ±5):
-
-(-2 + 0, -3 + 5) = (-2, 2)
-
-(-2 + 0, -3 - 5) = (-2, -8)
-
-For (±3, ±4):
-
-(-2 + 3, -3 + 4) = (1, 1)
-
-(-2 + 3, -3 - 4) = (1, -7)
-
-(-2 - 3, -3 + 4) = (-5, 1)
-
-(-2 - 3, -3 - 4) = (-5, -7)
-
-For (±4, ±3):
-
-(-2 + 4, -3 + 3) = (2, 0)
-
-(-2 + 4, -3 - 3) = (2, -6)
-
-(-2 - 4, -3 + 3) = (-6, 0)
-
-(-2 - 4, -3 - 3) = (-6, -6)
-
-Total 12 points. Now check D2 for each:
-
-For (3, -3): D2 = (3 - 2)^2 + (-3 - 3)^2 = 1 + 36 = 37 ≠ 200.
-
-For (-7, -3): D2 = (-7 - 2)^2 + (-3 - 3)^2 = 81 + 36 = 117 ≠ 200.
-
-For (-2, 2): D2 = (-2 - 2)^2 + (2 - 3)^2 = 16 + 1 = 17 ≠ 200.
-
-For (-2, -8): D2 = (-2 - 2)^2 + (-8 - 3)^2 = 16 + 121 = 137 ≠ 200.
-
-For (1, 1): D2 = (1 - 2)^2 + (1 - 3)^2 = 1 + 4 = 5 ≠ 200.
-
-For (1, -7): D2 = (1 - 2)^2 + (-7 - 3)^2 = 1 + 100 = 101 ≠ 200.
-
-For (-5, 1): D2 = (-5 - 2)^2 + (1 - 3)^2 = 49 + 4 = 53 ≠ 200.
-
-For (-5, -7): D2 = (-5 - 2)^2 + (-7 - 3)^2 = 49 + 100 = 149 ≠ 200.
-
-For (2, 0): D2 = (2 - 2)^2 + (0 - 3)^2 = 0 + 9 = 9 ≠ 200.
-
-For (2, -6): D2 = (2 - 2)^2 + (-6 - 3)^2 = 0 + 81 = 81 ≠ 200.
-
-For (-6, 0): D2 = (-6 - 2)^2 + (0 - 3)^2 = 64 + 9 = 73 ≠ 200.
-
-For (-6, -6): D2 = (-6 - 2)^2 + (-6 - 3)^2 = 64 + 81 = 145 ≠ 200. No solutions.
-
-Next pair: (40, 125). D1 = 40, D2 = 125.
-
-Solve (a + 2)^2 + (b + 3)^2 = 40. Squared distance 40. Possible integer solutions: combinations where x² + y² = 40. Possible integer solutions: (±2, ±6), (±6, ±2), (±4, ±sqrt(24)), but sqrt(24) is not integer. So only (±2, ±6), (±6, ±2). Translating to center (-2, -3):
-
-Possible points:
-
-(-2 + 2, -3 + 6) = (0, 3)
-
-(-2 + 2, -3 - 6) = (0, -9)
-
-(-2 - 2, -3 + 6) = (-4, 3)
-
-(-2 - 2, -3 - 6) = (-4, -9)
-
-(-2 + 6, -3 + 2) = (4, -1)
-
-(-2 + 6, -3 - 2) = (4, -5)
-
-(-2 - 6, -3 + 2) = (-8, -1)
-
-(-2 - 6, -3 - 2) = (-8, -5)
-
-Total 8 points. Check D2 for each:
-
-For (0, 3): D2 = (0 - 2)^2 + (3 - 3)^2 = 4 + 0 = 4 ≠ 125.
-
-For (0, -9): D2 = (0 - 2)^2 + (-9 - 3)^2 = 4 + 144 = 148 ≠ 125.
-
-For (-4, 3): D2 = (-4 - 2)^2 + (3 - 3)^2 = 36 + 0 = 36 ≠ 125.
-
-For (-4, -9): D2 = (-4 - 2)^2 + (-9 - 3)^2 = 36 + 144 = 180 ≠ 125.
-
-For (4, -1): D2 = (4 - 2)^2 + (-1 - 3)^2 = 4 + 16 = 20 ≠ 125.
-
-For (4, -5): D2 = (4 - 2)^2 + (-5 - 3)^2 = 4 + 64 = 68 ≠ 125.
-
-For (-8, -1): D2 = (-8 - 2)^2 + (-1 - 3)^2 = 100 + 16 = 116 ≠ 125.
-
-For (-8, -5): D2 = (-8 - 2)^2 + (-5 - 3)^2 = 100 + 64 = 164 ≠ 125. No solutions.
-
-Next pair: (50, 100). D1 = 50, D2 = 100.
-
-Solve (a + 2)^2 + (b + 3)^2 = 50. Squared distance 50. Possible integer solutions: (±1, ±7), (±7, ±1), (±5, ±5). Translating to center (-2, -3):
-
-For (±1, ±7):
-
-(-2 + 1, -3 + 7) = (-1, 4)
-
-(-2 + 1, -3 - 7) = (-1, -10)
-
-(-2 - 1, -3 + 7) = (-3, 4)
-
-(-2 - 1, -3 - 7) = (-3, -10)
-
-For (±7, ±1):
-
-(-2 + 7, -3 + 1) = (5, -2)
-
-(-2 + 7, -3 - 1) = (5, -4)
-
-(-2 - 7, -3 + 1) = (-9, -2)
-
-(-2 - 7, -3 - 1) = (-9, -4)
-
-For (±5, ±5):
-
-(-2 + 5, -3 + 5) = (3, 2)
-
-(-2 + 5, -3 - 5) = (3, -8)
-
-(-2 - 5, -3 + 5) = (-7, 2)
-
-(-2 - 5, -3 - 5) = (-7, -8)
-
-Total 12 points. Check D2 for each:
-
-For (-1, 4): D2 = (-1 - 2)^2 + (4 - 3)^2 = 9 + 1 = 10 ≠ 100.
-
-For (-1, -10): D2 = (-1 - 2)^2 + (-10 - 3)^2 = 9 + 169 = 178 ≠ 100.
-
-For (-3, 4): D2 = (-3 - 2)^2 + (4 - 3)^2 = 25 + 1 = 26 ≠ 100.
-
-For (-3, -10): D2 = (-3 - 2)^2 + (-10 - 3)^2 = 25 + 169 = 194 ≠ 100.
-
-For (5, -2): D2 = (5 - 2)^2 + (-2 - 3)^2 = 9 + 25 = 34 ≠ 100.
-
-For (5, -4): D2 = (5 - 2)^2 + (-4 - 3)^2 = 9 + 49 = 58 ≠ 100.
-
-For (-9, -2): D2 = (-9 - 2)^2 + (-2 - 3)^2 = 121 + 25 = 146 ≠ 100.
-
-For (-9, -4): D2 = (-9 - 2)^2 + (-4 - 3)^2 = 121 + 49 = 170 ≠ 100.
-
-For (3, 2): D2 = (3 - 2)^2 + (2 - 3)^2 = 1 + 1 = 2 ≠ 100.
-
-For (3, -8): D2 = (3 - 2)^2 + (-8 - 3)^2 = 1 + 121 = 122 ≠ 100.
-
-For (-7, 2): D2 = (-7 - 2)^2 + (2 - 3)^2 = 81 + 1 = 82 ≠ 100.
-
-For (-7, -8): D2 = (-7 - 2)^2 + (-8 - 3)^2 = 81 + 121 = 202 ≠ 100. No solutions.
-
-Next pair: (100, 50). But since we already considered D1 ≤ D2, this is the same as (50, 100), which we already checked.
-
-Continuing with the remaining factor pairs:
-
-Wait, I think I've checked all factor pairs up to (50, 100). Let me confirm:
-
-The factor pairs are:
-
-(1, 5000), (2, 2500), (4, 1250), (5, 1000), (8, 625), (10, 500), (20, 250), (25, 200), (40, 125), (50, 100). Yes, that's all. And none of them gave any solutions. Therefore, according to this approach, there are no integer points satisfying the equation. But the problem asks for the number of such points, so this suggests either the answer is 0, or I made a mistake in my reasoning.
-
-But the problem is from a competition likely, and such problems usually have non-zero answers. Therefore, I must have made a mistake.
-
-Wait, let me think again. Maybe I missed some factor pairs? Let me check the factor pairs again. 5000 = 2^3 * 5^4. The factors are generated by exponents of 2 from 0 to 3 and exponents of 5 from 0 to 4. Let me list all factors:
-
-For 2^0: 1, 5, 25, 125, 625
-
-For 2^1: 2, 10, 50, 250, 1250
-
-For 2^2: 4, 20, 100, 500, 2500
-
-For 2^3: 8, 40, 200, 1000, 5000
-
-Therefore, all factors are:
-
-1, 2, 4, 8, 5, 10, 20, 40, 25, 50, 100, 200, 125, 250, 500, 1000, 625, 1250, 2500, 5000.
-
-Therefore, the factor pairs (D1, D2) with D1 ≤ D2 are as I listed before. So no, I didn't miss any.
-
-Therefore, according to this, there are no solutions. But this contradicts the problem's implication that there is an answer. Therefore, I must have made a mistake in my reasoning.
-
-Wait, let me go back to the first approach where I had X^2 - Y^2 = 5000, and found that for all factor pairs (m, n) with m and n both even, Y was odd, leading to no solutions. But maybe there are other factorizations where m and n are not both even? But earlier reasoning said that since X and Y are integers, m and n must have the same parity. Since 5000 is even, they must both be even. Therefore, no. Therefore, perhaps the answer is 0? But that seems unlikely. Let me check with another method.
-
-Let me consider that the original equation is [(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2] = 5000. Let me denote u = a, v = b. Let me consider this as a product of two distances squared. Let me think geometrically. The product of the squared distances from two fixed points. Maybe there is a geometric interpretation or transformation that can help.
-
-Alternatively, let me consider expanding the entire product. Let me try expanding [(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2].
-
-First, expand each term:
-
-First term: (a + 2)^2 + (b + 3)^2 = a² + 4a + 4 + b² + 6b + 9 = a² + b² + 4a + 6b + 13.
-
-Second term: (a - 2)^2 + (b - 3)^2 = a² - 4a + 4 + b² - 6b + 9 = a² + b² - 4a - 6b + 13.
-
-Let me denote S = a² + b², then the product is (S + 4a + 6b + 13)(S - 4a - 6b + 13) = (S + 13)^2 - (4a + 6b)^2, as before.
-
-Let me expand (S + 13)^2 - (4a + 6b)^2:
-
-= S² + 26S + 169 - (16a² + 48ab + 36b²).
-
-But S = a² + b², so substitute:
-
-= (a² + b²)^2 + 26(a² + b²) + 169 - 16a² - 48ab - 36b².
-
-Expand (a² + b²)^2 = a^4 + 2a²b² + b^4.
-
-So the entire expression becomes:
-
-a^4 + 2a²b² + b^4 + 26a² + 26b² + 169 - 16a² - 48ab - 36b².
-
-Simplify terms:
-
-a^4 + 2a²b² + b^4 + (26a² - 16a²) + (26b² - 36b²) - 48ab + 169
-
-= a^4 + 2a²b² + b^4 + 10a² - 10b² - 48ab + 169.
-
-This seems complicated. Maybe there is a better way to simplify. Alternatively, perhaps I can use substitution. Let me think.
-
-Let me consider that the original equation is [(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2] = 5000. Let me consider substituting variables. Let me set x = a, y = b. Let me define new variables to simplify.
-
-Let me note that the two points are (-2, -3) and (2, 3). The midpoint between these two points is (0, 0), and the distance between them is sqrt((2 - (-2))^2 + (3 - (-3))^2) = sqrt(16 + 36) = sqrt(52) = 2*sqrt(13). Maybe using coordinate transformation.
-
-Let me perform a coordinate transformation to simplify the equation. Let me translate the coordinates so that the midpoint is at the origin. Let me set u = a, v = b. The midpoint is (0, 0), so maybe not helpful. Alternatively, let me perform a rotation to align the line joining the two points with one of the axes.
-
-The line joining (-2, -3) and (2, 3) has slope (3 - (-3))/(2 - (-2)) = 6/4 = 3/2. Let me rotate the coordinate system by θ, where tanθ = 3/2, to align this line with the x-axis. This might simplify the equation.
-
-However, this seems complex, but let me try.
-
-Let me recall that rotating coordinates can simplify the product of distances. Let me denote the rotation by angle θ, where tanθ = 3/2. Let me compute cosθ and sinθ. Let me consider a right triangle with opposite side 3, adjacent 2, hypotenuse sqrt(2² + 3²) = sqrt(13). Therefore, cosθ = 2/√13, sinθ = 3/√13.
-
-Let me define new coordinates (u, v) such that:
-
-u = (a * cosθ + b * sinθ)
-
-v = (-a * sinθ + b * cosθ)
-
-This rotates the original coordinates by θ. The idea is to align the line joining the two points with the u-axis.
-
-The two points (-2, -3) and (2, 3) in the new coordinates:
-
-For (-2, -3):
-
-u1 = (-2)(2/√13) + (-3)(3/√13) = (-4 - 9)/√13 = -13/√13 = -√13
-
-v1 = -(-2)(3/√13) + (-3)(2/√13) = (6 - 6)/√13 = 0
-
-For (2, 3):
-
-u2 = (2)(2/√13) + (3)(3/√13) = (4 + 9)/√13 = 13/√13 = √13
-
-v2 = -(2)(3/√13) + (3)(2/√13) = (-6 + 6)/√13 = 0
-
-So in the new coordinates, the two points are (-√13, 0) and (√13, 0). Therefore, the product of the squared distances from any point (u, v) to these two points is [(u + √13)^2 + v^2] * [(u - √13)^2 + v^2] = [(u^2 + 2u√13 + 13 + v^2) * (u^2 - 2u√13 + 13 + v^2)] = [(u^2 + v^2 + 13)^2 - (2u√13)^2] = (u^2 + v^2 + 13)^2 - 4u² * 13.
-
-Therefore, the original equation becomes:
-
-(u^2 + v^2 + 13)^2 - 52u^2 = 5000.
-
-But this seems complicated. However, perhaps this can be simplified. Let me expand (u^2 + v^2 + 13)^2:
-
-= u^4 + 2u^2v^2 + v^4 + 26u^2 + 26v^2 + 169.
-
-Subtract 52u^2:
-
-= u^4 + 2u^2v^2 + v^4 + 26u^2 + 26v^2 + 169 - 52u^2
-
-= u^4 + 2u^2v^2 + v^4 - 26u^2 + 26v^2 + 169.
-
-Set equal to 5000:
-
-u^4 + 2u^2v^2 + v^4 - 26u^2 + 26v^2 + 169 = 5000.
-
-This still looks complex. Maybe there is a substitution. Let me note that u^4 + 2u^2v^2 + v^4 = (u^2 + v^2)^2. Let me set w = u^2 + v^2. Then the equation becomes:
-
-w^2 - 26u^2 + 26v^2 + 169 = 5000.
-
-But w = u^2 + v^2, so 26v^2 = 26(w - u^2). Substitute:
-
-w^2 - 26u^2 + 26(w - u^2) + 169 = 5000
-
-Simplify:
-
-w^2 - 26u^2 + 26w - 26u^2 + 169 = 5000
-
-Combine like terms:
-
-w^2 + 26w - 52u^2 + 169 = 5000
-
-This still has both w and u, which is not helpful. Maybe this approach is not working.
-
-Let me try to think differently. Since the original equation is [(a + 2)^2 + (b + 3)^2] * [(a - 2)^2 + (b - 3)^2] = 5000, and we have tried various approaches without success, perhaps there are no solutions, and the answer is 0. But I need to confirm.
-
-Wait, let me try to find a point that satisfies the equation. Let me assume that there is a point (a, b) such that both D1 and D2 are integers, and their product is 5000. Let me try to find such D1 and D2.
-
-Since 5000 = 2^3 * 5^4, possible factor pairs (D1, D2) are as listed before. Let me pick a factor pair where both D1 and D2 are squares or products that can be solved.
-
-For example, let's take D1 = 50 and D2 = 100. Wait, we already checked this pair and found no solutions. What about D1 = 25 and D2 = 200? Also checked. How about D1 = 100 and D2 = 50? Same as above.
-
-What about D1 = 125 and D2 = 40? Let me check this pair. D1 = 125, D2 = 40.
-
-Solve (a + 2)^2 + (b + 3)^2 = 125. Possible integer solutions: x² + y² = 125. 125 = 10² + 5² = 100 + 25. Also, 11² + 2² = 121 + 4 = 125. So possible points: (±10, ±5), (±5, ±10), (±11, ±2), (±2, ±11). Translating to center (-2, -3):
-
-For (±10, ±5):
-
-(-2 + 10, -3 + 5) = (8, 2)
-
-(-2 + 10, -3 - 5) = (8, -8)
-
-(-2 - 10, -3 + 5) = (-12, 2)
-
-(-2 - 10, -3 - 5) = (-12, -8)
-
-For (±5, ±10):
-
-(-2 + 5, -3 + 10) = (3, 7)
-
-(-2 + 5, -3 - 10) = (3, -13)
-
-(-2 - 5, -3 + 10) = (-7, 7)
-
-(-2 - 5, -3 - 10) = (-7, -13)
-
-For (±11, ±2):
-
-(-2 + 11, -3 + 2) = (9, -1)
-
-(-2 + 11, -3 - 2) = (9, -5)
-
-(-2 - 11, -3 + 2) = (-13, -1)
-
-(-2 - 11, -3 - 2) = (-13, -5)
-
-For (±2, ±11):
-
-(-2 + 2, -3 + 11) = (0, 8)
-
-(-2 + 2, -3 - 11) = (0, -14)
-
-(-2 - 2, -3 + 11) = (-4, 8)
-
-(-2 - 2, -3 - 11) = (-4, -14)
-
-Total 12 + 4 + 4 = 20 points? Wait, let me count: 4 for (±10, ±5), 4 for (±5, ±10), 4 for (±11, ±2), 4 for (±2, ±11). Total 16 points. Now check D2 = 40 for each:
-
-For (8, 2): D2 = (8 - 2)^2 + (2 - 3)^2 = 36 + 1 = 37 ≠ 40.
-
-For (8, -8): D2 = (8 - 2)^2 + (-8 - 3)^2 = 36 + 121 = 157 ≠ 40.
-
-For (-12, 2): D2 = (-12 - 2)^2 + (2 - 3)^2 = 196 + 1 = 197 ≠ 40.
-
-For (-12, -8): D2 = (-12 - 2)^2 + (-8 - 3)^2 = 196 + 121 = 317 ≠ 40.
-
-For (3, 7): D2 = (3 - 2)^2 + (7 - 3)^2 = 1 + 16 = 17 ≠ 40.
-
-For (3, -13): D2 = (3 - 2)^2 + (-13 - 3)^2 = 1 + 256 = 257 ≠ 40.
-
-For (-7, 7): D2 = (-7 - 2)^2 + (7 - 3)^2 = 81 + 16 = 97 ≠ 40.
-
-For (-7, -13): D2 = (-7 - 2)^2 + (-13 - 3)^2 = 81 + 256 = 337 ≠ 40.
-
-For (9, -1): D2 = (9 - 2)^2 + (-1 - 3)^2 = 49 + 16 = 65 ≠ 40.
-
-For (9, -5): D2 = (9 - 2)^2 + (-5 - 3)^2 = 49 + 64 = 113 ≠ 40.
-
-For (-13, -1): D2 = (-13 - 2)^2 + (-1 - 3)^2 = 225 + 16 = 241 ≠ 40.
-
-For (-13, -5): D2 = (-13 - 2)^2 + (-5 - 3)^2 = 225 + 64 = 289 ≠ 40.
-
-For (0, 8): D2 = (0 - 2)^2 + (8 - 3)^2 = 4 + 25 = 29 ≠ 40.
-
-For (0, -14): D2 = (0 - 2)^2 + (-14 - 3)^2 = 4 + 289 = 293 ≠ 40.
-
-For (-4, 8): D2 = (-4 - 2)^2 + (8 - 3)^2 = 36 + 25 = 61 ≠ 40.
-
-For (-4, -14): D2 = (-4 - 2)^2 + (-14 - 3)^2 = 36 + 289 = 325 ≠ 40. No solutions.
-
-How about D1 = 250 and D2 = 20? We checked this earlier, no solutions.
-
-Maybe D1 = 625 and D2 = 8? Let me check.
-
-Solve (a + 2)^2 + (b + 3)^2 = 625. This is a circle with radius 25. There are many integer solutions, but checking all is tedious. Let me pick a point that might satisfy D2 = 8. For example, if (a - 2)^2 + (b - 3)^2 = 8, which we know has solutions like (0, -1), (0, -5), etc. Let me take (a, b) such that (a - 2, b - 3) is (2, 2), so a = 4, b = 5. Then check if (4 + 2)^2 + (5 + 3)^2 = 6^2 + 8^2 = 36 + 64 = 100 ≠ 625. Not helpful.
-
-Alternatively, take a point (a, b) such that it is at distance 25 from (-2, -3) and at distance 2 from
+$$
+\boxed{504}
+$$

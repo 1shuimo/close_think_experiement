@@ -1,733 +1,546 @@
 <think>
-Okay, so I need to figure out how many three-digit numbers are divisible by 11 and have at least one digit that's a 2. Let me start by recalling some math concepts here. 
+Okay, so I need to find the number of ordered triples (a, b, c) where each of a, b, c is between 1 and 3^6 inclusive, and the sum a³ + b³ + c³ is divisible by 3^7. Then, I have to find N mod 1000. Alright, let's start breaking this down.
 
-First, three-digit numbers range from 100 to 999. So, I need to consider numbers in that range. The problem is asking for numbers divisible by 11, so maybe I can first find all three-digit numbers divisible by 11, and then among those, count how many have at least one digit equal to 2. Alternatively, maybe there's a smarter way to combine both conditions? Hmm. Let me think.
+First, let me note that 3^6 is 729, so each of a, b, c can be from 1 to 729. The total number of ordered triples without any restriction is 729³. But we need only those triples where the sum of their cubes is divisible by 3^7, which is 2187. 
 
-Divisibility by 11: I remember that a number is divisible by 11 if the difference between the sum of the digits in the odd positions and the sum of the digits in the even positions is a multiple of 11 (including zero). For a three-digit number, let's denote it as ABC, where A is the hundreds digit, B is the tens digit, and C is the ones digit. Then the rule would be (A + C) - B must be divisible by 11. Since A, B, C are digits (0-9), the maximum value of (A + C) - B would be (9 + 9) - 0 = 18, and the minimum would be (0 + 0) - 9 = -9. The only multiples of 11 in that range are -11, 0, 11. But since (A + C) - B can't be less than -9 or more than 18, the possible values are -11, 0, 11. However, -11 is not possible because (A + C) - B can't be less than -9. Similarly, 11 is possible? Let's check. If (A + C) - B = 11, then A + C = B + 11. Since A is at least 1 (because it's a three-digit number), and B and C are digits (0-9). Let's see, the maximum A + C can be is 9 + 9 = 18. So B + 11 ≤ 18 => B ≤ 7. Similarly, if (A + C) - B = 0, then A + C = B. And if (A + C) - B = -11, which would mean A + C = B - 11. But since A is at least 1, B - 11 ≥ 1 => B ≥ 12, but B is a single digit (0-9), so this is impossible. Therefore, only two cases: A + C = B and A + C = B + 11.
+Since we're dealing with divisibility by powers of 3, maybe modular arithmetic will help here. Specifically, considering the problem modulo 3^7. But working directly modulo 3^7 might be complicated. Maybe there's a way to use the Chinese Remainder Theorem or some properties of exponents?
 
-Therefore, three-digit numbers divisible by 11 must satisfy either A + C = B or A + C = B + 11. 
+Alternatively, perhaps we can use generating functions or some counting techniques with modular constraints. Let me think.
 
-So maybe I can generate all three-digit numbers divisible by 11 by considering these two cases. Then, from those numbers, count how many have at least one digit equal to 2. Alternatively, maybe I can find the total number of three-digit numbers divisible by 11, and then subtract those that don't have any 2s? That might be an inclusion-exclusion approach. Let me think which is easier.
+First, let me recall that for problems involving counting solutions to congruences, especially with exponents, Hensel's lemma or lifting the exponent lemma (LTE) might be useful, but I'm not sure yet. Alternatively, maybe we can consider the problem modulo 3, 3², ..., up to 3^7 and use some recursive counting?
 
-First, let me find how many three-digit numbers are divisible by 11. The smallest three-digit number divisible by 11 is 110 (since 11*10=110), and the largest is 990 (since 11*90=990). Wait, 11*90 is 990, but 11*90 + 11 = 11*91 = 1001, which is four digits. So the three-digit numbers divisible by 11 are from 11*10 up to 11*90. Therefore, the total number is 90 - 10 + 1 = 81 numbers. Wait, 90 - 10 is 80, plus 1 is 81. So there are 81 three-digit numbers divisible by 11. 
+But since the modulus is 3^7, which is a prime power, maybe we can use the concept of counting solutions modulo 3^k and then lifting them? However, since the variables a, b, c are bounded by 3^6, which is less than 3^7, maybe there's a way to analyze the exponents of 3 in the cubes?
 
-Alternatively, using the formula for the number of terms in an arithmetic sequence: The first term a1 = 110, last term an = 990, common difference d = 11. The number of terms is ((an - a1)/d) + 1 = ((990 - 110)/11) + 1 = (880 / 11) + 1 = 80 + 1 = 81. Yep, same result. 
+Wait, let me think about the cubes modulo 3^7. Let me first analyze the cubes modulo 3. For any integer a, a³ mod 3. Since 3 is small, maybe we can find patterns.
 
-So there are 81 three-digit numbers divisible by 11. Now, if I can find how many of these 81 numbers have at least one digit equal to 2, that would be the answer. Alternatively, maybe it's easier to calculate the total number of three-digit numbers divisible by 11 without any 2s, and subtract that from 81? That might be a better approach because sometimes counting "at least one" can be tricky, but counting the complement (none) is easier. 
+First, modulo 3:
 
-So let me try that approach. Let me first find how many three-digit numbers divisible by 11 have no 2s in any digit, then subtract that from 81 to get the numbers with at least one 2. 
+Any integer a is congruent to 0, 1, or 2 mod 3. Then:
 
-So, how to compute numbers divisible by 11 with no 2s? Let's think. Since we already have the two cases for divisibility by 11: A + C = B or A + C = B + 11. Let me handle each case separately, and count how many numbers in each case have no 2s. 
+- If a ≡ 0 mod 3, then a³ ≡ 0³ ≡ 0 mod 3.
+- If a ≡ 1 mod 3, then a³ ≡ 1³ ≡ 1 mod 3.
+- If a ≡ 2 mod 3, then a³ ≡ 8 ≡ 2 mod 3.
 
-First, let me recall that A is from 1-9 (since it's the hundreds digit), B and C are from 0-9. But with the restriction that none of A, B, C is 2. So A ∈ {1,3,4,5,6,7,8,9}, B ∈ {0,1,3,4,5,6,7,8,9}, same for C. 
+Wait, 8 mod 3 is 2? 3*2=6, 8-6=2. Yes. So, interestingly, a³ ≡ a mod 3. So, for any integer a, a³ ≡ a mod 3. Therefore, a³ + b³ + c³ ≡ a + b + c mod 3. Therefore, for the sum to be divisible by 3^7, it must first be divisible by 3. Which implies that a + b + c ≡ 0 mod 3. So, that's a necessary condition. But since we need divisibility by 3^7, we need more conditions.
 
-Case 1: A + C = B. 
+But maybe we can use this idea recursively? For example, maybe we can use the fact that if we can write a³ ≡ a + 3k mod 3² or something like that? Let me check.
 
-Case 2: A + C = B + 11. 
+Let me recall that for higher powers of 3, we can use the expansion of (a + 3m)³. Suppose a is an integer, and we write a = 3^k * m, where m is not divisible by 3. Then, a³ = 3^{3k} * m³. But maybe that's not helpful here. Alternatively, perhaps we can use the lifting the exponent lemma?
 
-Let me handle Case 1 first: A + C = B. Since A is from 1-9 (excluding 2), C is from 0-9 (excluding 2), and B is from 0-9 (excluding 2). Also, since B is a single digit, A + C must be between 0 and 9. However, since A is at least 1, A + C is at least 1. Therefore, B must be between 1 and 9 (but not 2). 
+Alternatively, maybe we can use the concept of expanding the cube in terms of modulo 3^s. Let me try to think about the general approach.
 
-So for each valid A and C (without 2s) such that their sum is between 1 and 9 (and also B is not 2), we can have a valid number. 
+Let me recall that when dealing with congruences involving exponents, especially cubes, sometimes it's helpful to consider the exponents of 3 in the numbers a, b, c. Let me think about writing each a, b, c as 3^k * m, where m is not divisible by 3. Then, their cubes would be 3^{3k} * m³. However, since we need the sum of three such terms to be divisible by 3^7, maybe we can analyze the exponents?
 
-But since B = A + C, and B cannot be 2, we need to ensure that A + C ≠ 2. 
+But since each a, b, c is at most 3^6, the maximum exponent of 3 in a, b, or c is 6. Therefore, 3k can be up to 18, but since we need the sum to be divisible by 3^7, maybe we need to consider how the exponents in each term contribute.
 
-Wait, but since A is at least 1, and C is at least 0 (but not 2). Let me think. Let me first count all numbers in Case 1 (A + C = B) with digits not containing 2, then subtract those where B is 2? Or maybe directly count them?
+But this seems complicated. Let me think again. Maybe there's a better way. Since the problem is about counting solutions, perhaps we can use generating functions. For each variable a, we can consider the generating function that counts the number of a's with a given value of a³ mod 3^7, and then multiply them together and find the coefficient corresponding to 0 mod 3^7. However, generating functions with modulus 3^7 would be complex, but maybe we can use the Chinese Remainder Theorem or some recursive approach?
 
-Alternatively, since B is determined by A + C, and B cannot be 2, so we need to count the number of (A, C) pairs where A ∈ {1,3,4,5,6,7,8,9}, C ∈ {0,1,3,4,5,6,7,8,9}, such that A + C is in {1,3,4,5,6,7,8,9} (since B can't be 2). 
+Alternatively, maybe we can use the fact that the number of solutions is multiplicative over the exponents? For example, if we can find the number of solutions modulo 3^k for each k up to 7, and then combine them? But how?
 
-Wait, but A + C can be from 1 + 0 = 1 up to 9 + 9 = 18. But since in Case 1, A + C = B, which is a single digit (0-9). But since A ≥ 1, A + C ≥ 1. Therefore, A + C ∈ {1, ..., 9}. However, B cannot be 2, so A + C cannot be 2. Therefore, we need to count the number of (A, C) pairs where A ∈ {1,3,4,5,6,7,8,9}, C ∈ {0,1,3,4,5,6,7,8,9}, A + C ∈ {1,3,4,5,6,7,8,9}.
+Alternatively, maybe we can use the concept of equidistribution. If the cubes are uniformly distributed modulo 3^7, then the number of triples would be roughly (total number)/3^7 * 3^7? Wait, no, that would be 1. But clearly, the distribution isn't uniform. For example, modulo 3, as we saw, a³ ≡ a mod 3, so the distribution isn't uniform. Therefore, maybe we need to compute the exact number.
 
-Alternatively, maybe it's easier to first count all (A, C) pairs where A and C don't have 2s, and A + C is between 1 and 9 inclusive, and then subtract those pairs where A + C = 2. 
+Alternatively, maybe we can use the following approach: For each a, b, c, we can write them in base 3, but since they are up to 3^6, they have 6 digits in base 3. However, cubes might have some properties in base 3?
 
-But maybe even better: Let me compute for each possible value of s = A + C (from 1 to 9, excluding 2), the number of (A, C) pairs with A and C not containing 2, and A + C = s. Then sum over s.
+Alternatively, maybe we can use the fact that the function f(a) = a³ mod 3^k has some periodicity or structure that can be exploited. For example, for modulus 3^k, the number of solutions to a³ ≡ c mod 3^k?
 
-So s can be 1, 3, 4, 5, 6, 7, 8, 9. Let me compute for each s:
+Alternatively, maybe we can use the concept of Hensel's lemma. For example, if we know the solutions modulo 3, we can lift them to higher powers. But since we need to count solutions, maybe we can compute the number of solutions modulo 3^k for each k up to 7, and then use the Chinese Remainder Theorem? Wait, but since we are working with modulus 3^7, maybe we can compute the number of solutions recursively?
 
-First, s=1: A + C = 1. Since A ≥ 1, possible only if A=1 and C=0. Check if A and C are allowed. A=1 is allowed (since not 2), C=0 is allowed. So 1 way.
+Alternatively, maybe we can use the following idea: Let me denote N(k) as the number of triples (a, b, c) with a, b, c ≤ 3^6 and a³ + b³ + c³ ≡ 0 mod 3^k. Then, we need N(7). Perhaps we can compute N(k) for k from 1 to 7, using some recursive relations?
 
-s=3: A + C = 3. A can be from 1,3,... (excluding 2). Let's list all possible (A, C):
+But how?
 
-Possible A values: 1, 3, 4, 5, 6, 7, 8, 9. For each A, C = 3 - A. But C must be between 0-9, not 2, and non-negative.
+Alternatively, maybe we can use the fact that for each a, b, c, we can write them as multiples of 3^m, etc. Let me think again.
 
-So:
+Let me first consider the problem modulo 3. As we saw, a³ + b³ + c³ ≡ a + b + c mod 3. Therefore, the condition is equivalent to a + b + c ≡ 0 mod 3. Therefore, the number of triples (a, b, c) with a, b, c ≤ 3^6 and a + b + c ≡ 0 mod 3. Since each a, b, c can be considered mod 3, and since the total number of triples is (3^6)^3 = 3^{18}, and since the condition a + b + c ≡ 0 mod 3 is satisfied by exactly 1/3 of all triples, so N(1) = 3^{18} / 3 = 3^{17}.
 
-A=1: C=2. But C=2 is not allowed. So invalid.
+But since we need N(7), maybe we can use some recursive approach where we consider the number of solutions modulo 3^k, and then lift them to 3^{k+1}?
 
-A=3: C=0. Valid.
+This seems like a possible path. Let me recall that in general, if we have a congruence modulo 3^k, and we want to lift it to 3^{k+1}, we can use Hensel's lemma if the derivative is non-singular. However, since we are dealing with multiple variables and additive functions, maybe there's a way to compute the number of solutions.
 
-A=4: C= -1. Invalid.
+Alternatively, maybe we can use the concept of generating functions. For each modulus 3^k, we can compute the number of solutions, and then use that to compute for higher k. However, I need to think about how exactly.
 
-So only A=3, C=0. So 1 way? Wait, but maybe other A's?
+Alternatively, maybe we can use the following approach inspired by the Chinese Remainder Theorem. Since we need the sum to be divisible by 3^7, we can consider the problem in terms of the exponents of 3 in the numbers a, b, c. However, since the numbers are up to 3^6, each number can be written as 3^m * n, where n is not divisible by 3, and m ranges from 0 to 6. However, when we take the cube, it becomes 3^{3m} * n³. Therefore, the sum a³ + b³ + c³ will have terms with exponents of 3 being multiples of 3. Therefore, if we want the entire sum to be divisible by 3^7, we need that the sum of these terms has at least 7 factors of 3.
 
-Wait, A can't be more than 3 because A + C = 3. If A=1, C=2 (invalid). A=3, C=0. A=2 is invalid. So only 1 way. So s=3: 1 way.
+But how can we ensure that? For example, if all three terms have exponents of 3³ or higher, then their sum would have at least 3³? Wait, no. For example, if each term is divisible by 3^k, then their sum is divisible by 3^k. However, if they have different exponents, then the sum's exponent is the minimum exponent among them. Therefore, to have the sum divisible by 3^7, we need that the minimum exponent of 3 in the three terms is at least 7? But since each term is a cube, which is 3^{3m} * n³, and since m can be up to 6, 3m can be up to 18. However, if we need the minimum exponent among the three terms to be at least 7, then each term must have exponent at least 7. Therefore, 3m ≥ 7 ⇒ m ≥ 3 (since 3*2=6 <7, 3*3=9 ≥7). Therefore, m ≥ 3. Therefore, each of a, b, c must be divisible by 3^3. Therefore, the number of such triples would be (number of multiples of 3^3 up to 3^6)^3. The number of multiples of 3^3 in 1 to 3^6 is 3^{6 - 3} = 3^3 = 27. Therefore, the number of triples where each is divisible by 3^3 is 27³. However, if we take their cubes, each term is divisible by 3^{9}, so the sum is divisible by 3^9, which is certainly divisible by 3^7. Therefore, these triples are valid. However, there might be more triples where the sum is divisible by 3^7 even if not all three terms are divisible by 3^7. For example, maybe two terms have exponents 3m and 3n with m, n such that their sum with another term gives enough exponents. Wait, but the problem is that when you add numbers with different exponents of 3, the total exponent is the minimum. For example, if one term is divisible by 3^k and another by 3^m with k < m, then their sum is divisible by 3^k but not necessarily higher. Therefore, to have the entire sum divisible by 3^7, we need that the minimum exponent among the three terms is at least 7. Therefore, all three terms must be divisible by 3^7? But wait, each term is a cube. If a term is divisible by 3^7, then since it's a cube, it must be divisible by 3^{ceil(7/3)} = 3^3, since 3^3 cubed is 3^9. Wait, no. Let me think again. If a³ is divisible by 3^7, then a must be divisible by 3^{ceil(7/3)}. Since 7 divided by 3 is 2 with remainder 1, so ceil(7/3) = 3. Therefore, a must be divisible by 3^3. Therefore, if a³ is divisible by 3^7, then a must be divisible by 3^3. Therefore, if each of a³, b³, c³ is divisible by 3^7, then each of a, b, c must be divisible by 3^3, so their cubes are divisible by 3^9, and hence the sum is divisible by 3^7. However, there might be cases where not all three are divisible by 3^7, but their sum is. For example, if two terms are divisible by 3^7 and the third is not, but then the sum would be congruent to the third term mod 3^7, which is not 0. Therefore, unless the third term is also divisible by 3^7, the sum won't be. Similarly, if one term is divisible by 3^7 and the other two are not, then the sum is congruent to the sum of the other two mod 3^7, which is not 0. Therefore, unless all three are divisible by 3^7. Wait, but if all three are divisible by 3^k, then the sum is divisible by 3^k. Therefore, if we want the sum to be divisible by 3^7, we need that the minimal k among the exponents of 3 in a³, b³, c³ is at least 7. Therefore, since each a³ has exponent 3m, where m is the exponent of 3 in a. Therefore, 3m ≥ 7 ⇒ m ≥ 3 (since 3*2=6 <7, 3*3=9 ≥7). Therefore, m ≥ 3. Therefore, each a, b, c must be divisible by 3^3. Therefore, the number of such triples is equal to the number of triples where each of a, b, c is divisible by 3^3, which is (floor(3^6 / 3^3))³ = (3^{6 - 3})³ = (3^3)³ = 3^9. Therefore, N = 3^9? But wait, that seems too small. Because there might be other triples where the sum is divisible by 3^7 even if not all three terms are divisible by 3^7. Wait, but earlier reasoning suggested that if not all three terms are divisible by 3^7, then the sum cannot be divisible by 3^7. Wait, but let me check with an example. Suppose two terms are divisible by 3^7 and one isn't. Then the sum is (multiple of 3^7) + (non-multiple of 3^7). Therefore, the sum is congruent to the non-multiple mod 3^7, hence not 0. Similarly, if one term is divisible by 3^7 and the other two are not, their sum is non-zero mod 3^7. If none are divisible by 3^7, then each term is divisible by at most 3^6 (since a is up to 3^6, so a³ is up to 3^{18}, but the exponent in a³ is 3m where m ≤ 6, so 3m ≤ 18. However, if none of the terms are divisible by 3^7, then each term is divisible by at most 3^6. However, the sum of three numbers each divisible by 3^k but not 3^{k+1} can be divisible by higher powers? For example, if each term is divisible by 3^k but not 3^{k+1}, then their sum is divisible by 3^k but not necessarily higher. Therefore, if none of the terms are divisible by 3^7, then the sum is divisible by 3^k where k is the minimal exponent among the three terms, but not higher. Therefore, to have the sum divisible by 3^7, we need that the minimal exponent among the three terms is at least 7. Therefore, each term must be divisible by 3^7. However, since each term is a³, and a is up to 3^6, then 3^7 divides a³ implies that 3^ceil(7/3) divides a, which is 3^3 divides a. Therefore, a must be divisible by 3^3. Therefore, the number of such a is floor(3^6 / 3^3) = 3^3 = 27. Therefore, the number of triples is 27³ = 19683. However, 3^9 is 19683. But 3^9 is 19683, and 3^7 is 2187. However, 19683 is less than 2187³, so maybe there are more solutions? Wait, but according to the previous logic, only those triples where each a, b, c is divisible by 3^3 will have their cubes divisible by 3^9, hence the sum divisible by 3^9, hence by 3^7. However, there might be other triples where the sum is divisible by 3^7 even if individual cubes are not. For example, maybe two cubes are congruent to 1 mod 3^7 and one is congruent to -2 mod 3^7, so that their sum is 0. But how can we know if such combinations exist?
 
-Wait, but maybe I missed something? For example, if A=1 and C=2 is invalid. If A=0, but A can't be 0. So yes, only 1 way.
+But earlier reasoning suggested that if the minimal exponent of 3 in the cubes is less than 7, then the sum cannot be divisible by 3^7. Wait, let me think again. Suppose that one of the cubes is not divisible by 3^7, i.e., it's congruent to some non-zero value mod 3^7. Then, even if the other two cubes are set to cancel it out mod 3^7, the problem is that the other two cubes might not be able to do that unless they also have sufficient divisibility. Wait, but maybe they can? For example, suppose that one cube is congruent to 1 mod 3^7, and the other two cubes are congruent to -1/2 mod 3^7. But cubes might not be able to take arbitrary values mod 3^7. Therefore, maybe the number of solutions is only those where all three cubes are divisible by 3^7. Therefore, leading to N = 27³. However, this seems too straightforward, and the problem is from an Olympiad, so likely more complex. Therefore, perhaps my reasoning is flawed.
 
-s=4: A + C = 4. Let's see:
+Wait, let me test with lower exponents. Let me take modulus 3^1 = 3. Suppose we want a³ + b³ + c³ ≡ 0 mod 3. As we saw, this is equivalent to a + b + c ≡ 0 mod 3. The number of solutions is 3^{18}/3 = 3^{17}, as before. However, according to the previous logic, if we require that each cube is divisible by 3^1, which would require that each a is divisible by 3^{ceil(1/3)} = 3^1. Therefore, each a divisible by 3, so number of triples is (3^5)^3 = 3^{15}. But clearly, 3^{15} is much less than 3^{17}, so there are more solutions. Therefore, my previous reasoning was wrong. Therefore, there must be more solutions where not all cubes are divisible by 3^k, but their sum is. Therefore, my mistake was assuming that the minimal exponent must be at least k. However, in reality, when adding numbers, even if some have lower exponents, their sum can have higher exponents if they cancel out appropriately. Therefore, my previous conclusion was incorrect.
 
-A can be 1, 3, 4, ..., up to 4 (since A + C = 4). Let's check:
+Therefore, I need a better approach. Let me think again.
 
-A=1: C=3. Valid (C=3 is allowed). 
+Perhaps I need to use the concept of lifting solutions from lower exponents. Let me recall that for additive functions modulo prime powers, sometimes we can use induction or recursive counting. Let me try to think recursively.
 
-A=3: C=1. Valid.
+Let me denote for each k ≥ 1, let N(k) be the number of triples (a, b, c) with 1 ≤ a, b, c ≤ 3^6 and a³ + b³ + c³ ≡ 0 mod 3^k. Our goal is N(7). Let me try to compute N(k) for k from 1 upwards, and see if I can find a pattern or recurrence.
 
-A=4: C=0. Valid.
+Starting with k=1: As before, a³ + b³ + c³ ≡ 0 mod 3 iff a + b + c ≡ 0 mod 3. The number of such triples is total / 3 = 3^{18}/3 = 3^{17} = 129140163.
 
-A=2: invalid. 
+But how do we compute N(2)? For modulus 9. Let me think. For modulus 9, we need a³ + b³ + c³ ≡ 0 mod 9. Let me first analyze the possible values of a³ mod 9.
 
-A=5: C= -1: invalid. 
+Let me compute cubes mod 9. Let me note that any integer a can be written as a ≡ 0, 1, ..., 8 mod 9. Let me compute their cubes:
 
-So three possibilities: (1,3), (3,1), (4,0). All valid? Yes. So 3 ways.
+0³ = 0 mod 9
 
-s=4: 3 ways.
+1³ = 1
 
-s=5: A + C = 5.
+2³ = 8
 
-Possible A's:
+3³ = 0
 
-A=1: C=4. Valid.
+4³ = 64 ≡ 1 (since 64 - 63 = 1)
 
-A=3: C=2. Invalid (C=2).
+5³ = 125 ≡ 8 (125 - 117 = 8)
 
-A=4: C=1. Valid.
+6³ = 216 ≡ 0
 
-A=5: C=0. Valid.
+7³ = 343 ≡ 343 - 333 = 10 ≡ 1 mod 9? Wait 7³ is 343. 9*38 = 342, so 343 ≡ 1 mod 9. Similarly, 8³ = 512. 512 / 9: 9*56=504, 512-504=8. So 8³ ≡ 8 mod 9.
 
-A=6: C=-1. Invalid.
+Therefore, the cubes mod 9 are:
 
-So A=1, 4, 5. So three possibilities? Wait:
+If a ≡ 0, 3, 6 mod 9: cube ≡ 0
 
-Wait A=1, C=4; A=3, C=2 (invalid); A=4, C=1; A=5, C=0. So three valid. So 3 ways? Wait, but what about A=2? Not allowed. So yes, 3 ways.
+If a ≡ 1, 4, 7 mod 9: cube ≡ 1
 
-Wait, but hold on, maybe there are more? For example, A=3 and C=2 is invalid. What about A= something else?
+If a ≡ 2, 5, 8 mod 9: cube ≡ 8 ≡ -1 mod 9.
 
-No, since A can't be 2. So yes, 3 ways.
+Therefore, the cube mod 9 is 0 if a ≡ 0 mod 3, 1 if a ≡ 1 mod 3, and -1 if a ≡ 2 mod 3. Wait, that's interesting. So similar to mod 3, but with more structure. Therefore, for modulus 9, the cube is determined by a mod 3? Wait, no. For example, a ≡ 1 mod 3 can be 1, 4, 7 mod 9, and their cubes are all 1 mod 9. Similarly, a ≡ 2 mod 3 can be 2, 5, 8 mod 9, and their cubes are -1 mod 9. And a ≡ 0 mod 3 can be 0, 3, 6 mod 9, with cubes 0 mod 9. Therefore, indeed, the cube mod 9 depends only on a mod 3. Therefore, if we know a mod 3, we know a³ mod 9. Therefore, for modulus 9, the condition a³ + b³ + c³ ≡ 0 mod 9 is equivalent to:
 
-s=5: 3 ways.
+If a + b + c ≡ 0 mod 3, then what is the sum mod 9?
 
-s=6: A + C = 6.
+Wait, suppose that a + b + c ≡ 0 mod 3. Then, depending on how many of a, b, c are ≡ 0, 1, 2 mod 3, the sum mod 9 can vary. Wait, but since the cube is 0, 1, or -1 mod 9 depending on a mod 3, then the sum of three cubes mod 9 is equal to the sum of (each cube's value mod 9). Since each cube is 0, 1, or -1 mod 9, depending on a mod 3. Therefore, if we have a + b + c ≡ 0 mod 3, then the sum of the cubes mod 9 is equal to (number of a, b, c ≡ 1 mod 3) - (number of a, b, c ≡ 2 mod 3). Let me denote:
 
-Possible A's:
+Let x = number of variables ≡ 1 mod 3,
 
-A=1: C=5. Valid.
+y = number of variables ≡ 2 mod 3,
 
-A=3: C=3. Valid.
+z = number of variables ≡ 0 mod 3.
 
-A=4: C=2. Invalid.
+Since there are three variables, x + y + z = 3.
 
-A=5: C=1. Valid.
+Also, since a + b + c ≡ 0 mod 3, we have (x*1 + y*2 + z*0) ≡ 0 mod 3 ⇒ x + 2y ≡ 0 mod 3.
 
-A=6: C=0. Valid.
+But the sum of the cubes mod 9 is x*1 + y*(-1) + z*0 = x - y.
 
-A=7: C=-1. Invalid.
+Therefore, we need x - y ≡ 0 mod 9? No, mod 9. Wait, no, the sum of the cubes is x - y mod 9. But we need this sum to be 0 mod 9. Therefore, x - y ≡ 0 mod 9. However, since x and y are numbers of variables, which can be 0, 1, 2, 3. Therefore, x - y can be -3, -2, ..., 3. Therefore, the only way x - y ≡ 0 mod 9 is if x - y = 0. Therefore, x = y. Therefore, given that x + y + z = 3 and x = y, then 2x + z = 3. Also, from the condition x + 2y ≡ 0 mod 3. Since x = y, this becomes x + 2x = 3x ≡ 0 mod 3, which is always true. Therefore, the condition for the sum of cubes to be 0 mod 9 is that x = y, where x is the number of variables ≡ 1 mod 3, and y is the number ≡ 2 mod 3. Therefore, given that a + b + c ≡ 0 mod 3, the sum of the cubes is 0 mod 9 iff x = y. Therefore, how many triples (a, b, c) satisfy a + b + c ≡ 0 mod 3 and x = y?
 
-So A=1, 3, 5, 6. So four possibilities. Let's check:
+Let me compute this. First, note that for each triple with a + b + c ≡ 0 mod 3, we can categorize them based on x and y. Since x + y ≤ 3, and x = y, possible cases are:
 
-(1,5), (3,3), (5,1), (6,0). All valid? Yes. So 4 ways.
+Case 1: x = y = 0. Then z = 3. All three variables ≡ 0 mod 3.
 
-s=6: 4 ways.
+Case 2: x = y = 1. Then z = 1. One variable ≡ 1, one ≡ 2, one ≡ 0.
 
-s=7: A + C = 7.
+Case 3: x = y = 2. But then z = 3 - 2x = 3 - 4 = -1, which is impossible. Therefore, only Cases 1 and 2.
 
-A=1: C=6. Valid.
+Therefore, the number of triples where a + b + c ≡ 0 mod 3 and sum of cubes ≡ 0 mod 9 is equal to:
 
-A=3: C=4. Valid.
+Number of triples with all three ≡ 0 mod 3 plus number of triples with one ≡ 0, one ≡ 1, one ≡ 2 mod 3.
 
-A=4: C=3. Valid.
+Let me compute these numbers.
 
-A=5: C=2. Invalid.
+First, total number of triples with a + b + c ≡ 0 mod 3 is 3^{17} as before.
 
-A=6: C=1. Valid.
+But let me compute the numbers directly.
 
-A=7: C=0. Valid.
+Number of triples where all three are ≡ 0 mod 3: Each a, b, c can be 0 mod 3. Since numbers from 1 to 3^6, the number of multiples of 3 is 3^6 / 3 = 3^5. Therefore, number of such triples is (3^5)^3 = 3^{15}.
 
-A=8: C=-1. Invalid.
+Number of triples with one ≡ 0, one ≡ 1, one ≡ 2 mod 3. First, how many ways to assign residues to a, b, c? There are 3! = 6 permutations. For each permutation, the number of such triples is (number of ≡0 mod 3) * (number of ≡1 mod 3) * (number of ≡2 mod 3). The number of numbers ≡0 mod 3 is 3^5, as above. The numbers ≡1 mod 3: total numbers from 1 to 3^6 is 3^6. Numbers ≡1 mod 3: floor(3^6 / 3) + something? Since 3^6 is divisible by 3, the number of numbers ≡1 mod 3 is equal to 3^6 / 3 = 3^5. Similarly for ≡2 mod 3. Therefore, each residue class mod 3 has exactly 3^5 numbers. Therefore, the number of such triples is 6 * (3^5)^3 = 6 * 3^{15}.
 
-So A=1,3,4,6,7. So five possibilities:
+Therefore, total number of triples with a + b + c ≡ 0 mod 3 and sum of cubes ≡ 0 mod 9 is 3^{15} + 6 * 3^{15} = 7 * 3^{15}.
 
-(1,6), (3,4), (4,3), (6,1), (7,0). All valid. 5 ways.
+But wait, total number of triples with a + b + c ≡ 0 mod 3 is 3^{17} = 9 * 3^{15}. Therefore, the ratio is 7/9. Therefore, N(2) = 7/9 * 3^{17} = 7 * 3^{15}.
 
-s=7: 5 ways.
-
-s=8: A + C = 8.
-
-A=1: C=7. Valid.
-
-A=3: C=5. Valid.
-
-A=4: C=4. Valid.
-
-A=5: C=3. Valid.
-
-A=6: C=2. Invalid.
-
-A=7: C=1. Valid.
-
-A=8: C=0. Valid.
-
-A=9: C=-1. Invalid.
-
-So A=1,3,4,5,7,8. Let's check:
-
-(1,7), (3,5), (4,4), (5,3), (7,1), (8,0). All valid. 6 ways.
-
-s=8: 6 ways.
-
-s=9: A + C = 9.
-
-A=1: C=8. Valid.
-
-A=3: C=6. Valid.
-
-A=4: C=5. Valid.
-
-A=5: C=4. Valid.
-
-A=6: C=3. Valid.
-
-A=7: C=2. Invalid.
-
-A=8: C=1. Valid.
-
-A=9: C=0. Valid.
-
-So A=1,3,4,5,6,8,9. Let's count:
-
-(1,8), (3,6), (4,5), (5,4), (6,3), (8,1), (9,0). 7 ways.
-
-s=9: 7 ways.
-
-So for Case 1 (A + C = B), the total number of (A, C) pairs is the sum over s=1,3,4,...,9 of the number of ways:
-
-s=1: 1
-
-s=3: 1
-
-s=4: 3
-
-s=5: 3
-
-s=6: 4
-
-s=7: 5
-
-s=8: 6
-
-s=9: 7
-
-Adding these up: 1 + 1 + 3 + 3 + 4 + 5 + 6 + 7. Let me compute:
-
-1 + 1 = 2; 2 + 3 = 5; 5 + 3 = 8; 8 + 4 = 12; 12 + 5 = 17; 17 + 6 = 23; 23 + 7 = 30. So total 30 numbers in Case 1 with no 2s.
-
-Now, moving on to Case 2: A + C = B + 11. So rearranged, B = A + C - 11. Since B is a digit between 0 and 9 (excluding 2), we have constraints on A and C. Also, A is from 1-9 (excluding 2), C is from 0-9 (excluding 2). 
-
-First, since B must be between 0 and 9 (and not 2), then A + C - 11 must be between 0 and 9. Therefore, A + C must be between 11 and 20. However, since A and C are digits (A from 1-9, C from 0-9, both excluding 2), the maximum A + C can be is 9 + 9 = 18 (if neither is 2). Wait, but if A is 9 and C is 9, but 9 is allowed. So maximum A + C is 9 + 9 = 18. Therefore, A + C ranges from 11 to 18. 
-
-So for each s from 11 to 18, compute the number of (A, C) pairs where A and C don't contain 2, and A + C = s. Then, for each such pair, B = s - 11, which must not be 2. Therefore, we need to ensure that s - 11 ≠ 2 => s ≠ 13. Therefore, when s = 13, B would be 2, which is invalid. Therefore, for s from 11 to 18, except s=13, we can count the number of (A, C) pairs, and for s=13, we need to exclude those pairs where B would be 2. 
-
-So let me proceed:
-
-First, compute for each s from 11 to 18 (excluding 13), the number of (A, C) pairs with A and C not containing 2, and A + C = s. Then, for s=13, compute the number of such pairs and subtract them because they would result in B=2 which is invalid.
-
-Alternatively, compute for all s from 11 to 18, the number of (A, C) pairs, then subtract those with s=13. Let me do that.
-
-First, let me compute for each s from 11 to 18:
-
-s=11:
-
-Find number of (A, C) pairs with A ∈ {1,3,4,5,6,7,8,9}, C ∈ {0,1,3,4,5,6,7,8,9}, A + C = 11.
-
-Similarly for s=12, ..., s=18.
-
-This might take some time, but let's proceed.
-
-Starting with s=11:
-
-A + C = 11. A ranges from 1-9 (excluding 2), C ranges from 0-9 (excluding 2). Let's find all pairs (A, C) such that A + C = 11, with A and C not containing 2.
-
-Possible A values: Let's iterate A from 1 to 9 (excluding 2), and check if C = 11 - A is valid (i.e., not 2 and between 0-9).
-
-A=1: C=10. Invalid (C must be ≤9).
-
-A=3: C=8. Valid (C=8 is allowed).
-
-A=4: C=7. Valid.
-
-A=5: C=6. Valid.
-
-A=6: C=5. Valid.
-
-A=7: C=4. Valid.
-
-A=8: C=3. Valid.
-
-A=9: C=2. Invalid (C=2 is not allowed).
-
-So valid A's: 3,4,5,6,7,8. That's 6 pairs.
-
-s=11: 6 ways.
-
-s=12:
-
-A + C = 12.
-
-A=1: C=11. Invalid.
-
-A=3: C=9. Valid.
-
-A=4: C=8. Valid.
-
-A=5: C=7. Valid.
-
-A=6: C=6. Valid.
-
-A=7: C=5. Valid.
-
-A=8: C=4. Valid.
-
-A=9: C=3. Valid.
-
-Check if any C is 2? For A=3, C=9; A=4, 8; A=5,7; A=6,6; A=7,5; A=8,4; A=9,3. None of the Cs are 2. So all valid. Number of A's: from 3 to 9 (excluding 2). A=3,4,5,6,7,8,9. That's 7 values. So 7 ways.
-
-s=12: 7 ways.
-
-s=13:
-
-A + C = 13. But since B = s - 11 = 2, which is invalid. Therefore, we need to count how many pairs here, and then exclude them. Let's compute it for now.
-
-A + C = 13.
-
-A=1: C=12. Invalid.
-
-A=3: C=10. Invalid.
-
-A=4: C=9. Valid.
-
-A=5: C=8. Valid.
-
-A=6: C=7. Valid.
-
-A=7: C=6. Valid.
-
-A=8: C=5. Valid.
-
-A=9: C=4. Valid.
-
-So A=4,5,6,7,8,9. That's 6 values. Check Cs: 9,8,7,6,5,4. None are 2. Therefore, 6 pairs. However, since B would be 2 here, which is invalid, we need to exclude these. So for Case 2, we will not count these.
-
-s=13: 6 ways (but excluded).
-
-s=14:
-
-A + C = 14.
-
-A=1: C=13. Invalid.
-
-A=3: C=11. Invalid.
-
-A=4: C=10. Invalid.
-
-A=5: C=9. Valid.
-
-A=6: C=8. Valid.
-
-A=7: C=7. Valid.
-
-A=8: C=6. Valid.
-
-A=9: C=5. Valid.
-
-So A=5,6,7,8,9. That's 5 values. Cs: 9,8,7,6,5. All valid. 5 ways.
-
-s=14: 5 ways.
-
-s=15:
-
-A + C = 15.
-
-A=1: C=14. Invalid.
-
-A=3: C=12. Invalid.
-
-A=4: C=11. Invalid.
-
-A=5: C=10. Invalid.
-
-A=6: C=9. Valid.
-
-A=7: C=8. Valid.
-
-A=8: C=7. Valid.
-
-A=9: C=6. Valid.
-
-So A=6,7,8,9. 4 values. Cs: 9,8,7,6. Valid. 4 ways.
-
-s=15: 4 ways.
-
-s=16:
-
-A + C = 16.
-
-A=1: C=15. Invalid.
-
-A=3: C=13. Invalid.
-
-A=4: C=12. Invalid.
-
-A=5: C=11. Invalid.
-
-A=6: C=10. Invalid.
-
-A=7: C=9. Valid.
-
-A=8: C=8. Valid.
-
-A=9: C=7. Valid.
-
-So A=7,8,9. 3 values. Cs: 9,8,7. Valid. 3 ways.
-
-s=16: 3 ways.
-
-s=17:
-
-A + C = 17.
-
-A=1: C=16. Invalid.
-
-A=3: C=14. Invalid.
-
-A=4: C=13. Invalid.
-
-A=5: C=12. Invalid.
-
-A=6: C=11. Invalid.
-
-A=7: C=10. Invalid.
-
-A=8: C=9. Valid.
-
-A=9: C=8. Valid.
-
-So A=8,9. 2 values. Cs: 9,8. Valid. 2 ways.
-
-s=17: 2 ways.
-
-s=18:
-
-A + C = 18.
-
-A=1: C=17. Invalid.
-
-A=3: C=15. Invalid.
-
-A=4: C=14. Invalid.
-
-A=5: C=13. Invalid.
-
-A=6: C=12. Invalid.
-
-A=7: C=11. Invalid.
-
-A=8: C=10. Invalid.
-
-A=9: C=9. Valid.
-
-Only A=9, C=9. Valid. 1 way.
-
-s=18: 1 way.
-
-So for Case 2, total number of (A, C) pairs is sum of s=11,12,14,15,16,17,18. Remember s=13 is excluded because it leads to B=2. 
-
-So adding up:
-
-s=11: 6
-
-s=12: 7
-
-s=14: 5
-
-s=15: 4
-
-s=16: 3
-
-s=17: 2
-
-s=18: 1
-
-Total: 6 + 7 = 13; 13 + 5 = 18; 18 + 4 = 22; 22 + 3 = 25; 25 + 2 = 27; 27 + 1 = 28. So 28 numbers in Case 2 with no 2s.
-
-Therefore, total numbers divisible by 11 with no 2s are Case1 + Case2 = 30 + 28 = 58. 
-
-But wait, total three-digit numbers divisible by 11 are 81. Therefore, numbers with at least one 2 would be 81 - 58 = 23. 
-
-But wait, let me check my math again. Because if total numbers divisible by 11 is 81, and numbers without any 2s is 58, then numbers with at least one 2 is 81 - 58 = 23. Is that correct? Let me verify my counts again because 23 seems a bit low? Maybe I made a mistake in counting.
-
-Let me check the counts for Case 1 and Case 2 again.
-
-First, Case 1: 30 numbers. Let me check the sum again:
-
-s=1:1, s=3:1, s=4:3, s=5:3, s=6:4, s=7:5, s=8:6, s=9:7. Sum is 1+1+3+3+4+5+6+7. Let me add again:
-
-Start from 1 (s=1) + 1 (s=3) = 2. Then +3 (s=4) = 5, +3 (s=5) = 8, +4 (s=6) = 12, +5 (s=7) = 17, +6 (s=8) = 23, +7 (s=9) = 30. Yes, that's correct.
-
-Case 2: 28 numbers. Let me check the sum again:
-
-s=11:6, s=12:7, s=14:5, s=15:4, s=16:3, s=17:2, s=18:1. So 6+7=13, +5=18, +4=22, +3=25, +2=27, +1=28. Correct. So total 30 + 28 = 58. Then 81 - 58 = 23. 
-
-But let me think if there is a possibility that in my counts for Case 1 and Case 2, I might have missed something? For example, maybe overlapping numbers? Wait, no. Because Case 1 and Case 2 are separate: numbers where A + C = B and A + C = B + 11. These are distinct cases because in Case 1, A + C = B (so B is smaller), and in Case 2, A + C is larger. So there is no overlap. Therefore, adding them is correct. 
-
-But let me check with an example. Let's take a number that is divisible by 11 and has a 2. For example, 121. Let's check if it's counted in our total. 
-
-121: digits A=1, B=2, C=1. Since it has a 2, it should be in the 23 numbers. Let's see if it's in Case 1 or 2. 
-
-Check divisibility: A + C - B = 1 + 1 - 2 = 0, which is divisible by 11. So it's in Case 1. Now, in our count for numbers without 2s, we excluded numbers with any 2s, so 121 would not be in the 58 numbers. Therefore, it's in the 23. 
-
-Another example: 220. A=2, B=2, C=0. But since A=2 is excluded in our no-2s count, so it's in the 23. 
-
-Another example: 132. A=1, B=3, C=2. Divisible by 11? Let's check: 1 + 2 - 3 = 0. Yes. So it's in Case 1. Since it has a 2 in C, it's in the 23. 
-
-But how do I know that my count of 58 is correct? Let me check another way. Let me compute total numbers with no 2s in both cases.
-
-Alternatively, maybe I can compute the total numbers with no 2s divisible by 11 by another method? For example, generating all three-digit numbers with no 2s, check divisibility by 11, and count. But that might be tedious, but maybe for a few examples.
-
-Alternatively, let me check the total numbers with no 2s. How many three-digit numbers have no 2s? For A: 8 choices (1-9 except 2). For B: 9 choices (0-9 except 2). For C: 9 choices. Total: 8*9*9 = 648 numbers. Out of these, how many are divisible by 11? According to my previous calculation, 58. Let me see if that seems plausible. Since total numbers divisible by 11 is 81, and numbers without 2s are 648, which is about 648/900 = 72% of all three-digit numbers. So 72% of 81 is roughly 58, which seems plausible. So maybe my calculation is correct. 
-
-Therefore, proceeding with 81 - 58 = 23. But let me check another way. Let me think of how many numbers in Case 1 and Case 2 have at least one 2. Wait, but maybe not necessary. 
-
-Alternatively, maybe I can calculate directly the number of three-digit numbers divisible by 11 with at least one 2. Let me try that approach as a check. 
-
-So, again, three-digit numbers divisible by 11: 81 numbers. Let me think of how many have at least one 2. 
-
-But how to count them directly? Well, perhaps using inclusion-exclusion. Let me think. 
+But let me check if this is correct. Let me compute N(2) directly. The total number of triples where a³ + b³ + c³ ≡ 0 mod 9. Since we have for each a, b, c, their cube is 0, 1, or -1 mod 9. Therefore, the number of triples where the sum is 0 mod 9 can be calculated by considering all possible combinations of residues.
 
 Let me denote:
 
-Let A be the set of numbers with hundreds digit 2.
+Let me think of each variable as contributing 0, 1, or -1 mod 9. Let me compute the number of triples (x, y, z) where x, y, z ∈ { -1, 0, 1 } and x + y + z ≡ 0 mod 9. However, since x, y, z are each -1, 0, or 1, their sum can range from -3 to +3. Therefore, the sum ≡ 0 mod 9 iff the sum is 0. Therefore, we need the number of triples (x, y, z) with x + y + z = 0, where each x, y, z ∈ { -1, 0, 1 }.
 
-B be the set with tens digit 2.
+Let me compute this number. The possible combinations:
 
-C be the set with units digit 2.
+- All three are 0: 1 way.
 
-We need to find |A ∪ B ∪ C|. Which is |A| + |B| + |C| - |A∩B| - |A∩C| - |B∩C| + |A∩B∩C|.
+- One +1, one -1, and one 0: Number of permutations: 3! / 1!1!1! = 6.
 
-But all these sets are subsets of the 81 numbers divisible by 11. So if I can compute each of these terms, I can find the answer. 
+- Three +1s and three -1s? No, since we need sum 0. For example, two +1s and one -2? But we can't have -2. Alternatively, two +1s and one -2 isn't possible. Wait, the only possibilities are:
 
-So let me compute:
+Sum 0 can be achieved by:
 
-First, |A|: numbers with hundreds digit 2 (so A=2) and divisible by 11. How many?
+- 0, 0, 0.
 
-Similarly for |B| and |C|.
+- 1, 1, -2: Not possible since we don't have -2.
 
-But need to be careful here. Let me proceed step by step.
+Wait, no. Wait, each term is -1, 0, or 1. So possible sums:
 
-First, |A|: numbers with hundreds digit 2 (so A=2) and divisible by 11. Let me find how many such numbers there are.
+To get 0:
 
-A three-digit number with A=2, so numbers from 200 to 299. How many are divisible by 11?
+- 0 + 0 + 0 = 0.
 
-The first number ≥200 divisible by 11: 209 (since 11*19=209). The last number ≤299 divisible by 11: 297 (11*27=297). So numbers are 11*19 up to 11*27. Number of terms: 27 - 19 + 1 = 9 numbers. Let me check:
+- 1 + (-1) + 0 = 0.
 
-209, 220, 231, 242, 253, 264, 275, 286, 297. Yes, 9 numbers. So |A| = 9.
+- 1 + 1 + (-2): Not possible.
 
-Similarly, |B|: numbers with tens digit 2 (B=2) and divisible by 11. How many?
+- (-1) + (-1) + 2: Not possible.
 
-Three-digit numbers where the middle digit is 2. Let me find how many such numbers are divisible by 11.
+Therefore, only two types: all zeros, or one 1, one -1, one 0. Therefore, total number of such triples is 1 + 6 = 7. Therefore, for each triple of residues, there are 7 possibilities. However, each residue class (-1, 0, 1) corresponds to certain numbers of a's. Since each residue class (0, 1, 2 mod 3) maps to (-1, 0, 1) mod 9? Wait, earlier we saw that:
 
-Let me use the divisibility rule. For a number ABC with B=2, we have (A + C) - 2 must be divisible by 11. So (A + C) - 2 = 0 or ±11. Since A is from 1-9, C from 0-9, A + C ranges from 1+0=1 to 9+9=18. Therefore, (A + C) - 2 can be from -1 to 16. The possible multiples of 11 here are -11, 0, 11. But -11 would require A + C = -9, impossible. 0: A + C = 2. 11: A + C = 13. 
+If a ≡ 0 mod 3, cube ≡ 0 mod 9.
 
-Therefore, numbers with B=2 and divisible by 11 must satisfy A + C = 2 or A + C = 13. 
+If a ≡ 1 mod 3, cube ≡ 1 mod 9.
 
-So let's count how many such numbers.
+If a ≡ 2 mod 3, cube ≡ -1 mod 9.
 
-First, A + C = 2. A is from 1-9, C from 0-9. How many solutions?
+Therefore, for each a, the cube mod 9 is determined by a mod 3. Therefore, the number of triples where the cubes sum to 0 mod 9 is equal to:
 
-Possible A: 1 or 2 (since A ≥1, and A ≤2 because A + C = 2). 
+Number of triples with all three a's ≡ 0 mod 3: (count)^3.
 
-A=1: C=1. Valid.
+Plus number of triples with one ≡1, one ≡2, one ≡0 mod 3: 6 * (count)^3.
 
-A=2: C=0. Valid.
+Since each residue class has 3^5 numbers, as before, then total is 1*(3^5)^3 + 6*(3^5)^3 = 7*(3^5)^3 = 7*3^{15}, which matches our previous result. Therefore, N(2) = 7*3^{15}.
 
-So two numbers: 121 and 220. 
+Therefore, this seems correct. Therefore, moving on. Now, how do we compute N(3)? For modulus 27. This seems more complex, but maybe we can find a pattern or recurrence.
 
-Second, A + C = 13. How many solutions?
+But before that, let me note that for modulus 3^k, the number of solutions might follow a certain multiplicative pattern. For example, N(1) = 3^{17}, N(2) = 7 * 3^{15}. Let me check if there's a pattern here. From N(1) to N(2), we multiplied by 7/9. Maybe for each subsequent modulus, we multiply by some factor?
 
-A ranges from 1-9, C from 0-9. For each A from 4 to 9 (since A must be at least 13 - 9 = 4):
+Alternatively, perhaps we can use the concept of "lifting" solutions from modulus 3^k to 3^{k+1}. For that, we might need to know how many solutions lift uniquely or in how many ways.
 
-A=4: C=9. Valid.
+Alternatively, perhaps we can use generating functions. For each modulus, we can compute the number of possible residues for a³, then compute the coefficient of x^0 in the generating function (f(x))^3 mod x^{3^k} - 1, where f(x) is the generating function for the number of a's with a³ ≡ something mod 3^k.
 
-A=5: C=8. Valid.
+But this might get complex. However, since we already did modulus 3 and 9, maybe we can try modulus 27.
 
-A=6: C=7. Valid.
+Let me attempt modulus 27. Let me first analyze the possible values of a³ mod 27. Let me note that a can be written as a = 3^m * n, where n is not divisible by 3. Then, a³ = 3^{3m} * n³. Therefore, if m ≥ 1, then a³ is divisible by 3^3 = 27. Therefore, a³ ≡ 0 mod 27. If m = 0, i.e., a not divisible by 3, then a³ ≡ n³ mod 27, where n is from 1 to 26, coprime to 3. Therefore, we need to find the possible values of n³ mod 27 where n is not divisible by 3.
 
-A=7: C=6. Valid.
+Let me compute n³ mod 27 for n = 1, 2, 4, 5, 7, 8, ..., 26. However, since n mod 3 is 1 or 2, and since cubing might have periodicity.
 
-A=8: C=5. Valid.
+Alternatively, note that for n not divisible by 3, we can write n ≡ 1 or 2 mod 3. Let me consider n ≡ 1 mod 3 first. Let me write n = 3k + 1. Then, n³ = (3k + 1)^3 = 27k³ + 27k² + 9k + 1 ≡ 9k + 1 mod 27. Similarly, for n ≡ 2 mod 3, write n = 3k + 2. Then, n³ = (3k + 2)^3 = 27k³ + 54k² + 36k + 8 ≡ 36k + 8 mod 27. Since 36k ≡ 9k mod 27, so n³ ≡ 9k + 8 mod 27.
 
-A=9: C=4. Valid.
+Therefore, for numbers not divisible by 3, their cubes mod 27 depend on k. However, k can be any integer such that n is between 1 and 26. Wait, but n = 3k + 1 or 3k + 2, with n ≤ 26. Therefore, k ranges appropriately. However, this seems complicated. Maybe there's a better way.
 
-So 6 solutions: 429, 528, 627, 726, 825, 924. 
+Alternatively, let me note that for n not divisible by 3, we can write n ≡ r mod 9 or mod 27? Let me check specific values.
 
-Therefore, total numbers with B=2 and divisible by 11: 2 + 6 = 8. Therefore, |B| = 8.
+Let me compute n³ mod 27 for n from 1 to 26, not divisible by 3:
 
-Now |C|: numbers with units digit 2 (C=2) and divisible by 11. How many?
+First, n from 1 to 8:
 
-Three-digit numbers ending with 2. Let me apply divisibility rule. For ABC with C=2, (A + 2) - B must be divisible by 11. So (A + 2) - B = 0 or ±11. 
+n=1: 1 mod 27
 
-Again, A is 1-9, B is 0-9. Let's compute possible values:
+n=2: 8 mod 27
 
-(A + 2) - B = 0 => B = A + 2.
+n=4: 64 mod 27 = 64 - 2*27 = 10
 
-Or (A + 2) - B = 11 => B = A + 2 - 11 = A - 9.
+n=5: 125 mod 27: 27*4=108, 125-108=17
 
-Or (A + 2) - B = -11 => B = A + 2 + 11 = A + 13. But since B is a digit (0-9), A + 13 ≤ 9 => A ≤ -4, impossible. So only two cases: B = A + 2 or B = A - 9.
+n=7: 343 mod 27: 27*12=324, 343-324=19
 
-First case: B = A + 2. Since B must be between 0-9, and A is between 1-9:
+n=8: 512 mod 27: 27*18=486, 512-486=26
 
-A can be from 1 to 7 (since if A=7, B=9; if A=8, B=10 invalid). Therefore, A=1 to 7, B=A+2. For each A from 1-7, C=2. So numbers: 1 3 2, 2 4 2,...,7 9 2. That is 7 numbers: 132, 242, 352, 462, 572, 682, 792.
+n=10: 1000 mod 27. Let me compute 27*37=999, so 1000 ≡ 1 mod 27.
 
-Second case: B = A - 9. Since B ≥ 0, A - 9 ≥ 0 => A ≥ 9. So A=9, then B=0. Therefore, one number: 9 0 2, which is 902. 
+n=11: 1331 mod 27. 27*49=1323, 1331-1323=8 mod 27.
 
-Therefore, total numbers with C=2 and divisible by 11: 7 + 1 = 8. Therefore, |C| = 8.
+n=13: 2197 mod 27. Let me divide 2197 by 27. 27*81=2187, 2197-2187=10 mod 27.
 
-Now, moving on to intersections:
+n=14: 2744 mod 27. 27*101=2727, 2744-2727=17 mod 27.
 
-|A ∩ B|: numbers with hundreds digit 2 and tens digit 2 (A=2, B=2). How many such numbers are divisible by 11?
+n=16: 4096 mod 27. Let me compute 27*151=4077, 4096-4077=19 mod 27.
 
-Number is 2 2 C. Let's apply divisibility rule: (A + C) - B = (2 + C) - 2 = C. So C must be divisible by 11. Since C is a digit (0-9), only C=0. Therefore, the number is 220. So only 1 number. Therefore, |A ∩ B| = 1.
+n=17: 4913 mod 27. 27*181=4887, 4913-4887=26 mod 27.
 
-|A ∩ C|: numbers with hundreds digit 2 and units digit 2 (A=2, C=2). Number is 2 B 2. Divisibility rule: (A + C) - B = (2 + 2) - B = 4 - B must be divisible by 11. So 4 - B = 0 or ±11. 
+n=19: 6859 mod 27. 27*254=6858, so 6859 ≡ 1 mod 27.
 
-Possible:
+n=20: 8000 mod 27. 27*296=8, let me compute 27*296: 27*(300 - 4) = 8100 - 108 = 7992. 8000 - 7992 = 8 mod 27.
 
-4 - B = 0 => B=4. Valid.
+n=22: 10648 mod 27. Let me divide 10648 by 27. 27*394 = 10638, so 10648 - 10638 = 10 mod 27.
 
-4 - B = 11 => B = -7. Invalid.
+n=23: 12167 mod 27. 27*450 = 12150, 12167 - 12150 = 17 mod 27.
 
-4 - B = -11 => B = 15. Invalid. 
+n=25: 15625 mod 27. 27*578 = 15606, 15625 - 15606 = 19 mod 27.
 
-Therefore, only B=4. The number is 242. So |A ∩ C| = 1.
+n=26: 17576 mod 27. 27*650 = 17550, 17576 - 17550 = 26 mod 27.
 
-|B ∩ C|: numbers with tens digit 2 and units digit 2 (B=2, C=2). Number is A 2 2. Divisibility rule: (A + 2) - 2 = A must be divisible by 11. Since A is from 1-9, only A=11 invalid. Therefore, no solutions. Wait, A must be between 1-9. So A must be 0 or 11 to satisfy divisibility, but A cannot be 0. Therefore, |B ∩ C| = 0.
+So compiling the results:
 
-Wait, let me check. The divisibility rule is (A + C) - B. For number A 2 2, that is (A + 2) - 2 = A. So A must be divisible by 11. Since A is 1-9, no such numbers. Therefore, |B ∩ C| = 0.
+For n ≡ 1 mod 3:
 
-Finally, |A ∩ B ∩ C|: numbers with A=2, B=2, C=2. Number is 222. Check divisibility: (2 + 2) - 2 = 2, not divisible by 11. Therefore, not divisible by 11. So |A ∩ B ∩ C| = 0.
+n=1: 1
 
-Therefore, applying inclusion-exclusion:
+n=4: 10
 
-|A ∪ B ∪ C| = |A| + |B| + |C| - |A∩B| - |A∩C| - |B∩C| + |A∩B∩C| = 9 + 8 + 8 - 1 - 1 - 0 + 0 = 23. 
+n=7: 19
 
-Which matches the previous result of 81 - 58 = 23. Therefore, the answer is 23. 
+n=10: 1
 
-But let me just verify with some examples. For example, numbers in |A|: 209, 220, 231, 242, 253, 264, 275, 286, 297. Among these, how many have at least one 2? Well, all of them have A=2, so they all have at least one 2. So 9 numbers. 
+n=13: 10
 
-Numbers in |B|: the 8 numbers we found: 121, 220, 429, 528, 627, 726, 825, 924. However, note that 220 is already counted in |A|. Similarly, numbers in |C|: 132, 242, 352, 462, 572, 682, 792, 902. Again, 242 is already in |A|. 
+n=16: 19
 
-So when we do inclusion-exclusion, we subtract overlaps. The overlaps are |A ∩ B| = 220 and |A ∩ C| = 242. And |B ∩ C| is 0. So total unique numbers would be 9 + 8 + 8 - 1 -1 = 23. 
+n=19: 1
 
-Let me list all 23 numbers to check:
+n=22: 10
 
-From |A|: 209, 220, 231, 242, 253, 264, 275, 286, 297. (9 numbers)
+n=25: 19
 
-From |B|: 121, 429, 528, 627, 726, 825, 924. (excluding 220 which is already counted). So 7 numbers.
+Similarly for n ≡ 2 mod 3:
 
-From |C|: 132, 352, 462, 572, 682, 792, 902. (excluding 242 which is already counted). So 7 numbers.
+n=2: 8
 
-Total: 9 + 7 + 7 = 23 numbers. Let me check if there are duplicates between |B| and |C|. For example, is  any number in both |B| and |C|? For example,  any number with B=2 and C=2? But we saw |B ∩ C| is 0. So no duplicates. Also, numbers from |B| and |C| don't overlap with each other except if a number is in both |B| and |C|, which there aren't. 
+n=5: 17
 
-So total numbers:
+n=8: 26
 
-From |A|: 9 numbers.
+n=11: 8
 
-From |B|: 7 new numbers.
+n=14: 17
 
-From |C|: 7 new numbers.
+n=17: 26
 
-Total 23. Let me check if all these numbers are unique and actually divisible by 11 and have at least one 2.
+n=20: 8
 
-For example:
+n=23: 17
 
-From |A|: all have 2 in hundreds place. Divisible by 11 as checked before.
+n=26: 26
 
-From |B|: numbers like 121 (div by 11? 1 - 2 + 1 = 0, yes). 429: 4 - 2 + 9 = 11, yes. Similarly others.
+Therefore, we can see a pattern here. For numbers ≡1 mod 3, their cubes mod 27 cycle through 1, 10, 19, repeating every 9 numbers. Similarly, for numbers ≡2 mod 3, their cubes mod 27 cycle through 8, 17, 26, repeating every 9 numbers.
 
-From |C|: 132: 1 - 3 + 2 = 0, yes. 352: 3 - 5 + 2 = 0, yes. Etc. 
+Therefore, for numbers not divisible by 3, their cubes mod 27 can be 1, 8, 10, 17, 19, 26, or 0 (for numbers divisible by 3). Therefore, when considering a³ mod 27, there are several possibilities. 
 
-Yes, seems okay. Therefore, 23 numbers. 
+Now, to compute N(3), the number of triples (a, b, c) with a³ + b³ + c³ ≡ 0 mod 27. This seems complex, but maybe we can use the previous results. Let me think recursively. 
 
-Therefore, the answer is 23. 
+We already know that for modulus 9, the solutions are those that satisfy certain conditions. Now, to lift them to modulus 27, we need to consider how solutions mod 9 can be extended to solutions mod 27. This is similar to Hensel's lemma, but for multiple variables and additive functions.
 
-**Final Answer**
-\boxed{23}
-</think>
+Alternatively, maybe we can use the Chinese Remainder Theorem. However, since we are dealing with powers of the same prime, it's about lifting solutions.
 
-To determine how many **three-digit positive integers** are divisible by **11** and contain **at least one digit equal to 2**, we proceed with a structured approach.
+Alternatively, perhaps we can use generating functions again. For modulus 27, we need to compute the number of triples (a, b, c) such that their cubes sum to 0 mod 27. Given that each a can be categorized based on its residue mod 27, but this seems complex. However, given the earlier analysis, maybe we can categorize based on the residue mod 9 and then extend?
 
----
+Alternatively, since we know the solutions mod 9, maybe we can consider how each solution mod 9 can be lifted to solutions mod 27. For each solution mod 9, how many lifts are there to mod 27?
 
-### Step 1: Total Three-Digit Numbers Divisible by 11
+This seems promising. Let me try this approach.
 
-The smallest three-digit number divisible by 11 is:
+First, note that any integer a can be written as a = a0 + 9a1, where a0 is a residue mod 9 and a1 is an integer. Then, a³ mod 27 can be expressed in terms of a0 and a1. Let me compute (a0 + 9a1)³ mod 27.
 
-$$
-11 \times 10 = 110
-$$
+Expanding, we get:
 
-The largest is:
+a0³ + 3*a0²*(9a1) + 3*a0*(9a1)² + (9a1)^3.
 
-$$
-11 \times 90 = 990
-$$
+Simplify each term:
 
-So, the total number of such numbers is:
+First term: a0³.
 
-$$
-90 - 10 + 1 = 81
-$$
+Second term: 27a0²a1 ≡ 0 mod 27.
 
----
+Third term: 3*a0*(81a1²) ≡ 0 mod 27.
 
-### Step 2: Count Numbers with **No Digit Equal to 2**
+Fourth term: 729a1³ ≡ 0 mod 27.
 
-We now count how many of these 81 numbers **do not** contain the digit **2** in any position. This is the complement of the desired set, and we can subtract it from 81 to get the final answer.
+Therefore, overall, (a0 + 9a1)³ ≡ a0³ mod 27. Therefore, the cube mod 27 depends only on a0 mod 9. Therefore, if we know a mod 9, we know a³ mod 27. Therefore, this is a key insight!
 
-We use the **divisibility rule for 11** for a three-digit number $ N = 100A + 10B + C $:
+Therefore, for modulus 27, the value of a³ mod 27 is determined by a mod 9. Therefore, if we have a solution mod 9, we can lift it to mod 27 by considering the possible residues mod 27 that are congruent to the original residue mod 9. Since each residue mod 9 corresponds to three residues mod 27 (since 27 = 3*9), each residue mod 9 can be lifted to three residues mod 27. However, since a³ mod 27 depends only on a mod 9, then for each solution mod 9, there are 3^3 = 27 lifts to mod 27? Wait, no. Wait, for each a, there are three choices mod 27 that are ≡ a mod 9. Therefore, for each triple (a, b, c) mod 9 that satisfies the condition, there are 3^3 = 27 triples mod 27 that lift it. However, we need to check whether these lifts satisfy the condition mod 27. But since a³ mod 27 is determined by a mod 9, if the original triple mod 9 satisfies a³ + b³ + c³ ≡ 0 mod 9, then the lifted triple mod 27 will have a³ + b³ + c³ ≡ same value mod 9, but we need it to be 0 mod 27. Therefore, not all lifts will satisfy the condition. Therefore, we need to find for each solution mod 9, how many lifts to mod 27 satisfy the stronger condition.
 
-$$
-(A + C) - B \equiv 0 \pmod{11}
-$$
+Therefore, suppose we have a triple (A, B, C) mod 9 such that A³ + B³ + C³ ≡ 0 mod 9. Let me write A, B, C as residues mod 9. Then, each of these can be lifted to residues mod 27. Let me denote the lifts as a ≡ A mod 9, b ≡ B mod 9, c ≡ C mod 9. Then, a³ ≡ A³ mod 27, etc. Therefore, the sum a³ + b³ + c³ ≡ A³ + B³ + C³ ≡ 0 mod 9. However, we need this sum to be 0 mod 27. Therefore, given that it is 0 mod 9, what is the probability or number of lifts where it is 0 mod 27?
 
-This gives two cases:
+Let me denote S = A³ + B³ + C³ ≡ 0 mod 9. Let me write S = 9k. We need S ≡ 0 mod 27 ⇒ 9k ≡ 0 mod 27 ⇒ k ≡ 0 mod 3. Therefore, we need to know, for each solution mod 9, what is k mod 3, and then impose that k ≡ 0 mod 3. Therefore, how can we compute k?
 
-- **Case 1:** $ A + C = B $
-- **Case 2:** $ A + C = B + 11 $
+But how do we compute k? Since S = a³ + b³ + c³ ≡ 9k mod 27. Therefore, if we can compute S mod 27, then k = S / 9 mod 3. However, since we know A, B, C mod 9, we can compute S mod 27 by computing A³ + B³ + C³ mod 27. Wait, but earlier we saw that a³ mod 27 depends only on A mod 9. Therefore, if we fix A, B, C mod 9, then S mod 27 is fixed. Therefore, for each solution mod 9, we can compute S mod 27, and then determine if it is 0 mod 27 or not. If it is, then all 27 lifts are valid. If not, then none are? Or some?
 
-We count the number of such numbers where **none of the digits A, B, or C is 2**.
+Wait, no. Because S mod 27 is fixed once A, B, C are fixed mod 9. Therefore, if S ≡ 0 mod 9 but not 0 mod 27, then none of the lifts will satisfy the condition mod 27. If S ≡ 0 mod 27, then all lifts will satisfy the condition. Therefore, the number of solutions mod 27 is equal to the number of solutions mod 9 for which S ≡ 0 mod 27 multiplied by 27 (number of lifts) plus the number of solutions mod 9 for which S ≡ 0 mod 9 but not mod 27 multiplied by 0. Therefore, we need to compute how many solutions mod 9 have S ≡ 0 mod 27.
 
-#### Case 1: $ A + C = B $
+Therefore, to compute N(3), we need to:
 
-We iterate over all valid digit combinations where $ A \in \{1,3,4,5,6,7,8,9\} $, $ C \in \{0,1,3,4,5,6,7,8,9\} $, and $ B = A + C $, ensuring $ B \in \{0,1,3,4,5,6,7,8,9\} $ (excluding 2). We find:
+1. Take N(2) = 7*3^{15} solutions mod 9.
 
-- Total valid combinations: **30**
+2. For each such solution, determine if the corresponding S = A³ + B³ + C³ ≡ 0 mod 27.
 
-#### Case 2: $ A + C = B + 11 $
+3. Multiply the number of such solutions by 3^3 = 27 (since each solution mod 9 can be lifted in 3^3 ways to mod 27).
 
-Here, $ B = A + C - 11 $, and we ensure $ B \in \{0,1,3,4,5,6,7,8,9\} $ (excluding 2). We also exclude any combinations where $ B = 2 $, which occurs when $ A + C = 13 $.
+Therefore, we need to find how many of the N(2) solutions mod 9 actually have S ≡ 0 mod 27.
 
-- Total valid combinations: **28**
+To do this, we need to analyze the solutions mod 9 and compute S mod 27 for them.
 
----
+Recall that the solutions mod 9 are of two types:
 
-### Step 3: Subtract to Find Numbers with At Least One Digit Equal to 2
+Case 1: All three numbers ≡ 0 mod 3. Then, their cubes ≡ 0 mod 9, so S ≡ 0 + 0 + 0 = 0 mod 9. What is S mod 27? Since each number is divisible by 3, let me write them as 3a, 3b, 3c, where a, b, c are integers from 1 to 3^5. Then, their cubes are 27a³, 27b³, 27c³. Therefore, S = 27(a³ + b³ + c³). Therefore, S ≡ 0 mod 27. Therefore, all solutions in Case 1 lift to solutions mod 27. 
 
-Total numbers divisible by 11 with **no digit equal to 2**:
+Case 2: One number ≡ 0 mod 3, one ≡ 1 mod 3, one ≡ 2 mod 3. Then, their cubes mod 9 are 0, 1, -1, summing to 0 mod 9. What is S mod 27? Let me take specific residues. Let me denote the numbers as follows:
 
-$$
-30 + 28 = 58
-$$
+Let me pick a number ≡ 0 mod 3: let's say 3k.
 
-Therefore, the number of three-digit numbers divisible by 11 that **have at least one digit equal to 2** is:
+A number ≡ 1 mod 3: let's say 3m + 1.
 
-$$
-81 - 58 = \boxed{23}
-$$
+A number ≡ 2 mod 3: let's say 3n + 2.
+
+Then, their cubes are:
+
+(3k)^3 = 27k³ ≡ 0 mod 27,
+
+(3m + 1)^3 = 27m³ + 27m² + 9m + 1 ≡ 9m + 1 mod 27,
+
+(3n + 2)^3 = 27n³ + 54n² + 36n + 8 ≡ 9*(4n) + 8 mod 27 (since 36n = 9*4n). Wait, 36n mod 27 is 9n. Therefore:
+
+(3n + 2)^3 ≡ 9n + 8 mod 27.
+
+Therefore, the total sum S ≡ 0 + (9m + 1) + (9n + 8) = 9(m + n) + 9 ≡ 9(m + n + 1) mod 27.
+
+Therefore, S ≡ 9(m + n + 1) mod 27. Therefore, S ≡ 0 mod 27 iff m + n + 1 ≡ 0 mod 3, i.e., m + n ≡ 2 mod 3.
+
+Therefore, for each such triple in Case 2, whether S ≡ 0 mod 27 depends on m and n. However, m and n are integers such that 3m + 1 and 3n + 2 are within 1 to 3^6. However, since we are considering residues mod 3, m and n can be any integers, but their values affect the higher moduli. However, since we are counting the number of such triples where m + n ≡ 2 mod 3, we need to determine the proportion of such cases.
+
+But how does this relate to our count? For each triple in Case 2 mod 9, there are multiple lifts to mod 27. Wait, but in our earlier analysis, when we considered lifting solutions mod 9 to mod 27, we need to know for each solution mod 9 whether S ≡ 0 mod 27. However, in Case 2, S ≡ 9(m + n + 1) mod 27. Therefore, for each such solution mod 9, there are multiple possibilities for m and n depending on the actual values of the numbers. However, since we are counting all possible triples (a, b, c) with a, b, c ≤ 3^6, we need to compute how many of the Case 2 solutions mod 9 have S ≡ 0 mod 27.
+
+But since m and n are determined by the numbers ≡1 and ≡2 mod 3, which are arbitrary except for their residue mod 3. Let me think. For each number ≡1 mod 3, say a = 3m + 1, m can be any integer such that 1 ≤ a ≤ 3^6. Similarly for numbers ≡2 mod 3, b = 3n + 2. Therefore, m ranges from 0 to (3^6 - 1)/3 = (729 - 1)/3 = 728/3 ≈ 242.666, so m ranges from 0 to 242 (since 3*243 = 729, which would make a = 730, which is over). Wait, actually, since a ≤ 3^6 = 729, then for a ≡1 mod 3, the maximum m is floor((729 - 1)/3) = floor(728/3) = 242. Similarly for others. Therefore, m and n can range over integers from 0 to 242. Therefore, for each such a ≡1 mod 3 and b ≡2 mod 3, m and n are integers between 0 and 242 inclusive. Therefore, the total number of pairs (m, n) is (243)^2. The number of pairs where m + n ≡ 2 mod 3 is equal to total / 3 * something? Since m and n are independent, and for each m, n, m + n mod 3 is uniformly distributed? Assuming that the number of m's in each residue class is roughly equal.
+
+Since 243 is divisible by 3 (since 243 = 3^5), the number of m's ≡0, 1, 2 mod 3 are equal: 81 each. Therefore, for each residue of m, there are 81 values. Similarly for n. Therefore, the number of pairs (m, n) with m + n ≡ 2 mod 3 is equal to:
+
+Number of (m ≡0, n ≡2) + (m≡1, n≡1) + (m≡2, n≡0). Each of these combinations:
+
+- For m≡0, n≡2: 81 * 81
+
+- For m≡1, n≡1: 81 * 81
+
+- For m≡2, n≡0: 81 * 81
+
+Total: 3*(81^2) = 3*(81^2). Total number of pairs is 3^5 * 3^5 = 3^{10}. Therefore, the ratio is 3*(81²)/3^{10} = 3*(3^4 * 3^4)/3^{10} = 3*(3^8)/3^{10} = 3^{-1} = 1/3. Therefore, exactly 1/3 of the pairs (m, n) satisfy m + n ≡ 2 mod 3. Therefore, for each Case 2 solution mod 9, exactly 1/3 of the lifts to mod 27 will satisfy S ≡ 0 mod 27.
+
+Therefore, returning to our count:
+
+Number of solutions in Case 1 mod 9: 3^{15}. Each of these lifts to 3^3 solutions mod 27, all of which satisfy S ≡ 0 mod 27. Therefore, contributes 3^{15} * 27 = 3^{15} * 3^3 = 3^{18}.
+
+Number of solutions in Case 2 mod 9: 6 * 3^{15}. Each of these lifts to 3^3 solutions mod 27, but only 1/3 of them satisfy S ≡ 0 mod 27. Therefore, contributes 6 * 3^{15} * 27 * (1/3) = 6 * 3^{15} * 9 = 6 * 3^{17}.
+
+Therefore, total N(3) = 3^{18} + 6 * 3^{17} = 3^{17}*(3 + 6) = 9 * 3^{17} = 3^{19}? Wait, 3^{18} + 6*3^{17} = 3^{17}(3 + 6) = 9*3^{17} = 3^2 * 3^{17} = 3^{19}? Wait, 3^{18} is 3*3^{17}, so 3*3^{17} + 6*3^{17} = 9*3^{17} = 3^2 * 3^{17} = 3^{19}. Yes. Therefore, N(3) = 3^{19}.
+
+Wait, but let me check with numbers. For example, total number of triples mod 27 is 3^{6*3} = 3^{18} (since each a, b, c is up to 3^6, which is 729, so mod 27 they can be anything). Wait, no, the total number of triples is (3^6)^3 = 3^{18}, and N(3) is the number of those with sum ≡0 mod 27. According to our calculation, N(3) = 3^{19}? That would be greater than total number of triples, which is impossible. Wait, there's a mistake here.
+
+Wait, no. Wait, N(3) is supposed to be the number of triples (a, b, c) with a, b, c ≤ 3^6 and sum of cubes ≡0 mod 27. However, according to our calculation, N(3) = 3^{19}, but total number of triples is 3^{18}. Clearly, this is impossible. Therefore, there must be a mistake in my reasoning.
+
+Where did I go wrong? Let me check.
+
+Earlier, I said that for Case 1 solutions mod 9 (all three ≡0 mod 3), each lifts to 3^3 solutions mod 27. However, how many numbers ≡0 mod 3 are there up to 3^6? It's 3^5, as before. Therefore, the number of triples in Case 1 mod 9 is (3^5)^3 = 3^{15}. When lifting to mod 27, each number ≡0 mod 3 can be any number ≡0 mod 3 up to 3^6. However, numbers ≡0 mod 3 can be written as 3k, where k ranges from 1 to 3^5. However, when considering mod 27, each such number 3k can be in any residue class mod 27 that is ≡0 mod 3. There are 9 residues mod 27 that are ≡0 mod 3 (0, 3, 6, ..., 24). However, since k ranges up to 3^5 = 243, which is 9*27, so each residue mod 27 occurs exactly 243 / 27 * number of residues? Wait, no. For numbers 3k where k ranges from 1 to 243, the numbers 3k range from 3 to 729. The number of numbers ≡ r mod 27, where r ≡0 mod 3, is equal to floor(729 / 27) = 27, but since 729 is exactly 27*27, each residue mod 27 occurs exactly 27 times. Therefore, for each residue mod 27 that is ≡0 mod 3, there are 27 numbers 3k ≤ 729 with 3k ≡ r mod 27. Therefore, when lifting a solution in Case 1 mod 9 (which is a triple of numbers ≡0 mod 3), each number can be lifted to 9 different residues mod 27 (since there are 9 residues ≡0 mod 3 mod 27). Therefore, the number of lifts is 9^3 = 729. However, previously I thought it was 3^3 = 27. That was my mistake! Earlier, I thought that each residue mod 9 lifts to 3 residues mod 27, but in reality, for numbers ≡0 mod 3, which are already 0 mod 3, lifting from mod 9 to mod 27 involves more possibilities. Wait, let me clarify.
+
+Earlier, when considering general numbers not divisible by 3, we saw that a number mod 9 lifts to 3 numbers mod 27. However, for numbers divisible by 3, which are 0 mod 3, lifting from mod 9 to mod 27 is different. For example, if a number is ≡0 mod 9, it can be 0, 9, 18 mod 27. If it's ≡3 mod 9, it can be 3, 12, 21 mod 27. Similarly for 6 mod 9: 6, 15, 24 mod 27. Therefore, each residue mod 9 that is ≡0 mod 3 lifts to 3 residues mod 27. Therefore, for numbers divisible by 3, each residue mod 9 (which is 0, 3, or 6 mod 9) lifts to 3 residues mod 27. Therefore, for each number in Case 1 (≡0 mod 3), when lifting from mod 9 to mod 27, there are 3 choices. Therefore, for a triple in Case 1 mod 9, there are 3^3 = 27 lifts to mod 27. However, earlier I thought that there are 9^3 lifts, which was wrong. The correct number is 3^3 lifts. Therefore, my previous calculation was correct in that part. However, the total number of triples is (3^6)^3 = 3^{18}, and N(3) was calculated as 3^{18} + 6*3^{17} = 3^{17}*(3 + 6) = 9*3^{17} = 3^{19}, which is still larger than 3^{18}. Therefore, there must be another mistake.
+
+Wait, no. Wait, the Case 1 solutions mod 9 are 3^{15} triples. Each lifts to 27 triples mod 27. Therefore, contributes 3^{15} * 27 = 3^{15} * 3^3 = 3^{18}. The Case 2 solutions mod 9 are 6*3^{15} triples. Each lifts to 27 triples mod 27, but only 1/3 of them satisfy the condition. Therefore, contributes 6*3^{15} * 27 * 1/3 = 6*3^{15} * 9 = 6*3^{17}. Therefore, total N(3) = 3^{18} + 6*3^{17} = 3^{17}*(3 + 6) = 9*3^{17} = 3^2 * 3^{17} = 3^{19}. But total number of triples is 3^{18}, so how can N(3) be larger? This is impossible. Therefore, my mistake must be in the calculation of the number of Case 1 and Case 2 solutions mod 9.
+
+Wait, earlier, for N(2) = 7*3^{15}, which is equal to 3^{15} + 6*3^{15} = 7*3^{15}. However, total number of triples mod 9 is 3^{18} (since each a, b, c can be anything up to 3^6, which is 729, so mod 9 they can be anything). Wait, no, the total number of triples is (3^6)^3 = 3^{18}, and the number of solutions mod 9 is N(2) = 7*3^{15}. Therefore, 7*3^{15} is less than 3^{18} (which is 27*3^{15}), so that is okay. Then, when lifting to mod 27, each solution mod 9 can be lifted in 3^3 ways, but only some of them satisfy the condition. Therefore, N(3) should be N(2) multiplied by some factor. However, according to our previous calculation, N(3) = 3^{18} + 6*3^{17} = 3^{18} + 2*3^{18} = 3*3^{18} = 3^{19}? Wait, no:
+
+Wait 3^{18} + 6*3^{17} = 3^{17}(3 + 6) = 9*3^{17} = 3^2 * 3^{17} = 3^{19}. But total number of triples is 3^{18}, so N(3) cannot be larger. Therefore, there must be a miscalculation here. Where is the error?
+
+Ah! The error is in assuming that the number of lifts for Case 1 and Case 2 solutions mod 9 is 3^3 each. However, when lifting solutions mod 9 to mod 27, the number of lifts depends on the original residue. For Case 1 solutions mod 9 (all three numbers ≡0 mod 3), each number can be lifted in 3 ways (as explained earlier: each ≡0 mod 9 lifts to 3 residues mod 27). Therefore, for each such triple, there are 3^3 lifts. However, these lifts are not all distinct triples mod 27? No, they are distinct. However, the total number of such lifts is 3^{15} * 27 = 3^{18}, which is equal to the total number of triples where all three numbers are ≡0 mod 3. But the total number of triples where all three numbers are ≡0 mod 3 is (number of numbers ≡0 mod 3)^3 = (3^5)^3 = 3^{15}, but when considering mod 27, each such number can be in different residues mod 27. However, when counting N(3), we are counting all triples (a, b, c) with a, b, c ≤ 3^6 and sum ≡0 mod 27. Therefore, the contribution from Case 1 is indeed 3^{15} * 27 = 3^{18}, but this would imply that all triples where all three numbers are ≡0 mod 3 automatically satisfy the condition mod 27, which they do, since their sum is 0 mod 27. However, the total number of such triples is 3^{15}, but when considering their lifts to mod 27, it's 3^{18}? No, no. Wait, no. The number of triples where all three numbers are ≡0 mod 3 is (number of numbers ≡0 mod 3)^3 = (3^5)^3 = 3^{15}. Each such triple is already a triple mod 27, since the numbers are up to 3^6. Therefore, the number of such triples is 3^{15}, and each of them satisfies the condition mod 27. Therefore, their contribution to N(3) is 3^{15}. However, in my previous calculation, I said that they contribute 3^{15} * 27, which is wrong. Where did that come from? Earlier, I thought that we were lifting solutions mod 9 to mod 27, but actually, the solutions mod 9 already include all triples up to 3^6. Therefore, my mistake was in thinking that we need to multiply by 27, but actually, the solutions mod 9 already account for the numbers up to 3^6, and lifting is not about multiplying by the number of lifts but about determining whether they satisfy the stronger condition. Therefore, my entire approach was flawed.
+
+Let me start over for N(3). Given that N(2) = 7*3^{15} is the number of triples (a, b, c) with a, b, c ≤ 3^6 and sum of cubes ≡0 mod 9. Now, we want to find how many of these also satisfy sum ≡0 mod 27. For each such triple, we can compute whether the sum is 0 mod 27 or not. As before, split into Case 1 and Case 2.
+
+Case 1: All three numbers ≡0 mod 3. Then, as before, their cubes are divisible by 27, so sum is 0 mod 27. Therefore, all these triples are valid. Number of such triples is 3^{15}.
+
+Case 2: One number ≡0, one ≡1, one ≡2 mod 3. As before, their sum mod 27 is 9(m + n + 1). We need this to be 0 mod 27 ⇒ m + n + 1 ≡0 mod 3 ⇒ m + n ≡2 mod 3. As before, for each such triple, the probability that this condition is satisfied is 1/3. Therefore, the number of such triples is (number of Case 2 triples) * 1/3 = 6*3^{15} * 1/3 = 2*3^{15}.
+
+Therefore, total N(3) = 3^{15} + 2*3^{15} = 3*3^{15} = 3^{16}.
+
+Ah! This makes sense, because total number of triples is 3^{18}, and 3^{16} is a fraction of that. Therefore, my previous mistake was incorrectly multiplying by 27, thinking about lifting, but actually, the solutions mod 9 already include all triples up to 3^6, and we are just filtering them based on the stronger condition mod 27. Therefore, N(3) = 3^{16}.
+
+Let me verify this with another approach. For modulus 27, the total number of solutions should be equal to the total number of triples divided by 27 if the solutions are uniformly distributed, but they aren't. However, let's see. If we assume that after satisfying mod 9, the solutions are equally likely to be 0, 9, 18 mod 27, then the probability would be 1/3, leading to N(3) = N(2) * 1/3 = 7*3^{15} * 1/3 = 7*3^{14}. But according to our previous calculation, it's 3^{16} = 9*3^{14}. There is a discrepancy here. Therefore, one of the approaches is wrong.
+
+Wait, according to our detailed analysis, splitting into Case 1 and Case 2, we have N(3) = 3^{15} + 2*3^{15} = 3^{16}. However, if we think that for the N(2) = 7*3^{15} solutions mod 9, 1/3 of them lift to solutions mod 27, we would get 7*3^{15} * 1/3 = 7*3^{14}. These two results differ. Therefore, there must be an error in one of the reasonings.
+
+Let me check with specific numbers. Take a triple in Case 1: all three numbers divisible by 3. There are 3^{15} such triples, and all of them satisfy the condition mod 27. Then, for Case 2: 6*3^{15} triples, of which 1/3 satisfy the condition, contributing 2*3^{15}. Total N(3) = 3^{15} + 2*3^{15} = 3^{16}. However, if we think of all solutions mod 9, which are 7*3^{15}, and assume that 1/3 of them work mod 27, we get 7*3^{14}. But 3^{16} = 9*3^{14}, which is 9/7 times larger. Therefore, the assumption that 1/3 of solutions mod 9 lift is incorrect. The reason is that Case 1 solutions are fully valid, while only 1/3 of Case 2 are valid. Since Case 1 is 1/7 of N(2)? No, N(2) = 7*3^{15}, of which Case 1 is 3^{15} and Case 2 is 6*3^{15}. Therefore, Case 1 is 1/7 of N(2)? No, 3^{15}/(7*3^{15}) = 1/7. Therefore, of the N(2) solutions, 1/7 are Case 1 (all 0 mod 3), which all lift, and 6/7 are Case 2, of which 1/3 lift. Therefore, total N(3) = (1/7)*N(2) + (6/7)*(1/3)*N(2) = [1/7 + 2/7] * N(2) = 3/7 * N(2) = 3/7 * 7*3^{15} = 3^{16}. Therefore, this matches our previous result. Therefore, the correct N(3) is 3^{16}.
+
+Therefore, my initial mistake was incorrectly assuming that all solutions mod 9 have the same probability of lifting, but actually, different cases have different probabilities. Therefore, the correct value is N(3) = 3^{16}.
+
+This suggests a pattern. Let me try to see if we can find a general formula for N(k).
+
+Let me note that:
+
+N(1) = 3^{17}
+
+N(2) = 7 * 3^{15}
+
+N(3) = 3^{16}
+
+Wait, this seems inconsistent. Wait, N(1) = 3^{17}, N(2) = 7*3^{15} ≈ 7*3^{15}, N(3) = 3^{16}. It's not obvious. Maybe we need to compute N(4) to see the pattern.
+
+But before that, let me think about how we can generalize the approach. For each modulus 3^k, we can split the solutions into cases based on the number of variables divisible by 3, and then analyze how many of those cases lift to the next modulus.
+
+Alternatively, notice that when we went from N(1) to N(2), we had a factor of 7/9, and from N(2) to N(3), we had a factor of 3/7? Wait, N(2) = 7*3^{15}, N(3) = 3^{16} = 3^{1} * 3^{15}. Therefore, the factor is 3/7. Not sure.
+
+Alternatively, maybe there's a recursive formula. Let me think about the general case. Suppose we have computed N(k), the number of solutions mod 3^k. To compute N(k+1), we need to determine how many of those solutions lift to solutions mod 3^{k+1}.
+
+To do this, we can categorize the solutions mod 3^k based on the exponents of 3 in a, b, c. However, this might get complex. Alternatively, using the previous method of splitting into cases based on divisibility by 3.
+
+Alternatively, notice that in our previous steps, moving from k=1 to k=2, and k=2 to k=3, we had to consider how the solutions mod lower exponents can be extended. Perhaps there's a general formula here.
+
+Alternatively, let me consider the generating function approach. For each modulus 3^k, define the generating function F_k(x) = Σ_{a=1}^{3^6} x^{a³ mod 3^k}. Then, N(k) is the coefficient of x^0 in F_k(x)^3, considering exponents modulo 3^k. However, computing this directly is difficult, but maybe we can find a recursion for F_k(x).
+
+From our previous analysis, we saw that for modulus 3^{k+1}, the cube of a number mod 3^{k+1} depends on its value mod 3^k if the number is not divisible by 3. If it is divisible by 3, then its cube is divisible by 3^{3} and hence by 3^{k+1} if k+1 ≤ 3. Wait, this might not hold for higher k. However, for our problem, since the numbers are up to 3^6, and we need up to 3^7, maybe we can find a pattern.
+
+Alternatively, let me think recursively. Assume that for modulus 3^k, we can categorize numbers based on their residue mod 3^k. For numbers not divisible by 3, their cubes mod 3^{k+1} depend on their residue mod 3^{something}. This seems complex, but maybe there's a pattern in the number of solutions.
+
+Alternatively, let me try to compute N(4) using the same method as for N(3), to see if a pattern emerges.
+
+To compute N(4), the number of triples with a³ + b³ + c³ ≡ 0 mod 81. Again, we can use the solutions from N(3) and see which of them lift to mod 81.
+
+First, note that similar to before, for numbers not divisible by 3, their cubes mod 81 depend on their value mod 27. This is because expanding (a0 + 27a1)^3 mod 81 would give a0³ + 3*a0²*(27a1) + ... which is a0³ mod 81. Therefore, similar to before, the cube mod 81 depends only on the value mod 27. Therefore, if we have a solution mod 27, we can determine if it lifts to mod 81 by checking if the sum is 0 mod 81.
+
+Therefore, similar to before, we can split the solutions mod 27 (which is N(3) = 3^{16}) into cases based on the divisibility by 3.
+
+But first, what is N(3) = 3^{16}? How was it obtained? It was the number of triples where either:
+
+- All three numbers divisible by 3, contributing 3^{15} solutions, or
+
+- One number divisible by 3, one ≡1 mod 3, one ≡2 mod 3, with m + n ≡2 mod 3, contributing 2*3^{15} solutions.
+
+Therefore, total N(3) = 3^{15} + 2*3^{15} = 3^{16}.
+
+Now, to compute N(4), we need to consider these two cases and see which of them lift to mod 81.
+
+Case 1: All three numbers divisible by 3. Let me write them as 3a, 3b, 3c, where a, b, c are integers from 1 to 3^5. Then, their cubes are 27a³, 27b³, 27c³. The sum is 27(a³ + b³ + c³). For this sum to be ≡0 mod 81, we need 27(a³ + b³ + c³) ≡0 mod 81 ⇒ a³ + b³ + c³ ≡0 mod 3. Which is equivalent to a + b + c ≡0 mod 3, since for numbers mod 3, a³ ≡a. Therefore, the number of such triples is equal to the number of triples (a, b, c) with a, b, c ≤ 3^5 and a + b + c ≡0 mod 3. Which is total / 3 = (3^5)^3 / 3 = 3^{15 - 1} = 3^{14}?
+
+Wait, no. The total number of triples (a, b, c) with a, b, c ≤ 3^5 is (3^5)^3 = 3^{15}. The number of those with a + b + c ≡0 mod 3 is 3^{15}/3 = 3^{14}. Therefore, the contribution from Case 1 to N(4) is 3^{14}.
+
+Case 2: One number divisible by 3, one ≡1 mod 3, one ≡2 mod 3, with m + n ≡2 mod 3. Let me denote the numbers as follows:
+
+Let me write the number divisible by 3 as 3a, the number ≡1 mod 3 as 3b + 1, and the number ≡2 mod 3 as 3c + 2. Then, their cubes are:
+
+(3a)^3 = 27a³,
+
+(3b + 1)^3 = 27b³ + 27b² + 9b + 1,
+
+(3c + 2)^3 = 27c³ + 54c² + 36c + 8.
+
+Therefore, the sum is:
+
+27a³ + [27b³ + 27b² + 9b + 1] + [27c³ + 54c² + 36c + 8] 
+
+= 27(a³ + b³ + b² + c³ + 2c²) + 9b + 36c + 9 
+
+= 27(...) + 9(b + 4c + 1).
+
+Therefore, mod 81, this is equal to 9(b + 4c + 1) mod 81. Therefore, we need 9(b + 4c + 1) ≡ 0 mod 81 ⇒ b + 4c + 1 ≡ 0 mod 9 ⇒ b + 4c ≡ -1 mod 9 ⇒ b + 4c ≡ 8 mod 9.
+
+Now, we need to determine how many such triples in Case 2 satisfy this condition. Recall that in Case 2, we already had the condition that m + n ≡ 2 mod 3, where m and n were related to b and c. Wait, previously, for N(3), we had m + n ≡ 2 mod 3, where m was related to b and n to c? Let me recall. Earlier, when we computed for N(3), we had that for the sum mod 27, we needed m + n + 1 ≡ 0 mod 3, where m was related to b and n to c. Here, we have a new condition for mod 81: b + 4c ≡ 8 mod 9. How does this relate to previous variables?
+
+Actually, in the previous step for N(3), we had numbers ≡1 mod 3 as 3b + 1 and ≡2 mod 3 as 3c + 2. Then, we had m = b and n = c? Or was it different? Earlier, when we computed for N(3), we had that the sum mod 27 was 9(m + n + 1), where m and n were such that the numbers were 3m + 1 and 3n + 2. Therefore, here, b = m and c = n. Therefore, in the current problem, we have an additional condition b + 4c ≡ 8 mod 9. 
+
+To find how many of the Case 2 solutions satisfy this, we need to analyze the number of (b, c) pairs that satisfy both m + n ≡ 2 mod 3 (from N(3)) and b + 4c ≡ 8 mod 9 (for N(4)).
+
+First, note that b and c are integers such that 3b + 1 and 3c + 2 are ≤ 3^6. Therefore, b ranges from 0 to (3^6 - 1)/3 = 242, and similarly for c. However, since we are dealing with residues mod 9, we can analyze b and c mod 9.
+
+Let me denote b ≡ x mod 9 and c ≡ y mod 9. Then, the condition b + 4c ≡ 8 mod 9 becomes x + 4y ≡ 8 mod 9. Additionally, from N(3), we had m + n ≡ 2 mod 3, which with m = b and n = c becomes b + c ≡ 2 mod 3. Since x ≡ b mod 9 and y ≡ c mod 9, this implies x + y ≡ 2 mod 3.
+
+Therefore, we need to find the number of pairs (x, y) mod 9 such that:
+
+1. x + y ≡ 2 mod 3,
+
+2. x + 4y ≡ 8 mod 9.
+
+Let me solve these congruences.
+
+First, let me express x ≡ 2 - y mod 3 from condition 1. Let me write x = 2 - y + 3k, where k is 0 or 1 or 2, depending on the value of x and y mod 3. However, since x and y are mod 9, let me consider all possible x and y mod 9 satisfying the two conditions.
+
+Alternatively, since x and y are mod 9, let me iterate over all possible x, y mod 9 and count those satisfying both conditions.
+
+But this might take time, but let's try.
+
+First, condition 2: x + 4y ≡ 8 mod 9.
+
+Let me solve for x: x ≡ 8 - 4y mod 9.
+
+Then, substitute into condition 1: (8 - 4y) + y ≡ 2 mod 3 ⇒ 8 - 3y ≡ 2 mod 3 ⇒ 8 ≡ 2 + 3y mod 3 ⇒ 8 ≡ 2 + 0 mod 3 ⇒ 8 ≡ 2 mod 3 ⇒ 2 ≡ 2 mod 3. Which is always true. Therefore, for any y mod 9, if x ≡ 8 - 4y mod 9, then condition 1 is automatically satisfied. Therefore, the number of solutions (x, y) mod 9 is equal to 9 (since for each y mod 9, there is exactly one x mod 9 satisfying x ≡ 8 - 4y mod 9). Therefore, there are 9 solutions mod 9.
+
+Therefore, for each y mod 9, there is exactly one x mod 9 such that the conditions are

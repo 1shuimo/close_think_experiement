@@ -1,268 +1,625 @@
 <think>
-Okay, so I need to find the sum of all five-digit numbers that only have digits 2 and 5, and then find the remainder when that sum is divided by 10000. Let me think about how to approach this.
+Okay, so I need to find the number of eight-digit numbers using each digit from 1 to 8 exactly once that are divisible by 22. Then subtract 2025 from that number and find the result. Let me start by recalling the divisibility rules for 22. Since 22 is 2 times 11, a number divisible by 22 must be divisible by both 2 and 11. 
 
-First, let me understand the problem. A five-digit number using only 2s and 5s. Each digit can be either 2 or 5. So, for each of the five positions (ten-thousands, thousands, hundreds, tens, units), there are two choices. Therefore, the total number of such numbers is 2^5 = 32. But wait, five-digit numbers can't start with zero, but since we're only using 2 and 5, all numbers are valid five-digit numbers. So, 32 numbers in total.
+First, let me handle the divisibility by 2. For a number to be divisible by 2, its last digit must be even. In our case, the digits used are 1 through 8, so the even digits are 2, 4, 6, and 8. Therefore, the last digit of the number must be one of these four digits. 
 
-Now, I need to compute the sum of all these 32 numbers. Then take mod 10000 of that sum. But maybe there's a smarter way than listing all 32 numbers and adding them up?
+Next, divisibility by 11. The rule for 11 is that the difference between the sum of the digits in the odd positions and the sum of the digits in the even positions must be a multiple of 11 (including zero). Since we're dealing with an eight-digit number, the positions are as follows: positions 1, 3, 5, 7 (odd positions) and positions 2, 4, 6, 8 (even positions). Wait, hold on, actually, in an eight-digit number, the positions are numbered from left to right, so positions 1, 3, 5, 7 are odd positions (first, third, fifth, seventh digits) and positions 2, 4, 6, 8 are even positions (second, fourth, sixth, eighth digits). 
 
-Let me think about the contribution of each digit position separately. For example, each digit position (units, tens, hundreds, thousands, ten-thousands) will have a certain number of 2s and 5s across all the numbers. If I can compute how many times 2 and 5 appear in each position, I can calculate the total contribution of each position to the overall sum.
+So, the difference between the sum of digits in odd positions and the sum of digits in even positions must be divisible by 11. Let me denote S_odd as the sum of digits in odd positions and S_even as the sum of digits in even positions. Then S_odd - S_even must be a multiple of 11. 
 
-Let me formalize this. Let's consider each digit position from left (ten-thousands) to right (units). For each position, how many times does 2 appear and how many times does 5 appear?
+But since all digits from 1 to 8 are used exactly once, the total sum of all digits is fixed. Let me calculate that. The sum from 1 to 8 is (8*9)/2 = 36. Therefore, S_odd + S_even = 36. Also, S_odd - S_even ≡ 0 mod 11. Let me write these equations:
 
-Since each digit is independent, for each position, half of the numbers will have a 2 and half will have a 5. Since there are 32 numbers total, each digit position will have 32 / 2 = 16 instances of 2 and 16 instances of 5. Wait, but 32 is even, so yes, exactly 16 each. Is that correct?
+S_odd + S_even = 36  
+S_odd - S_even ≡ 0 mod 11
 
-Yes, because for each position, the choice of digit is independent of the others. So for each position, regardless of which one it is, there are 2^4 = 16 numbers where that digit is 2 (since the other four digits can be anything), and similarly 16 numbers where that digit is 5. Therefore, each digit position has 16 twos and 16 fives.
+Let me denote D = S_odd - S_even. Then D must be 0 or ±11 or ±22, etc. However, since S_odd and S_even are sums of four distinct digits each (since there are 8 digits total, split into two groups of four digits). Let me find the possible range of D. 
 
-Therefore, the total contribution for each digit position is 16*(2 + 5) multiplied by the place value. Wait, no. Wait, if there are 16 twos and 16 fives, then the total contribution is 16*2 + 16*5 = 16*(2 + 5) = 16*7. Then multiplied by the place value (1, 10, 100, 1000, 10000 depending on the position).
+The maximum possible value of S_odd occurs when the four largest digits are in the odd positions. The four largest digits are 5,6,7,8. Their sum is 5+6+7+8=26. Then S_even would be 1+2+3+4=10. Therefore, D_max = 26 - 10 = 16. Similarly, the minimum D occurs when S_odd is as small as possible. The smallest four digits are 1,2,3,4, sum to 10, and S_even would be 5+6+7+8=26, so D_min = 10 - 26 = -16. Therefore, D can range from -16 to +16. 
 
-Therefore, if I calculate this for each digit position and sum them all up, I will get the total sum. Then take mod 10000.
+Since D must be divisible by 11, the possible values of D are -11, 0, +11. Because 22 is outside the range (since 22 > 16). Therefore, S_odd - S_even must be either -11, 0, or +11. 
 
-But since we need the total sum mod 10000, maybe I can compute each position's contribution mod 10000 and add them up, then take mod 10000 again? But maybe there's some overlap? Let me check.
+But let's check if these are possible. Let me consider each case:
 
-But first, let me compute the total sum.
+Case 1: D = 0. Then S_odd = S_even = 18. Since total sum is 36, so each is half of that. 
 
-Let me denote the positions as follows:
+Case 2: D = 11. Then S_odd - S_even = 11. Also, S_odd + S_even = 36. Adding equations: 2*S_odd = 47 => S_odd = 23.5. Not possible, since sum of integers can't be a fraction. Therefore, D=11 is impossible. Similarly, D=-11 would lead to 2*S_odd = 36 -11 = 25 => S_odd=12.5. Also impossible. Therefore, only D=0 is possible. 
 
-Position 1: ten-thousands place (digit d1)
-Position 2: thousands place (digit d2)
-Position 3: hundreds place (digit d3)
-Position 4: tens place (digit d4)
-Position 5: units place (digit d5)
+Wait, so that means the only possible case is S_odd - S_even = 0. Therefore, the number must have the sum of digits in odd positions equal to the sum of digits in even positions, both equal to 18. 
 
-Each position's contribution is 16*(2 + 5) * place_value.
+Therefore, the problem reduces to finding the number of permutations of digits 1-8 where the sum of digits in positions 1,3,5,7 is 18 and the last digit (position 8) is even. 
 
-So for each position, the contribution is 16*7*place_value.
+But hold on, the last digit is part of the even positions (positions 2,4,6,8). Therefore, when considering the divisibility by 2, we need the last digit (position 8) to be even. Therefore, we need to count the number of permutations where:
 
-Therefore, total sum is 16*7*(10000 + 1000 + 100 + 10 + 1).
+1. The four digits in the odd positions (positions 1,3,5,7) sum to 18.
 
-Let me compute that.
+2. The four digits in the even positions (positions 2,4,6,8) also sum to 18.
 
-First, compute 10000 + 1000 + 100 + 10 + 1 = 11111.
+3. The digit in position 8 (last digit) is even (i.e., 2,4,6,8).
 
-Therefore, total sum is 16 * 7 * 11111.
+Therefore, the problem is to compute the number of such permutations. 
 
-Compute 16 * 7 first: 112.
+First, let me figure out how many ways there are to split the digits 1-8 into two groups of four digits each, such that each group sums to 18. Then, for each such split, compute the number of permutations where the first group is in the odd positions and the second group is in the even positions, with the last digit (position 8) being even. 
 
-Then total sum is 112 * 11111.
+So first, find all possible subsets of four digits from 1-8 that sum to 18. Let me do that. 
 
-Now, need to compute 112 * 11111. Let me compute that.
+The total sum is 36, so each subset must sum to 18. Let me find all 4-element subsets of {1,2,3,4,5,6,7,8} that add up to 18. 
 
-First, note that 11111 * 100 = 1,111,100
+Let me list them. 
 
-11111 * 10 = 111,110
+First, note that the average value per element in the subset is 18/4 = 4.5. So the numbers should be around that. Let me try to find all combinations.
 
-11111 * 2 = 22,222
+Start with the largest numbers. Let me think of possible combinations.
 
-Therefore, 112 * 11111 = 11111*(100 + 10 + 2) = 1,111,100 + 111,110 + 22,222.
+Start with 8. Let's see what other numbers can go with 8 to make 18.
 
-Let me add them up:
+If 8 is included, then the remaining three numbers need to sum to 10. The remaining numbers are from 1-7, excluding 8. Let's find triples that sum to 10.
 
-First, 1,111,100 + 111,110 = 1,222,210
+Possible triples:
 
-Then add 22,222: 1,222,210 + 22,222 = 1,244,432.
+- 1,2,7: 1+2+7=10
 
-Wait, let me check:
+- 1,3,6=10
 
-1,222,210 + 22,222:
+- 1,4,5=10
 
-1,222,210 + 20,000 = 1,242,210
+- 2,3,5=10
 
-Then + 2,222 = 1,244,432. Yes.
+Are there others?
 
-So total sum is 1,244,432.
+- 2,4,4: but duplicates not allowed.
 
-But wait, let me verify this multiplication another way.
+- 3, 3, 4: duplicates again. So only four triples. Therefore, subsets containing 8:
 
-Alternatively, 11111 * 112:
+{8,1,2,7}, {8,1,3,6}, {8,1,4,5}, {8,2,3,5}
 
-Multiply 11111 by 100: 1,111,100
+Next, check subsets without 8. Let's see if there are any. Let me try with 7. Suppose 7 is included but 8 is not. Then the remaining three numbers need to sum to 18 -7 = 11. The numbers available are 1-6, excluding 7. Let's find triples from 1-6 that sum to 11.
 
-Multiply 11111 by 12: Let's compute 11111*10=111,110 and 11111*2=22,222. Adding them gives 133,332. Then total sum is 1,111,100 + 133,332 = 1,244,432. Yes, same result. Okay, so total sum is 1,244,432.
+Possible triples:
 
-Now, need to compute this mod 10000. That is, the remainder when divided by 10000. So, 1,244,432 divided by 10000. The remainder is the last four digits of the number.
+- 1,4,6=11
 
-Looking at 1,244,432, the last four digits are 4432. Therefore, the remainder is 4432. Therefore, the answer is 4432?
+- 1,5,5=invalid
 
-Wait, but let me check again. Wait, 1,244,432 divided by 10,000. Let me write it as:
+- 2,3,6=11
 
-1,244,432 = 124 * 10,000 + 4,432. Therefore, the remainder is 4,432. So yes, 4432. Therefore, the answer is 4432.
+- 2,4,5=11
 
-But let me check again my reasoning because sometimes when you do these digit contribution things, there might be a mistake.
+- 3,4,4=invalid
 
-Wait, let me check again the total number of numbers. Each digit has 2 options, 5 digits, so 2^5=32 numbers. Then for each digit position, each digit (2 and 5) appears 16 times. Therefore, for each position, total contribution is 16*2 + 16*5 = 16*7. Then multiplied by the place value. Then total sum is 16*7*(sum of place values). The sum of place values for a five-digit number is 10^4 + 10^3 + 10^2 + 10^1 + 10^0 = 11111. Therefore, total sum is 16*7*11111= 112*11111= 1,244,432. Then mod 10000 is 4432. So seems correct.
+So three triples: {1,4,6}, {2,3,6}, {2,4,5}. Therefore, subsets containing 7 but not 8:
 
-But let me check with a smaller case. Let's take two-digit numbers with digits 2 and 5. There are 4 numbers: 22, 25, 52, 55. Their sum is 22 + 25 + 52 + 55 = 22+25=47, 52+55=107, total sum 47+107=154. According to the formula, it would be 2^ (n-1) * 7 * 11...1 (with n digits). For n=2, 2^(2-1)=2, so 2*7*11= 154. Which matches. Then mod 100 would be 54. If we compute 154 mod 100 is 54. Let me check with actual numbers: 22+25+52+55=154, yes, mod 100 is 54. So formula works here.
+{7,1,4,6}, {7,2,3,6}, {7,2,4,5}
 
-Similarly, let's check for three-digit numbers. There are 8 numbers. Let me compute the sum using formula: 2^(3-1)*7*(100+10+1)= 4*7*111= 28*111= 3108. Let me check by adding numbers:
+Now check subsets without 8 and without 7. Let's try with 6. Suppose the highest number is 6. Then the four numbers sum to 18. Let me check if possible. The maximum sum with four numbers up to 6 is 3+4+5+6=18. Wait, 3+4+5+6=18. So {3,4,5,6} is another subset. Let me check if there are others. 
 
-Numbers are:
+Alternatively, maybe other combinations. Let's see. Let me check if there are other subsets with max 6. For example, 2,5,6,5? No duplicates. How about 2,4,6,6? No. Let me think. The only way to get four numbers up to 6 summing to 18 is 3+4+5+6=18. Any others? Let's see:
 
-222, 225, 252, 255, 522, 525, 552, 555.
+Suppose we take 2, 5, 6, and something. 2+5+6+x=13 +x=18 => x=5. But duplicate. Not allowed. Similarly, 1, 5, 6, 6: duplicates. 4, 5, 6, 3 is same as above. How about 2, 4, 5, 7? But 7 is excluded here. So only {3,4,5,6} is another subset. 
 
-Sum them up:
+Therefore, total subsets so far:
 
-First, 222 + 225 = 447
+With 8: 4 subsets
 
-252 + 255 = 507
+With 7 but not 8: 3 subsets
 
-522 + 525 = 1047
+With neither 7 nor 8: 1 subset
 
-552 + 555 = 1107
+Total subsets: 4 + 3 + 1 = 8 subsets. Wait, let me check if there are more. Let me try another approach. Let me list all subsets of four numbers from 1-8 that add up to 18. 
 
-Now add them all: 447 + 507 = 954; 1047 + 1107 = 2154; total sum 954 + 2154 = 3108. Correct. So formula works here. Therefore, seems like the formula is correct.
+Alternatively, maybe there are more subsets. Let me check.
 
-Therefore, going back, for five-digit numbers, total sum is 1,244,432. Then mod 10000 is 4432. Therefore, answer is 4432. But let me check once more.
+Another way: Let me think of all possible 4-element subsets and check their sums. But that might take time, but let me try.
 
-Alternatively, maybe I can compute the total sum mod 10000 directly, without computing the entire sum. Because 1,244,432 is a big number, but maybe there's another way?
+We already have:
 
-Well, since we need the total sum mod 10000, and the total sum is 16*7*(10000 + 1000 + 100 + 10 + 1). Let me think about expanding this:
+1. {8,1,2,7} sum 18
 
-Total sum = 16*7*10000 + 16*7*(1000 + 100 + 10 + 1). Therefore, when taking mod 10000, the first term, 16*7*10000, is congruent to 0 mod 10000. Therefore, the total sum mod 10000 is equal to [16*7*(1000 + 100 + 10 + 1)] mod 10000.
+2. {8,1,3,6} sum 18
 
-Compute 1000 + 100 + 10 + 1 = 1111.
+3. {8,1,4,5} sum 18
 
-Therefore, total sum mod 10000 is (16 * 7 * 1111) mod 10000.
+4. {8,2,3,5} sum 18
 
-Compute 16 * 7 = 112. Then 112 * 1111.
+5. {7,1,4,6} sum 18
 
-Compute 112 * 1111. Let me compute this:
+6. {7,2,3,6} sum 18
 
-First, note that 1111 * 100 = 111,100
+7. {7,2,4,5} sum 18
 
-1111 * 12 = ?
+8. {3,4,5,6} sum 18
 
-Compute 1111 * 10 = 11,110
+Is there another one? Let me check subsets without 8,7, or 6? Well, the next would be subsets with max 5. Let's see, four numbers with max 5. The maximum sum would be 2+3+4+5=14 < 18. So no. Therefore, no more subsets. Therefore, total 8 subsets. 
 
-1111 * 2 = 2,222
+Therefore, there are 8 different ways to split the digits into two groups of four digits each, each group summing to 18. 
 
-Adding them: 11,110 + 2,222 = 13,332
+Now, for each such split, we need to calculate the number of valid permutations where the four digits in one group are in the odd positions (positions 1,3,5,7) and the other group in the even positions (positions 2,4,6,8), with the additional constraint that the last digit (position 8) is even. 
 
-Therefore, 112 * 1111 = 111,100 + 13,332 = 124,432.
+But note that each split corresponds to two possibilities: one group in the odd positions and the other in the even positions. However, depending on which group is in the even positions, the last digit (position 8) is part of the even positions. Therefore, we need to ensure that in the group assigned to the even positions, there is at least one even digit (since the last digit must be even). However, actually, since the entire set of digits includes four even digits (2,4,6,8) and four odd digits (1,3,5,7). Each group of four digits (either group) must contain some number of even and odd digits. 
 
-Therefore, 124,432 mod 10,000 is 24,432? Wait, no. Wait 124,432 divided by 10,000 is 12 with remainder 4,432. Therefore, mod 10,000 is 4,432. Which is 4432. Same as before. Therefore, same result. So that's correct.
+But since the total number of even digits is four, if one group (say, the even positions group) has k even digits, then the other group (odd positions group) has 4 - k even digits. 
 
-Therefore, the answer is 4432. Therefore, I think that is correct.
+But since the last digit (position 8) is in the even positions group, we need that the even positions group contains at least one even digit (so that we can choose an even digit for the last position). However, since the entire set of digits has four even digits, and each group has four digits, it's possible that a group could have 0, 1, 2, 3, or 4 even digits. However, if a group has 0 even digits, then the other group has all four even digits. Therefore, if we assign such a group to the even positions, then the even positions would have no even digits, which would make it impossible to have the last digit even. Therefore, we need to exclude such cases. 
 
-But let me check once again with another approach. Let me think about generating all numbers and adding them up, but of course, I can't do all 32, but maybe a few and see.
+Therefore, for each of the 8 subsets, we need to check whether the subset assigned to the even positions contains at least one even digit. However, since each split is into two groups, each group has four digits. Let me check for each of the 8 subsets whether they contain at least one even digit. 
 
-Alternatively, think of each digit's contribution mod 10000. Wait, but since different digit positions contribute different amounts. However, when considering mod 10000, the ten-thousands place (which is 10^4) is congruent to 0 mod 10000. Therefore, the contribution of the ten-thousands digit is 0 mod 10000. Therefore, when calculating the total sum mod 10000, we can ignore the ten-thousands place contributions. Wait, is that true?
+Wait, but each split consists of two subsets. For example, take the first subset {8,1,2,7}. The complement subset is {3,4,5,6}. Let me check for each subset and its complement:
 
-Wait, let me think. Each number is d1*10^4 + d2*10^3 + d3*10^2 + d4*10^1 + d5*10^0. When we take the sum over all numbers, the total sum is sum(d1)*10^4 + sum(d2)*10^3 + sum(d3)*10^2 + sum(d4)*10^1 + sum(d5)*10^0. Then mod 10000, which is 10^4. Therefore, 10^4 ≡ 0 mod 10^4, so the term sum(d1)*10^4 ≡ 0. Therefore, mod 10000, the total sum is equal to [sum(d2)*10^3 + sum(d3)*10^2 + sum(d4)*10^1 + sum(d5)*10^0] mod 10000.
+Let me list all 8 subsets and their complements:
 
-Therefore, we can ignore the contributions from the ten-thousands place. Therefore, maybe we can compute the contributions from the lower four digits?
+1. A1: {8,1,2,7}; complement: {3,4,5,6}
 
-But sum(d2) for the thousands place: each digit is 2 or 5, and as before, for each position, sum(d) = 16*(2 + 5) = 112. Wait, but earlier we said for each position, sum(digit) is 16*2 + 16*5 = 112. Therefore, for the thousands place (d2), sum(d2) = 112. Similarly for d3, d4, d5. Therefore, total sum mod 10000 is 112*10^3 + 112*10^2 + 112*10^1 + 112*10^0.
+2. A2: {8,1,3,6}; complement: {2,4,5,7}
 
-Which is 112*(1000 + 100 + 10 + 1) = 112*1111, which is exactly what we computed earlier, which is 124,432, which mod 10000 is 4432. Therefore, same result. Therefore, this confirms again that the answer is 4432.
+3. A3: {8,1,4,5}; complement: {2,3,6,7}
 
-Alternatively, maybe compute each term separately mod 10000?
+4. A4: {8,2,3,5}; complement: {1,4,6,7}
 
-Let me try:
+5. A5: {7,1,4,6}; complement: {2,3,5,8}
 
-First, compute sum(d2)*1000 mod 10000. sum(d2) is 112. 112*1000 = 112,000. mod 10000 is 112,000 - 11*10000 = 112,000 - 110,000 = 2,000.
+6. A6: {7,2,3,6}; complement: {1,4,5,8}
 
-Then sum(d3)*100: 112*100 = 11,200. mod 10000 is 1,200.
+7. A7: {7,2,4,5}; complement: {1,3,6,8}
 
-sum(d4)*10: 112*10 = 1,120. mod 10000 is 1,120.
+8. A8: {3,4,5,6}; complement: {1,2,7,8}
 
-sum(d5)*1: 112*1 = 112. mod 10000 is 112.
+Now, for each of these subsets, check if they contain at least one even digit. Remember that even digits are 2,4,6,8.
 
-Now add all these up:
+Let me check each subset:
 
-2,000 + 1,200 = 3,200
+A1: {8,1,2,7} has 8,2 (even digits). So yes.
 
-3,200 + 1,120 = 4,320
+Complement of A1: {3,4,5,6} has 4,6 (even digits). Yes.
 
-4,320 + 112 = 4,432. Same result. Therefore, 4432. Therefore, this method also gives 4432. Therefore, seems solid.
+A2: {8,1,3,6} has 8,6. Yes.
 
-Therefore, I think the answer is 4432.
+Complement: {2,4,5,7} has 2,4. Yes.
 
-But just to be thorough, let me check with another approach. Let me think of generating all numbers and adding them up, but since there are 32 numbers, maybe I can compute the sum in another way.
+A3: {8,1,4,5} has 8,4. Yes.
 
-Alternatively, think recursively or in terms of binary numbers. Since each digit is 2 or 5, which can be thought of as 2 + 3*digit, where digit is 0 or 1? Wait, maybe not helpful. Alternatively, think of each number as a combination of digits. But perhaps not necessary.
+Complement: {2,3,6,7} has 2,6. Yes.
 
-Alternatively, since each digit is independent, the average value of each digit is (2 + 5)/2 = 3.5. Therefore, the average number is 3.5*10000 + 3.5*1000 + 3.5*100 + 3.5*10 + 3.5*1 = 3.5*(10000 + 1000 + 100 + 10 + 1) = 3.5*11111 = 38888.5. Then total sum is average * number of numbers = 38888.5 * 32. Let me compute that.
+A4: {8,2,3,5} has 8,2. Yes.
 
-First, 38888.5 * 32. Let me compute 38888 * 32 + 0.5 * 32.
+Complement: {1,4,6,7} has 4,6. Yes.
 
-Compute 38888 * 32:
+A5: {7,1,4,6} has 4,6. Yes.
 
-Well, 38888 * 30 = 1,166,640
+Complement: {2,3,5,8} has 2,8. Yes.
 
-38888 * 2 = 77,776
+A6: {7,2,3,6} has 2,6. Yes.
 
-Total: 1,166,640 + 77,776 = 1,244,416
+Complement: {1,4,5,8} has 4,8. Yes.
 
-Then 0.5 * 32 = 16. Therefore, total sum is 1,244,416 + 16 = 1,244,432. Which matches our previous result. Therefore, same total sum. Therefore, mod 10000 is 4432. Therefore, this method also gives same answer. Therefore, I think this is correct.
+A7: {7,2,4,5} has 2,4. Yes.
 
-Therefore, I think the answer is 4432. Therefore, I can confidently say that the remainder is 4432.
+Complement: {1,3,6,8} has 6,8. Yes.
+
+A8: {3,4,5,6} has 4,6. Yes.
+
+Complement: {1,2,7,8} has 2,8. Yes.
+
+Therefore, all subsets and their complements contain at least two even digits. Therefore, regardless of which subset is assigned to the even positions or odd positions, they have enough even digits. Therefore, for each split, we can assign either subset to the even positions or the odd positions. However, we need to remember that for each split, there are two possibilities: group A in odd positions and group B in even positions, or vice versa. However, since we need the last digit (position 8) to be even, and position 8 is in the even positions, we need that the group assigned to the even positions contains at least one even digit (which they all do). Therefore, for each split, both assignments (group A to odd, group B to even; or group B to odd, group A to even) are possible, but we need to ensure that when we count permutations, we account for the last digit being even. 
+
+Wait, but actually, when we assign a group to the even positions, which includes position 8, we need to count the number of permutations where the even positions group is arranged such that the last digit is even. However, since the even positions group already contains multiple even digits, we can compute the number of permutations for the even positions with the last digit being even. 
+
+Therefore, for each split, we can compute:
+
+Number of ways = (number of permutations of the odd positions group) × (number of permutations of the even positions group with last digit even).
+
+But since the odd positions group is in positions 1,3,5,7, which don't include the last digit, their permutations are straightforward: 4! ways. For the even positions group, which is in positions 2,4,6,8, we need to arrange them such that the digit in position 8 is even. Since the even positions group already contains some even digits, how many ways?
+
+Let me think. Suppose the even positions group has k even digits. Then, the number of ways to arrange them with the last digit (position 8) being even is: (number of choices for the last digit) × (number of permutations for the remaining three positions). 
+
+Since the even positions group has four digits, with some number of even digits. Let me check for each subset, how many even digits they have. Wait, but since each split has two subsets, each with four digits, and the total number of even digits is four. Therefore, if one subset has m even digits, the other has 4 - m even digits. 
+
+But since we need to calculate for each split, when we assign a group to the even positions, how many even digits it has. Let me check for each of the 8 subsets:
+
+First, for each subset, count the number of even digits:
+
+A1: {8,1,2,7} has 8,2 → 2 even digits.
+
+A2: {8,1,3,6} has 8,6 → 2 even digits.
+
+A3: {8,1,4,5} has 8,4 → 2 even digits.
+
+A4: {8,2,3,5} has 8,2 → 2 even digits.
+
+A5: {7,1,4,6} has 4,6 → 2 even digits.
+
+A6: {7,2,3,6} has 2,6 → 2 even digits.
+
+A7: {7,2,4,5} has 2,4 → 2 even digits.
+
+A8: {3,4,5,6} has 4,6 → 2 even digits.
+
+So all subsets have exactly 2 even digits. Therefore, their complements also have 4 - 2 = 2 even digits. Therefore, regardless of which group is assigned to the even positions, they have 2 even digits and 2 odd digits. 
+
+Therefore, for the even positions group (positions 2,4,6,8), which has 2 even digits and 2 odd digits, how many permutations have the last digit (position 8) even? 
+
+To compute this, we can think: the last digit must be even. There are 2 choices for the even digit in the last position. Then, the remaining three positions (positions 2,4,6) can be filled with the remaining three digits (1 even digit and 2 odd digits? Wait, original group has 2 even and 2 odd. If we fix one even digit in position 8, then the remaining three digits are 1 even and 2 odd. Therefore, the number of ways to arrange them in positions 2,4,6 is 3! = 6. Therefore, total number of permutations for the even positions group with last digit even is 2 * 3! = 2 * 6 = 12. 
+
+Alternatively, another way: total permutations of the even positions group is 4! = 24. The number of permutations where the last digit is even: since there are 2 even digits, the probability that the last digit is even is 2/4 = 1/2. Therefore, total number is 24 * 1/2 = 12. Same result. 
+
+Therefore, for each assignment of a group to the even positions, the number of valid permutations (with last digit even) is 12. 
+
+Therefore, for each split, if we consider both possibilities (group A in odd positions and group B in even positions, and vice versa), we need to check if both assignments are valid. However, since both groups have 2 even digits, both assignments are valid. However, when we assign group A to even positions, we get 4! * 12 permutations, and when we assign group B to even positions, we also get 4! * 12 permutations. 
+
+But wait, hold on. Let me clarify. For each split into group A and group B, there are two possibilities:
+
+Case 1: Group A in odd positions, group B in even positions. Then permutations: 4! (for group A) * 12 (for group B with last digit even).
+
+Case 2: Group B in odd positions, group A in even positions. Then permutations: 4! (for group B) * 12 (for group A with last digit even).
+
+Therefore, total permutations for each split is 2 * 4! * 12. 
+
+But wait, but hold on. However, we need to check if group A and group B are distinct. Since each split is a unique division into two groups, and since group A and group B are different, then for each split, we have two different arrangements. However, we need to be careful not to double count splits. Wait, but in our list of 8 subsets, each split is unique. For example, subset A1 and its complement are considered as one split. However, when we consider all 8 subsets, are there duplicates? For example, if we take subset A1 and its complement, and then later take the complement as another subset, like A5 is {7,1,4,6}, which is the complement of A4 {8,2,3,5}. Therefore, our list of 8 subsets includes each split once. Because each split is represented by one subset and its complement is another subset in the list. Wait, actually, no. Each split is represented once in the list. Because when you have 8 subsets, each split is counted once. Wait, actually, the total number of splits is C(8,4)/2 = 35/2 which is not integer. Wait, no, actually, the total number of ways to split 8 elements into two groups of four is C(8,4)/2 = 70/2 = 35. But we have only found 8 such splits that sum to 18. Therefore, our 8 subsets represent 8 different splits. However, each split is represented once in the list. For example, subset A1 and its complement are two different subsets, but they represent the same split (just the two groups). However, in our list of 8 subsets, each split is represented once? Wait, no. For example, subset A1 is {8,1,2,7}, and its complement is {3,4,5,6} which is subset A8. Therefore, in our list of 8 subsets, each split is represented twice? Wait, no. Wait, the total splits that sum to 18 are 8 subsets, but each split is represented by two subsets (the group and its complement). However, in our list, we have 8 subsets. Therefore, the number of unique splits is 8 / 2 = 4? Wait, no. Wait, for example, subset A1 and subset A8 are complements. Similarly, A2 and A5? Let me check:
+
+A1: {8,1,2,7}; complement {3,4,5,6} = A8.
+
+A2: {8,1,3,6}; complement {2,4,5,7} which is not in the list? Wait, looking at the list:
+
+Original list:
+
+1. A1: {8,1,2,7}
+
+2. A2: {8,1,3,6}
+
+3. A3: {8,1,4,5}
+
+4. A4: {8,2,3,5}
+
+5. A5: {7,1,4,6}
+
+6. A6: {7,2,3,6}
+
+7. A7: {7,2,4,5}
+
+8. A8: {3,4,5,6}
+
+So the complement of A2 is {2,4,5,7}. Is this in the list? Let's see. Looking at the list, A5 is {7,1,4,6}; A6 is {7,2,3,6}; A7 is {7,2,4,5}; A4 is {8,2,3,5}; so {2,4,5,7} is not in the list. Therefore, the complement of A2 is not in the list. Therefore, our list of 8 subsets does not contain both a subset and its complement. Therefore, each split is represented once? Wait, but how? Because if you take all subsets that sum to 18, and if a subset's complement also sums to 18, then they would both be in the list. However, since the total sum is 36, if a subset sums to 18, its complement also sums to 18. Therefore, all subsets in our list come in complementary pairs. However, in our list of 8 subsets, how many unique splits are there? For example, if subset X and its complement are both in the list, then they represent the same split. Therefore, the number of unique splits is half the number of subsets if all subsets are in complementary pairs. However, in our case, we have 8 subsets. Let me check if they form 4 complementary pairs.
+
+Check:
+
+A1: {8,1,2,7} complement {3,4,5,6} which is A8. So A1 and A8 are a pair.
+
+A2: {8,1,3,6} complement {2,4,5,7}. Is this in the list? Let me check. Looking at the list, A5 is {7,1,4,6}; A6 is {7,2,3,6}; A7 is {7,2,4,5}; A4 is {8,2,3,5}; none of these are {2,4,5,7}. Wait, {2,4,5,7} is not in the list. Therefore, complement of A2 is not in the list. Similarly, check complement of A5: {2,3,5,8} which is A4. Yes! A4 is {8,2,3,5} which is same as {2,3,5,8}. Therefore, A5 and A4 are complements. Similarly:
+
+A3: {8,1,4,5} complement {2,3,6,7} which is A6? A6 is {7,2,3,6}. No, complement is {2,3,6,7}. Is that in the list? A6 is {7,2,3,6}, which is missing 7? Wait, original set is {1,2,3,4,5,6,7,8}. The complement of A3 {8,1,4,5} is {2,3,6,7}. Is {2,3,6,7} in the list? Let me check the list:
+
+Looking at the list:
+
+A4: {8,2,3,5}
+
+A5: {7,1,4,6}
+
+A6: {7,2,3,6}
+
+A7: {7,2,4,5}
+
+No, {2,3,6,7} is not in the list. Wait, A6 is {7,2,3,6}, which is same as {2,3,6,7}. Yes! A6 is {7,2,3,6} which is the same as {2,3,6,7}. Therefore, complement of A3 is A6. Therefore, A3 and A6 are a complementary pair.
+
+Similarly, complement of A4: {8,2,3,5} is {1,4,6,7} which is A7? A7 is {7,2,4,5}? No. Wait, complement of A4 is the set of numbers not in {8,2,3,5}, which is {1,4,6,7}. Is this in the list? Yes, A5 is {7,1,4,6}. Therefore, complement of A4 is A5. Therefore, A4 and A5 are a pair.
+
+Complement of A5 is A4, as above.
+
+Complement of A6 is A3.
+
+Complement of A7: {7,2,4,5} complement is {1,3,6,8} which is A7's complement. Is that in the list? Yes, A7's complement is {1,3,6,8} which is A7's complement. Wait, looking at the list, A7 is {7,2,4,5}; complement is {1,3,6,8} which is A7's complement. Is that in the list? Yes, A7's complement is {1,3,6,8} which is not in the list? Wait, looking at the list:
+
+Original list:
+
+A1: {8,1,2,7}
+
+A2: {8,1,3,6}
+
+A3: {8,1,4,5}
+
+A4: {8,2,3,5}
+
+A5: {7,1,4,6}
+
+A6: {7,2,3,6}
+
+A7: {7,2,4,5}
+
+A8: {3,4,5,6}
+
+So {1,3,6,8} is not in the list. Wait, but A2 is {8,1,3,6}, which is same as {1,3,6,8}. Yes! A2 is {8,1,3,6} which is same as {1,3,6,8}. Therefore, complement of A7 is A2. Therefore, A7 and A2 are a complementary pair.
+
+Similarly, complement of A2 is {2,4,5,7} which is the complement of A2, but that's not in the list? Wait, no, complement of A2 is {2,4,5,7}, but A7 is {7,2,4,5} which is same as {2,4,5,7}. Therefore, complement of A2 is A7. Therefore, A2 and A7 are a pair.
+
+Similarly, complement of A8: {3,4,5,6} is A1. 
+
+So the pairs are:
+
+A1 & A8
+
+A2 & A7
+
+A3 & A6
+
+A4 & A5
+
+Therefore, total of 4 pairs, making 8 subsets. Therefore, there are 4 unique splits. Each split is represented twice in the list (as a subset and its complement). Therefore, when we consider all 8 subsets, we have 4 unique splits. 
+
+Therefore, when calculating the total number of permutations, we need to be careful not to double count. However, in our earlier reasoning, for each split (represented by two subsets), we considered both assignments (group A to odd positions and group B to even positions, and vice versa). However, if we take all 8 subsets and for each one calculate 2 * 4! * 12, we would be overcounting. Because each split is counted twice in the 8 subsets. 
+
+Wait, let me think again. Suppose we take each of the 8 subsets. For each subset, if we consider assigning it to the even positions, and its complement to the odd positions, then for each subset, we can calculate the number of permutations where the subset is in the even positions (with last digit even) and the complement in the odd positions. However, since each split is represented twice (once as subset and once as complement), if we do this for all 8 subsets, we would be counting each split twice. Therefore, we need to adjust for that. 
+
+Alternatively, since there are 4 unique splits, each contributing a certain number of permutations. Let me think. For each unique split, which can be arranged in two ways (group A in odd, group B in even; or group B in odd, group A in even). For each of these two arrangements, we can calculate the number of valid permutations. 
+
+But for each unique split, how many permutations are there?
+
+Let me take an example. Take the first split: {8,1,2,7} and {3,4,5,6}. 
+
+Case 1: {8,1,2,7} in odd positions, {3,4,5,6} in even positions. Number of permutations: 4! (for odd positions) multiplied by number of ways to arrange even positions with last digit even. As before, for the even positions group {3,4,5,6}, which has two even digits (4,6). The number of ways to arrange them with last digit even is 2 * 3! = 12. Therefore, total permutations for this case: 24 * 12 = 288.
+
+Case 2: {3,4,5,6} in odd positions, {8,1,2,7} in even positions. Similarly, number of permutations: 4! * 12 = 24 * 12 = 288. 
+
+Therefore, total for this split: 288 + 288 = 576.
+
+Similarly, for each unique split, we have 576 permutations. Since there are 4 unique splits, total number of permutations would be 4 * 576 = 2304. 
+
+But wait, let me check with another split. Take split {8,1,3,6} and {2,4,5,7} (which is the complement of A2). 
+
+Case 1: {8,1,3,6} in odd positions, {2,4,5,7} in even positions. 
+
+Number of permutations: 4! * [number of ways to arrange {2,4,5,7} with last digit even]. The even positions group {2,4,5,7} has two even digits (2,4). Therefore, number of ways is 2 * 3! = 12. Therefore, total permutations: 24 * 12 = 288.
+
+Case 2: {2,4,5,7} in odd positions, {8,1,3,6} in even positions. Similarly, number of permutations: 4! * 12 = 24 * 12 = 288. Total for split: 576. 
+
+Same as before. Therefore, each unique split contributes 576 permutations. Therefore, with 4 splits, total N = 4 * 576 = 2304. 
+
+But let me check if this is correct. However, let me think again. Wait, originally, we had 8 subsets, each contributing 24 * 12 = 288 permutations if we consider assigning them to even positions. But since each split is represented twice in the 8 subsets, then total would be 8 * 288, but that would be double the actual number. Therefore, 8 * 288 / 2 = 4 * 288 = 1152? Wait, no, confusion here. 
+
+Wait, if each split is represented by two subsets (A and its complement), and for each subset, if we calculate the number of permutations when assigning it to even positions, then for each split, we have two subsets, each contributing 24 * 12 permutations. However, when you assign subset A to even positions and its complement to odd positions, and also assign subset B (the complement) to even positions and subset A to odd positions, that's exactly the two cases we considered earlier. Therefore, for each split, total permutations is 2 * 24 * 12? No, no. For each split, if you take one subset and assign it to even positions, you get 24 * 12 permutations. Taking the complement and assigning it to even positions gives another 24 * 12 permutations. Therefore, total for the split is 24*12 + 24*12 = 2*24*12 = 48*12 = 576. Which is same as before. Therefore, with 4 splits, total N = 4 * 576 = 2304. 
+
+But let me check with another approach. Let me calculate total number of valid permutations. 
+
+First, total number of permutations divisible by 22 is equal to the number of permutations divisible by both 2 and 11. As we found, divisibility by 11 requires the split into two groups of four digits each summing to 18, and divisibility by 2 requires last digit even. 
+
+Number of ways to split digits into two groups of four digits each summing to 18: 4 splits (as we found). For each split, number of ways to arrange digits with last digit even: ?
+
+For each split, as we saw, there are two possibilities for group assignments (which group is in odd/even positions). For each group assignment, number of permutations is 4! * 12. Therefore, per split: 2 * 4! * 12 = 2 * 24 * 12 = 576. Therefore, total N = 4 * 576 = 2304. 
+
+But let me check with another approach. Let me think of the entire process:
+
+First, how many ways are there to have the digits split into two groups of four digits each summing to 18? 4 splits. For each split, how many ways to arrange them with last digit even?
+
+Alternatively, for each split, the number of valid permutations is:
+
+Number of ways to arrange the odd positions group (4 digits) * number of ways to arrange the even positions group with last digit even (which is 12). 
+
+But since for each split, there are two ways to assign the groups to odd/even positions. Therefore, total per split is 2 * [4! * 12] = 2 * 24 * 12 = 576. 
+
+Therefore, total N = 4 * 576 = 2304. 
+
+But let me check with actual numbers. Let me take one split and compute. 
+
+Take split {8,1,2,7} and {3,4,5,6}. 
+
+Number of ways to assign {8,1,2,7} to odd positions and {3,4,5,6} to even positions:
+
+- Odd positions: 4 digits can be arranged in 4! = 24 ways.
+
+- Even positions: {3,4,5,6}. Need to arrange them with last digit even. As discussed, 12 ways. 
+
+Total: 24 * 12 = 288.
+
+Same for the reverse assignment: {3,4,5,6} to odd positions, {8,1,2,7} to even positions: 24 * 12 = 288. 
+
+Total for this split: 288 + 288 = 576. 
+
+Same for other splits. Therefore, 4 splits * 576 = 2304. 
+
+Therefore, N = 2304. 
+
+But the problem says "Find the difference between N and 2025." So compute |N - 2025|? Or N - 2025? The problem says "the difference between N and 2025", which is usually absolute value, but since N is likely larger than 2025, maybe just N - 2025. Let me check.
+
+But first, let me verify if my calculation of N is correct. 
+
+Wait, let me check if there are indeed 4 splits. Earlier, we had 8 subsets forming 4 complementary pairs. Therefore, 4 splits. Each contributing 576 permutations. 4 * 576 = 2304. 
+
+But let me check with another approach. Let me calculate total number of permutations divisible by 11, then see how many of them are even. 
+
+But maybe that's more complex. Alternatively, let me check the total number of permutations divisible by 11. For that, it would be the number of permutations where S_odd - S_even = 0, which we found requires the split into two groups of 18. For each such split, the number of permutations is 4! * 4! * number_of_splits. Wait, but number_of_splits is 4? Wait, no. Wait, if there are 4 splits, each split can be arranged in 4! * 4! ways. However, earlier we considered that each split is counted twice in the subset list. Wait, no. Wait, if there are 4 splits, each split corresponds to one way of dividing the digits. For each split, the number of permutations is 4! * 4! (arrange the odd positions and arrange the even positions). Therefore, total number of permutations divisible by 11 is 4 * 4! * 4! = 4 * 24 * 24 = 2304. Wait, but that's the same as our N? But N is the number of permutations divisible by 22, which requires also divisibility by 2, i.e., last digit even. However, according to our previous calculation, N is also 2304. But that can't be, unless all permutations divisible by 11 are already even. Which is not true. 
+
+Wait, there's a contradiction here. Let me think. 
+
+If a number is divisible by 11, it doesn't have to be even. However, we are counting permutations that are divisible by both 11 and 2. However, according to our previous calculation, we found that for each split (which gives numbers divisible by 11), half of the permutations for the even positions group would have last digit even. Wait, but in our calculation, for each split, when we considered arranging the even positions group, we multiplied by 12 instead of 24. Therefore, effectively, for each split, instead of 4! * 4! permutations, we have 4! * 12 permutations. Therefore, total N is 4 * 4! * 12 = 4 * 24 * 12 = 1152. Wait, but earlier I thought it was 4 * 576 = 2304. Where is the mistake?
+
+Wait, let me clarify. 
+
+Earlier, I considered that for each split, there are two assignments (group A to odd, group B to even; and group B to odd, group A to even). For each assignment, the number of permutations is 4! (for the odd group) multiplied by 12 (for the even group with last digit even). Therefore, per split, total permutations is 2 * 4! * 12 = 2 * 24 * 12 = 576. Then 4 splits gives 4 * 576 = 2304. 
+
+But if total permutations divisible by 11 is 4 * 4! * 4! = 4 * 24 * 24 = 2304, then according to this, N (divisible by 22) is also 2304, which would mean that all numbers divisible by 11 are even, which is not true. Therefore, there must be a mistake here. 
+
+Wait, the problem is that when I calculated total permutations divisible by 11 as 4 * 4! * 4! = 2304, but actually, the number of splits is not 4. Wait, earlier we had 8 subsets forming 4 splits. However, each split corresponds to two different group assignments (which group is odd, which is even). Therefore, the total number of permutations divisible by 11 is 4 splits * 2 assignments per split * 4! * 4! ? No, no. For each split, there are two assignments (group A to odd, group B to even; or group B to odd, group A to even). For each assignment, the number of permutations is 4! * 4! Therefore, total permutations divisible by 11 is 4 splits * 2 assignments * 4! * 4! ? No, no. Wait, no. Each split already accounts for two different assignments. Wait, no. Each split is a division into two groups. For each split, there are two ways to assign the groups to odd and even positions. Therefore, total permutations divisible by 11 is number_of_splits * 2 * 4! * 4! ?
+
+But no, if there are 4 splits, each split can be arranged in two ways (which group is odd, which is even). Therefore, total permutations divisible by 11 is 4 * 2 * 4! * 4! ? No, no. Wait, no. For each split, once you decide which group is in odd positions and which is in even positions, you have 4! ways to arrange the odd group and 4! ways to arrange the even group. Therefore, for each split, number of permutations is 2 * 4! * 4! (two assignments). Therefore, total permutations divisible by 11 is 4 * 2 * 4! * 4! ?
+
+But that would be 4 * 2 * 24 * 24 = 4608. Which is more than total permutations (which is 8! = 40320). Wait, no, 4 * 2 * 24 * 24 = 4 * 2 * 576 = 4608. Which is less than 40320. 
+
+But according to our previous calculation, the number of permutations divisible by 11 is 4608? But how? 
+
+But according to our first approach, we found that there are 4 splits, each contributing 2 * 4! * 4! permutations. However, according to the problem's context, the number of permutations divisible by 11 should be equal to the number of ways to split into two groups with sum 18 multiplied by permutations. However, the number of splits is C(8,4)/something. Wait, but we found that there are 4 splits? No, no. Wait, we found that there are 8 subsets that sum to 18, which form 4 splits. Therefore, the number of splits is 4. Therefore, total permutations divisible by 11 is 4 splits * 2 (for assigning to odd/even) * 4! * 4! = 4 * 2 * 24 * 24 = 4608. However, according to our previous calculation for N (divisible by 22), we had 4 splits * 2 * 4! * 12 = 4 * 2 * 24 * 12 = 2304. Therefore, N is exactly half of the total permutations divisible by 11, which makes sense because for each permutation divisible by 11, half of them have last digit even (since the last digit is in the even positions group, which has two even digits and two odd digits, so half of the permutations of the even positions group have last digit even). Therefore, N = total_divisible_by_11 / 2 = 4608 / 2 = 2304. Which matches our previous result. 
+
+Therefore, N = 2304. 
+
+But let me check with another approach. Let me calculate total_divisible_by_11. How many?
+
+Total number of ways to split digits into two groups of four digits each summing to 18: 4 splits. For each split, number of ways to arrange the digits: for each split, two assignments (which group is odd, which is even), and for each assignment, 4! * 4! permutations. Therefore, total is 4 * 2 * 24 * 24 = 4608. 
+
+But total number of 8-digit numbers with distinct digits 1-8 is 8! = 40320. Therefore, 4608 / 40320 = 0.1142857... which is 8/70 = 4/35 ≈ 0.114. Seems reasonable. 
+
+Therefore, N = 2304. 
+
+But let me check with a smaller example to see if the logic holds. Suppose we have digits 1-4, and want numbers divisible by 22. But 22 is 2*11. For numbers of length 4, using digits 1-4. Let me see if the logic applies. 
+
+But maybe this is too time-consuming. Given that the logic seems consistent, and the cross-check with total_divisible_by_11 seems okay, I think N=2304 is correct. 
+
+Therefore, the problem asks for the difference between N and 2025. So compute 2304 - 2025. 
+
+Calculating 2304 - 2025:
+
+2304 - 2000 = 304
+
+304 - 25 = 279.
+
+Therefore, the difference is 279. 
+
+But let me verify once more my calculation of N. 
+
+Number of splits: 4. 
+
+For each split, two assignments (which group is odd/even). For each assignment:
+
+- Odd positions: 4 digits, 4! permutations.
+
+- Even positions: 4 digits, with two even digits. Number of permutations with last digit even: 2 * 3! = 12. 
+
+Therefore, per assignment: 24 * 12 = 288. 
+
+Per split: two assignments, so 288 * 2 = 576. 
+
+Total N: 4 * 576 = 2304. 
+
+Yes. 
+
+Therefore, difference between N and 2025 is 2304 - 2025 = 279. 
+
+But let me check if 2304 is correct. Maybe I made a mistake in the number of splits. Earlier, I thought there are 4 splits. Let me recount the splits:
+
+From the 8 subsets, grouped into 4 complementary pairs:
+
+1. {8,1,2,7} & {3,4,5,6}
+
+2. {8,1,3,6} & {2,4,5,7}
+
+3. {8,1,4,5} & {2,3,6,7}
+
+4. {8,2,3,5} & {1,4,6,7}
+
+Yes, 4 splits. Therefore, correct. 
+
+Therefore, I think N is indeed 2304, and the difference is 279. 
+
+But to be 100% sure, let me check with another method. 
+
+Alternative approach:
+
+Total number of 8-digit numbers with digits 1-8: 8! = 40320.
+
+Number of these divisible by 22: ?
+
+Divisible by 22 requires divisible by 2 and 11. 
+
+Divisible by 2: last digit even. There are 4 choices for last digit (2,4,6,8). For each choice, the remaining 7 digits can be arranged in 7! ways. However, not all of these are divisible by 11. 
+
+But how many are divisible by 11? 
+
+Alternatively, given that last digit is even, compute how many permutations satisfy the divisibility by 11. 
+
+But this seems complex, but let me try. 
+
+Let me denote that last digit is even, say, fixed to one of 2,4,6,8. Let me consider the divisibility by 11 condition. 
+
+As before, S_odd - S_even ≡ 0 mod 11. With S_odd + S_even = 36. 
+
+But since last digit is in even positions (position 8), which is part of S_even. 
+
+Let me denote:
+
+Let me think of S_odd and S_even. 
+
+But since the last digit is part of S_even, maybe I can express S_even = e + rest, where e is the last digit. 
+
+But maybe not helpful. 
+
+Alternatively, since we already know that for divisibility by 11, S_odd must be 18 and S_even must be 18. Therefore, regardless of the last digit. Therefore, the problem reduces to counting permutations where:
+
+- The digits in odd positions sum to 18.
+
+- The digits in even positions sum to 18.
+
+- The last digit (position 8, even position) is even. 
+
+Which is exactly what we did earlier. Therefore, the number is equal to the number of ways to split into two groups of four digits each summing to 18, with the even group containing the last digit (which it does, since even positions include position 8). And we calculated that as 2304. 
+
+Therefore, I think confident that N=2304. 
+
+Therefore, difference between N and 2025 is 2304 - 2025 = 279. 
 
 **Final Answer**
-\boxed{4432}
+\boxed{279}
 </think>
 
-To solve the problem, we are asked to find the remainder when the sum of all five-digit numbers composed only of the digits 2 and 5 is divided by 10000.
+To solve the problem, we are asked to find the number of **eight-digit positive integers** using the digits $1$ through $8$ **exactly once** that are **divisible by 22**, and then compute the **difference between this number and 2025**.
 
 ---
 
-### Step 1: Count the Total Number of Such Numbers
+### Step 1: Understanding the Divisibility Conditions
 
-Each digit in the five-digit number can independently be either 2 or 5. Therefore, the total number of such numbers is:
+A number is divisible by **22** if and only if it is divisible by both **2** and **11**.
+
+- **Divisibility by 2**: The **last digit** must be even. The even digits among $1$ to $8$ are $2, 4, 6, 8$.
+- **Divisibility by 11**: The **difference between the sum of digits in odd positions** and the **sum of digits in even positions** must be divisible by 11.
+
+Since the total sum of digits $1+2+3+4+5+6+7+8 = 36$, and the number has 8 digits, the digits in the **odd positions** and **even positions** must each sum to **18** for the difference to be zero (which is divisible by 11).
+
+---
+
+### Step 2: Counting Valid Digit Groupings
+
+We now need to count the number of **ways to split the digits $1$ through $8$ into two groups of four digits each**, such that **each group sums to 18**.
+
+There are **8 such subsets** of four digits that sum to 18. These subsets come in **4 complementary pairs**, since the complement of a subset that sums to 18 also sums to 18 (since $36 - 18 = 18$).
+
+Each such pair represents a **unique split** of the digits into two groups of four digits that sum to 18.
+
+---
+
+### Step 3: Counting Valid Permutations for Each Split
+
+For each split (i.e., each pair of subsets), we can assign one subset to the **odd positions** and the other to the **even positions**. There are **2** such assignments per split.
+
+For each assignment:
+
+- The **odd positions** (positions 1, 3, 5, 7) can be filled in $4!$ ways.
+- The **even positions** (positions 2, 4, 6, 8) must be filled such that the **last digit (position 8)** is **even**.
+
+Each even-position group contains **2 even digits** and **2 odd digits**. The number of permutations of the even-position group where the **last digit is even** is:
 
 $$
-2^5 = 32
+\text{Number of choices for last digit (2 even digits)} \times \text{Permutations of remaining 3 digits} = 2 \times 3! = 12
+$$
+
+So, for each assignment, the number of valid permutations is:
+
+$$
+4! \times 12 = 24 \times 12 = 288
+$$
+
+Since there are **2 assignments per split**, the total number of valid permutations per split is:
+
+$$
+2 \times 288 = 576
+$$
+
+With **4 splits**, the total number of valid permutations is:
+
+$$
+4 \times 576 = 2304
 $$
 
 ---
 
-### Step 2: Analyze Digit Contributions
+### Step 4: Final Calculation
 
-Each digit position (ten-thousands, thousands, hundreds, tens, units) contributes to the total sum. For each position, half of the 32 numbers will have a 2 and the other half will have a 5. That is, each digit appears:
-
-$$
-\frac{32}{2} = 16 \text{ times}
-$$
-
-So, the total contribution of a single digit position is:
+We are asked to find the **difference between this number and 2025**:
 
 $$
-16 \times 2 + 16 \times 5 = 16 \times (2 + 5) = 16 \times 7 = 112
-$$
-
-Each digit position contributes this amount multiplied by its place value. The place values for a five-digit number are:
-
-$$
-10^4, 10^3, 10^2, 10^1, 10^0
-$$
-
-So the total sum is:
-
-$$
-112 \times (10^4 + 10^3 + 10^2 + 10^1 + 10^0) = 112 \times 11111
-$$
-
----
-
-### Step 3: Compute the Total Sum
-
-$$
-112 \times 11111 = 1,244,432
-$$
-
----
-
-### Step 4: Compute the Remainder Modulo 10000
-
-We are interested in the remainder when this sum is divided by 10000. That is:
-
-$$
-1,244,432 \mod 10000
-$$
-
-This is simply the last four digits of the number:
-
-$$
-\boxed{4432}
+2304 - 2025 = \boxed{279}
 $$
 
 ---
@@ -270,5 +627,5 @@ $$
 ### Final Answer
 
 $$
-\boxed{4432}
+\boxed{279}
 $$
