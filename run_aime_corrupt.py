@@ -22,8 +22,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--tasks-file", default=str(here / "data" / "tasks_aime2025.jsonl"))
     p.add_argument("--output-dir", default=str(here / "outputs" / "aime" / "suite_aime2025_corrupt"))
 
-    p.add_argument("--system-prompt-file", default=str(here / "prompts" / "system_enhanced_v1.txt"))
-    p.add_argument("--inject-text-file", default=str(here / "prompts" / "inject_think_v2.txt"))
+    p.add_argument("--system-prompt-file", default=str(here / "prompts" / "system_enhanced_v2.txt"))
+    p.add_argument("--inject-text-file", default=str(here / "prompts" / "inject_think_v3.txt"))
 
     p.add_argument("--enable-first-think-max-words", action="store_true")
     p.add_argument("--first-think-max-words", type=int, default=120)

@@ -76,7 +76,7 @@ system prompt 和 inject text 现在分工明确：
 
 AIME 默认注入文件：
 
-- `prompts/inject_think_v2.txt`
+- `prompts/inject_think_v3.txt`
 
 LCB 默认注入文件：
 
@@ -144,8 +144,8 @@ LCB 默认注入文件：
 
 - 任务文件：`data/tasks_aime2025.jsonl`
 - 输出目录：`outputs/aime/suite_aime2025_insert`
-- system prompt：`prompts/system_enhanced_v1.txt`
-- inject text：`prompts/inject_think_v2.txt`
+- system prompt：`prompts/system_enhanced_v2.txt`
+- inject text：`prompts/inject_think_v3.txt`
 - `branch-mode` 固定为 `b`
 - 默认 checkpoint 模式：`think_end_punct`
 - 默认窗口：`checkpoint_mid_min_tokens = 300`，`checkpoint_mid_max_tokens = 400`
@@ -172,8 +172,8 @@ LCB 默认注入文件：
 
 - 任务文件：`data/tasks_aime2025.jsonl`
 - 输出目录：`outputs/aime/suite_aime2025_corrupt`
-- system prompt：`prompts/system_enhanced_v1.txt`
-- inject text：`prompts/inject_think_v2.txt`
+- system prompt：`prompts/system_enhanced_v2.txt`
+- inject text：`prompts/inject_think_v3.txt`
 - 默认 `branch-mode = ab`
 - 默认 `corrupt-mode = anchor_number_shift`
 - 默认 `prompt-mode = baseline`

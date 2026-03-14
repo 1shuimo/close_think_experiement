@@ -583,6 +583,36 @@ def _locate_insert_pos_no_edit(
     }
 
 
+def _locate_tail_sentence_boundary_no_edit(
+    text: str,
+    *,
+    window_chars: int,
+) -> Dict[str, object]:
+    if not text:
+        return {
+            "mode": "checkpoint_tail_sentence_boundary",
+            "changed": False,
+            "inject_pos": None,
+            "reason": "empty_text",
+        }
+
+    tail_pos = max(0, len(text) - 1)
+    inject_local = _nearest_sentence_end_near(
+        text,
+        tail_pos,
+        radius=max(120, int(window_chars)),
+    )
+    inject_local = max(0, min(len(text), int(inject_local)))
+    return {
+        "mode": "checkpoint_tail_sentence_boundary",
+        "changed": inject_local < len(text),
+        "inject_pos": int(inject_local),
+        "tail_char_offset": int(len(text)),
+        "sentence_anchor_char_offset": int(inject_local),
+        "reason": "tail_sentence_boundary",
+    }
+
+
 def evaluate_branch(
     prefix_text: str,
     continuation_text: str,
@@ -763,7 +793,11 @@ def run_task_ab(
     if bool(corrupt_after_first_think):
         head_prefix, target_prefix, found_close = _split_after_first_think_close(prefix_text)
         scope_meta["first_think_closed_found"] = bool(found_close)
-        if not found_close and int(no_step_fallback_offset_tokens) > 0:
+        if (
+            (not found_close)
+            and checkpoint_mode != "think_end_punct"
+            and int(no_step_fallback_offset_tokens) > 0
+        ):
             forced_text, forced_meta = _force_close_unclosed_first_think_near_offset(
                 prefix_text,
                 tokenizer=tokenizer,
@@ -792,12 +826,20 @@ def run_task_ab(
 
     use_checkpoint_tail_as_insert = checkpoint_mode == "think_end_punct"
     if use_checkpoint_tail_as_insert:
-        locator_meta = {
-            "mode": "checkpoint_tail",
-            "changed": False,
-            "inject_pos": None,
-            "reason": "checkpoint_tail_as_insert",
-        }
+        punct_stop_kind = str(ckpt.get("checkpoint_punct_stop_kind") or "")
+        if punct_stop_kind == "sentence_boundary":
+            locator_meta = {
+                "mode": "checkpoint_tail",
+                "changed": False,
+                "inject_pos": None,
+                "reason": "checkpoint_tail_as_insert",
+            }
+        else:
+            tail_scope_text = target_prefix if bool(scope_meta.get("first_think_closed_found")) else head_prefix
+            locator_meta = _locate_tail_sentence_boundary_no_edit(
+                tail_scope_text,
+                window_chars=220,
+            )
     else:
         locator_meta = _locate_insert_pos_no_edit(
             target_prefix,
@@ -822,7 +864,12 @@ def run_task_ab(
             pass
 
     prefix_truncated_to_inject = False
-    if bool(align_stop_with_insert) and (locator_inject_pos_global is not None):
+    checkpoint_tail_sentence_align_applied = False
+    if use_checkpoint_tail_as_insert and (locator_inject_pos_global is not None):
+        edited_text = edited_text[:locator_inject_pos_global]
+        prefix_truncated_to_inject = True
+        checkpoint_tail_sentence_align_applied = True
+    elif bool(align_stop_with_insert) and (locator_inject_pos_global is not None):
         edited_text = edited_text[:locator_inject_pos_global]
         prefix_truncated_to_inject = True
 
@@ -1075,6 +1122,7 @@ def run_task_ab(
             "branch_b_inject_pos": int(branch_b_inject_pos),
             "branch_b_suffix_len": int(len(branch_b_suffix_text)),
             "force_inject_at_sentence_end": bool(force_inject_at_sentence_end),
+            "checkpoint_tail_sentence_align_applied": bool(checkpoint_tail_sentence_align_applied),
             "inject_clamped_to_tail_due_unclosed_think": bool(forced_close_for_inject and force_inject_at_corrupt),
         },
         "branch_mode": branch_mode,

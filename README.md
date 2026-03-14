@@ -293,7 +293,7 @@ system prompt 和 inject text 现在分工明确：
 
 相关 prompt 文件：
 
-- [prompts/inject_think_v2.txt](/Users/shuimo/Desktop/interleaved/close/prompts/inject_think_v2.txt)
+- [prompts/inject_think_v3.txt](/Users/shuimo/Desktop/interleaved/close/prompts/inject_think_v3.txt)
 - [prompts/inject_think_codegen_aime_like_v2.txt](/Users/shuimo/Desktop/interleaved/close/prompts/inject_think_codegen_aime_like_v2.txt)
 
 ## 核心脚本

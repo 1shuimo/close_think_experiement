@@ -32,12 +32,12 @@ def parse_args() -> argparse.Namespace:
 
     p.add_argument(
         "--system-prompt-file",
-        default=str(here / "prompts" / "system_enhanced_v1.txt"),
+        default=str(here / "prompts" / "system_enhanced_v2.txt"),
         help="System prompt file.",
     )
     p.add_argument(
         "--inject-text-file",
-        default=str(here / "prompts" / "inject_think_v2.txt"),
+        default=str(here / "prompts" / "inject_think_v3.txt"),
         help="Injected <think> text file.",
     )
 
