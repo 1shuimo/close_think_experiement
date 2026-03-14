@@ -21,6 +21,168 @@
 - 会写成 `Qwen3-32B.results.jsonl`
 - 不再写成整条 `_scratch-ssd_...` 路径
 
+## 代码架构速览
+
+如果只看当前还在维护的主线，这个仓库的代码可以分成三层：
+
+1. 入口层：`run_aime_plain.py`、`run_aime.py`、`run_aime_corrupt.py`、`run_lcb_insert.py`
+2. 编排层：`test_close_suite.py`、`test_close_suite_corrupt.py`
+3. 引擎层：`think_branch_common.py`
+
+再往外一圈是资产和桥接脚本：
+
+- `data/`、`prompts/` 提供任务和注入模板
+- `prepare_lcb_codegen_tasks.py`、`evaluate_lcb_from_suite.py`、`run_live_code.py` 负责 LCB 数据和官方评测对接
+- `outputs/`、`suite_*`、`tmp/`、`spoctmp/` 主要是实验产物，不是主逻辑
+- `LiveCodeBench/` 是内嵌的官方 benchmark 仓库，主要在 LCB 评测阶段参与
+
+### 图 1：仓库主模块分层
+
+```mermaid
+flowchart TB
+    subgraph Entry["入口脚本"]
+        A0["run_aime_plain.py<br/>AIME 无插入基线"]
+        A1["run_aime.py<br/>AIME 插入版"]
+        A2["run_aime_corrupt.py<br/>AIME 改错 + 插入版"]
+        A3["run_lcb_insert.py<br/>LCB 插入版"]
+    end
+
+    subgraph Suite["实验编排层"]
+        B1["test_close_suite.py<br/>插入实验 runner"]
+        B2["test_close_suite_corrupt.py<br/>改错实验 runner"]
+    end
+
+    subgraph Core["共享生成引擎"]
+        C1["think_branch_common.py<br/>模型加载 / prefill / checkpoint / 续写 / overlap cover / 扰动工具"]
+    end
+
+    subgraph Assets["资产与结果"]
+        D1["data/<br/>jsonl 任务集"]
+        D2["prompts/<br/>system 与 inject 模板"]
+        D3["outputs/<br/>results / summary / task_texts"]
+    end
+
+    subgraph LCB["LCB 桥接"]
+        E1["prepare_lcb_codegen_tasks.py<br/>LCB 数据 -> 本仓库 tasks.jsonl"]
+        E2["evaluate_lcb_from_suite.py<br/>suite 输出 -> 官方 codegen 评测"]
+        E3["run_live_code.py<br/>官方 runner 包装"]
+        E4["LiveCodeBench/<br/>官方 benchmark 代码"]
+    end
+
+    A0 --> C1
+    A1 --> B1
+    A2 --> B2
+    A3 --> B1
+
+    B1 --> C1
+    B2 --> C1
+
+    D1 --> A0
+    D1 --> B1
+    D1 --> B2
+    D2 --> A1
+    D2 --> A2
+    D2 --> A3
+
+    E1 --> A3
+    B1 --> D3
+    B2 --> D3
+    D3 --> E2
+    E2 --> E4
+    E3 --> E4
+```
+
+### 图 2：一次插入实验的执行时序
+
+```mermaid
+sequenceDiagram
+    participant U as CLI
+    participant R as run_aime.py / run_lcb_insert.py
+    participant S as test_close_suite.py
+    participant C as think_branch_common.py
+    participant M as Model
+    participant O as outputs/*
+
+    U->>R: 模型路径 + 任务文件 + 输出目录
+    R->>S: 展开固定默认参数与 prompt 文件
+    S->>C: load_model() + build_prompt_ids()
+    C->>M: prefill_kv(prompt)
+    C->>M: generate_until_checkpoint()
+    M-->>C: prefix_text + checkpoint_meta
+    S->>S: 定位插点 / 必要时截断前缀 / 补齐 </think>
+    opt Branch A (只在 corrupt 版或 branch-mode=ab)
+        S->>C: clone KV 后直接续写
+        C->>M: generate_from_state()
+        M-->>S: continuation A
+    end
+    S->>C: 注入 inject_text 后继续生成 Branch B
+    C->>M: generate_from_state()
+    M-->>S: continuation B
+    S->>S: overlap cover + think/answer 指标统计
+    S-->>O: *.results.jsonl / *.summary.json / task_texts/*
+```
+
+`run_aime_plain.py` 是唯一的例外：它不经过 suite runner，而是直接调用 `think_branch_common.py` 做“无插入”基线生成。
+
+### 图 3：改错实验的 A/B 对照关系
+
+```mermaid
+flowchart LR
+    P["checkpoint 后 prefix"] --> L["定位局部改动点"]
+    L --> E["编辑 prefix<br/>数值扰动 / 符号翻转 / locator-only"]
+    E --> A["Branch A<br/>不插入 think，直接续写"]
+    E --> B0["Branch B<br/>在定位点插入 inject_text"]
+    B0 --> B["继续生成新的 <think>...</think>"]
+    A --> CMP["对比 Branch A / B"]
+    B --> CMP
+    CMP --> M1["expected_hit / answer_hit"]
+    CMP --> M2["repetition_flag / overlap"]
+    CMP --> M3["think_balanced"]
+```
+
+插入版 `run_aime.py` 和 `run_lcb_insert.py` 可以看成这张图的简化版：只保留 Branch B，不再生成 Branch A。
+
+### 图 4：LiveCodeBench 数据与评测闭环
+
+```mermaid
+flowchart LR
+    H["HF dataset / 本地 test6.jsonl"] --> P["prepare_lcb_codegen_tasks.py"]
+    P --> T["data/tasks_lcb_*.jsonl"]
+    P --> PJ["*.problems.json"]
+    T --> R["run_lcb_insert.py"]
+    R --> S["test_close_suite.py"]
+    S --> J["outputs/lcb/*.results.jsonl"]
+    J --> E["evaluate_lcb_from_suite.py"]
+    PJ --> E
+    E --> X["去掉 <think> 并提取代码块"]
+    X --> L["LiveCodeBench lcb_runner"]
+    L --> O["eval_all.json / metrics.json / pass@k"]
+    RL["run_live_code.py<br/>官方 runner 直连"] --> L
+```
+
+### 核心文件职责表
+
+| 文件/目录 | 角色 | 读它能搞清什么 |
+| --- | --- | --- |
+| `think_branch_common.py` | 共享引擎 | 模型怎么加载、怎么 prefill、怎么在 checkpoint 停、怎么从插入点继续生成 |
+| `test_close_suite.py` | 插入版总控 | 无改错情况下，Branch B 怎么构造、怎么评估、怎么落盘 |
+| `test_close_suite_corrupt.py` | 改错版总控 | prefix 怎么被扰动，Branch A/B 怎么对照，改错元数据怎么记录 |
+| `run_aime.py` | AIME 插入入口 | 当前 AIME 主实验的默认参数是什么 |
+| `run_aime_corrupt.py` | AIME 改错入口 | 当前 A/B 改错线的固定配置是什么 |
+| `run_aime_plain.py` | AIME 基线 | 没有中插时模型原始能力怎么跑 |
+| `prepare_lcb_codegen_tasks.py` | LCB 数据适配 | 官方数据集怎么转成仓库内部 `tasks.jsonl` |
+| `evaluate_lcb_from_suite.py` | LCB 评测桥 | Branch 输出怎么接回官方 codegen 评测 |
+| `run_live_code.py` | 官方评测包装 | 不走中插实验时，怎样直接跑上游 LCB runner |
+| `data/` + `prompts/` | 资产层 | 任务输入和注入文本分别从哪里来 |
+| `outputs/` | 结果层 | 每次实验最终会写出哪些结构化结果 |
+
+### 建议的读代码顺序
+
+1. 先读 `run_aime.py` 或 `run_lcb_insert.py`，看这条实验线实际暴露了哪些参数。
+2. 再读 `test_close_suite.py` 或 `test_close_suite_corrupt.py` 的 `run_task_ab()`，这是整条实验的主干。
+3. 然后读 `think_branch_common.py` 里的 `generate_until_checkpoint()`、`generate_from_state()`、`apply_match_cover()`。
+4. 最后按需读 `prepare_lcb_codegen_tasks.py` 和 `evaluate_lcb_from_suite.py`，理解 LCB 是怎么进出这个系统的。
+
 ## 背景
 
 这条实验线要回答的问题是：
@@ -39,7 +201,7 @@
 
 ### 方法概述
 
-三个核心入口是：
+四个核心入口是：
 
 - [run_aime_plain.py](/Users/shuimo/Desktop/interleaved/close/run_aime_plain.py)
 - [run_aime.py](/Users/shuimo/Desktop/interleaved/close/run_aime.py)
@@ -345,7 +507,7 @@ LCB 不走 `expected_regex` 这条线，而是把 Branch B 最终输出接回官
 
 ## 最小运行入口
 
-常用入口只有这三个：
+常用入口只有这四个：
 
 ```bash
 python run_aime_plain.py ...
