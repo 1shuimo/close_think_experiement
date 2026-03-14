@@ -148,7 +148,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-new-after", type=int, default=1200)
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
     p.add_argument("--min-b-tokens-before-eos", type=int, default=64)
-    p.add_argument("--b-retry-times", type=int, default=2, help="Retry branch B if empty or unclosed think.")
+    p.add_argument(
+        "--b-retry-times",
+        type=int,
+        default=0,
+        help="Retry branch B if empty or unclosed think (0 disables retry).",
+    )
     p.add_argument("--auto-close-unclosed-think", action="store_true", help="Force close unmatched <think> tags in prefix/final output.")
     p.add_argument("--inject-text", default=DEFAULT_INJECT_TEXT)
 

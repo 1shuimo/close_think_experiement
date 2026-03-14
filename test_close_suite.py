@@ -48,6 +48,9 @@ DEFAULT_INJECT_TEXT = (
     "Let me reflect on the immediately preceding local step before I continue. "
     "I should verify whether that transition is actually sound.\n"
 )
+DEFAULT_FIRST_THINK_EARLY_STOP_TEXT = (
+    "I have done enough reasoning here, so I will close this think block and continue with the visible solution."
+)
 
 DEFAULT_MATH_STEP_USER_GUIDANCE = (
     "Output format requirement (MUST follow): after reasoning, output one step per line using "
@@ -123,6 +126,17 @@ def parse_args() -> argparse.Namespace:
         default="I think this local check is enough, so I will close this think block and continue from this exact point.",
         help="Bridge sentence injected before </think> when first-think smooth close is enabled.",
     )
+    p.add_argument(
+        "--first-think-budget-tokens",
+        type=int,
+        default=0,
+        help="If >0, force-close the first native <think> after this many generated tokens.",
+    )
+    p.add_argument(
+        "--first-think-early-stop-text",
+        default=DEFAULT_FIRST_THINK_EARLY_STOP_TEXT,
+        help="Text appended immediately before forced </think> when first-think budget is exhausted.",
+    )
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
     p.add_argument("--seed", type=int, default=1234)
@@ -158,7 +172,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--max-new-after", type=int, default=1200)
     p.add_argument("--branch-mode", default="ab", choices=["ab", "b"], help="Generate both branches or only branch B.")
     p.add_argument("--min-b-tokens-before-eos", type=int, default=64)
-    p.add_argument("--b-retry-times", type=int, default=2, help="Retry branch B if empty or unclosed think.")
+    p.add_argument(
+        "--b-retry-times",
+        type=int,
+        default=0,
+        help="Retry branch B if empty or unclosed think (0 disables retry).",
+    )
     p.add_argument(
         "--auto-close-unclosed-think",
         action="store_true",
@@ -665,6 +684,8 @@ def run_task_ab(
     first_think_max_words: int,
     enable_first_think_smooth_close: bool,
     first_think_smooth_close_text: str,
+    first_think_budget_tokens: int,
+    first_think_early_stop_text: str,
     math_step_user_guidance: str,
     task: Dict[str, object],
     temperature: float,
@@ -733,6 +754,8 @@ def run_task_ab(
         checkpoint_mid_min_tokens=checkpoint_mid_min_tokens,
         checkpoint_mid_max_tokens=checkpoint_mid_max_tokens,
         checkpoint_mid_avoid_final_regex=checkpoint_mid_avoid_final_regex,
+        first_think_budget_tokens=first_think_budget_tokens,
+        first_think_early_stop_text=first_think_early_stop_text,
         chunk_size=chunk_size,
         print_stream=False,
     )
@@ -1003,7 +1026,6 @@ def run_task_ab(
     gen_b: List[int] = []
     gen_b_stop_reason = "unknown"
     retry_reasons: List[str] = []
-
     past_b_seed = past_b
     logits_b_seed = logits_b
     for attempt in range(max(0, int(b_retry_times)) + 1):
@@ -1098,6 +1120,12 @@ def run_task_ab(
             ),
             "checkpoint_punct_stop_piece": ckpt.get("checkpoint_punct_stop_piece"),
             "checkpoint_punct_stop_kind": ckpt.get("checkpoint_punct_stop_kind"),
+            "first_think_budget_tokens": int(ckpt.get("first_think_budget_tokens", 0) or 0),
+            "first_think_budget_triggered": bool(ckpt.get("first_think_budget_triggered", False)),
+            "first_think_budget_forced_close_applied": bool(
+                ckpt.get("first_think_budget_forced_close_applied", False)
+            ),
+            "first_think_budget_forced_close_text": ckpt.get("first_think_budget_forced_close_text"),
         },
         "prefix_seen_first_think_end": bool(ckpt["seen_first_think_end"]),
         "prefix_tokens": len(prefix_ids_local),
@@ -1299,6 +1327,8 @@ def main() -> None:
                 first_think_max_words=args.first_think_max_words,
                 enable_first_think_smooth_close=bool(args.enable_first_think_smooth_close),
                 first_think_smooth_close_text=args.first_think_smooth_close_text,
+                first_think_budget_tokens=args.first_think_budget_tokens,
+                first_think_early_stop_text=args.first_think_early_stop_text,
                 math_step_user_guidance=math_step_user_guidance,
                 task=task,
                 temperature=args.temperature,

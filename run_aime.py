@@ -40,6 +40,11 @@ def parse_args() -> argparse.Namespace:
         default=str(here / "prompts" / "inject_think_v3.txt"),
         help="Injected <think> text file.",
     )
+    p.add_argument(
+        "--first-think-early-stop-text-file",
+        default=str(here / "prompts" / "first_think_early_stop_v1.txt"),
+        help="Text inserted immediately before forced </think> when first-think budget is exhausted.",
+    )
 
     p.add_argument("--enable-first-think-max-words", action="store_true")
     p.add_argument("--first-think-max-words", type=int, default=120)
@@ -52,6 +57,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--checkpoint-mid-max-tokens", type=int, default=400)
 
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
+    p.add_argument(
+        "--first-think-budget-tokens",
+        type=int,
+        default=None,
+        help="Optional explicit budget for the first native <think>. Defaults to max-prefix-tokens.",
+    )
     p.add_argument("--max-new-after", type=int, default=1200)
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
@@ -69,6 +80,12 @@ def main() -> None:
     here = Path(__file__).resolve().parent
 
     inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
+    first_think_early_stop_text = Path(args.first_think_early_stop_text_file).read_text(encoding="utf-8")
+    first_think_budget_tokens = (
+        int(args.first_think_budget_tokens)
+        if args.first_think_budget_tokens is not None
+        else int(args.max_prefix_tokens)
+    )
 
     cmd = [
         sys.executable,
@@ -104,6 +121,10 @@ def main() -> None:
         str(args.checkpoint_mid_max_tokens),
         "--checkpoint-mid-avoid-final-regex",
         r"(?i)\bfinal\s*:|\bfinal answer\b",
+        "--first-think-budget-tokens",
+        str(first_think_budget_tokens),
+        "--first-think-early-stop-text",
+        first_think_early_stop_text,
         "--max-prefix-tokens",
         str(args.max_prefix_tokens),
         "--max-new-after",

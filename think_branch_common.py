@@ -224,6 +224,52 @@ def _piece_hits_sentence_boundary(piece: str) -> bool:
     return any(ch in ".!?。！？;；" for ch in stripped)
 
 
+def _build_first_think_budget_close_text(early_stop_text: str) -> str:
+    early = str(early_stop_text or "").strip()
+    if early:
+        return "\n" + early + "\n</think>\n"
+    return "\n</think>\n"
+
+
+def _apply_first_think_budget_close(
+    *,
+    model,
+    tokenizer,
+    device,
+    past_key_values,
+    logits,
+    generated_ids: List[int],
+    generated_text_parts: List[str],
+    recent_text_tail: str,
+    regex_window_chars: int,
+    need_incremental_text: bool,
+    need_regex_text: bool,
+    print_stream: bool,
+    checkpoint_mode: str,
+    need_mid_final_text: bool,
+    first_think_early_stop_text: str,
+) -> Tuple[object, torch.Tensor, str, str, str]:
+    forced_close_text = _build_first_think_budget_close_text(first_think_early_stop_text)
+    forced_close_ids = tokenizer.encode(forced_close_text, add_special_tokens=False)
+    if forced_close_ids:
+        forced_close_ids_t = torch.tensor([forced_close_ids], dtype=torch.long, device=device)
+        out = model(forced_close_ids_t, past_key_values=past_key_values, use_cache=True)
+        past_key_values = out.past_key_values
+        logits = out.logits[:, -1, :]
+        del forced_close_ids_t
+        del out
+        generated_ids.extend(int(x) for x in forced_close_ids)
+    if need_incremental_text:
+        generated_text_parts.append(forced_close_text)
+        if print_stream:
+            print(forced_close_text, end="", flush=True)
+        if need_regex_text:
+            recent_text_tail = (recent_text_tail + forced_close_text)[-regex_window_chars:]
+    post_first_think_regex_tail = "" if checkpoint_mode == "think_end_then_regex" else ""
+    post_think_tail = "" if need_mid_final_text else ""
+    return past_key_values, logits, forced_close_text, recent_text_tail, post_think_tail
+
+
 @torch.inference_mode()
 def generate_until_checkpoint(
     model: AutoModelForCausalLM,
@@ -240,6 +286,8 @@ def generate_until_checkpoint(
     checkpoint_mid_min_tokens: int = 80,
     checkpoint_mid_max_tokens: int = 220,
     checkpoint_mid_avoid_final_regex: Optional[str] = r"(?i)\bfinal\s*:|\bfinal answer\b",
+    first_think_budget_tokens: int = 0,
+    first_think_early_stop_text: str = "",
     regex_window_chars: int = 8192,
     chunk_size: int = 2048,
     print_stream: bool = False,
@@ -276,108 +324,87 @@ def generate_until_checkpoint(
     mid_rng = random.Random(seed + 131)
     punct_stop_piece = None
     punct_stop_kind = None
+    first_think_budget_triggered = False
+    first_think_budget_forced_close_applied = False
+    first_think_budget_forced_close_text = None
     need_regex_text = checkpoint_mode in {"regex", "think_end_then_regex"}
     need_mid_final_text = checkpoint_mode == "think_end_mid" and mid_final_obj is not None
     need_punct_piece = checkpoint_mode == "think_end_punct"
     need_incremental_text = print_stream or need_regex_text or need_mid_final_text or need_punct_piece
 
     for _ in range(max_new_tokens):
-        next_token = top_p_sample(logits, temperature, top_p, gen)
-        tid = int(next_token.item())
-        if tid == eos_id:
-            break
-
-        out = model(next_token.to(device), past_key_values=past_key_values, use_cache=True)
-        past_key_values = out.past_key_values
-        logits = out.logits[:, -1, :]
-
-        generated_ids.append(tid)
-        piece = ""
-        if need_incremental_text:
-            piece = tokenizer.decode(next_token[0], skip_special_tokens=False)
-            generated_text_parts.append(piece)
-            if print_stream:
-                print(piece, end="", flush=True)
-            if need_regex_text:
-                recent_text_tail = (recent_text_tail + piece)[-regex_window_chars:]
-
-        just_seen_first_think_end = False
-        if (not seen_first_think_end) and _ends_with_subseq(generated_ids, think_end_ids):
+        if (
+            (not seen_first_think_end)
+            and int(first_think_budget_tokens) > 0
+            and len(generated_ids) >= int(first_think_budget_tokens)
+        ):
+            first_think_budget_triggered = True
+            first_think_budget_forced_close_applied = True
+            (
+                past_key_values,
+                logits,
+                forced_close_text,
+                recent_text_tail,
+                post_think_tail,
+            ) = _apply_first_think_budget_close(
+                model=model,
+                tokenizer=tokenizer,
+                device=device,
+                past_key_values=past_key_values,
+                logits=logits,
+                generated_ids=generated_ids,
+                generated_text_parts=generated_text_parts,
+                recent_text_tail=recent_text_tail,
+                regex_window_chars=regex_window_chars,
+                need_incremental_text=need_incremental_text,
+                need_regex_text=need_regex_text,
+                print_stream=print_stream,
+                checkpoint_mode=checkpoint_mode,
+                need_mid_final_text=need_mid_final_text,
+                first_think_early_stop_text=first_think_early_stop_text,
+            )
+            first_think_budget_forced_close_text = forced_close_text
             seen_first_think_end = True
             first_think_end_token_pos = len(generated_ids)
             tokens_after_first_think = 0
-            just_seen_first_think_end = True
             if checkpoint_mode == "think_end_then_regex":
-                # For think_end_then_regex, regex match should only consider text after first </think>.
                 post_first_think_regex_tail = ""
-            if need_mid_final_text:
-                # Build this once when the first </think> is observed.
-                full_text_now = "".join(generated_text_parts)
-                idx = full_text_now.find("</think>")
-                if idx >= 0:
-                    post_think_tail = full_text_now[idx + len("</think>") :]
-                else:
-                    post_think_tail = ""
-                post_think_tail = post_think_tail[-regex_window_chars:]
+            continue
 
-        if need_mid_final_text and seen_first_think_end and (not just_seen_first_think_end):
-            # Track only the tail after first </think> for final-regex detection.
-            post_think_tail = (post_think_tail + piece)[-regex_window_chars:]
-        if (
-            checkpoint_mode == "think_end_then_regex"
-            and need_regex_text
-            and seen_first_think_end
-            and (not just_seen_first_think_end)
-        ):
-            post_first_think_regex_tail = (post_first_think_regex_tail + piece)[-regex_window_chars:]
-
-        if not seen_anchor:
-            if seen_first_think_end and first_think_end_token_pos >= 0:
-                tokens_after_first_think = len(generated_ids) - first_think_end_token_pos
-            if checkpoint_mode == "think_end":
-                if seen_first_think_end:
-                    seen_anchor = True
-                    counter_after_anchor = 0
-            elif checkpoint_mode == "regex":
-                if regex_obj and regex_obj.search(recent_text_tail):
-                    seen_anchor = True
-                    counter_after_anchor = 0
-            elif checkpoint_mode == "think_end_then_regex":
-                if seen_first_think_end and regex_obj and regex_obj.search(post_first_think_regex_tail):
-                    seen_anchor = True
-                    counter_after_anchor = 0
-            elif checkpoint_mode == "think_end_mid":
-                if seen_first_think_end:
-                    lo = max(0, int(checkpoint_mid_min_tokens))
-                    hi = max(lo, int(checkpoint_mid_max_tokens))
-                    if mid_target_tokens is None:
-                        mid_target_tokens = mid_rng.randint(lo, hi)
-                    hit_mid_target = tokens_after_first_think >= int(mid_target_tokens)
-                    hit_final = bool(mid_final_obj and mid_final_obj.search(post_think_tail))
-                    if hit_mid_target or hit_final:
-                        seen_anchor = True
-                        counter_after_anchor = 0
-                        if hit_final and not hit_mid_target:
-                            mid_early_stop_on_final = True
-            elif checkpoint_mode == "think_end_punct":
-                if seen_first_think_end:
-                    lo = max(0, int(checkpoint_mid_min_tokens))
-                    hi = max(lo, int(checkpoint_mid_max_tokens))
-                    hit_punct = tokens_after_first_think >= lo and _piece_hits_sentence_boundary(piece)
-                    hit_upper = tokens_after_first_think >= hi
-                    if hit_punct or hit_upper:
-                        seen_anchor = True
-                        counter_after_anchor = 0
-                        punct_stop_piece = piece if piece else None
-                        punct_stop_kind = "sentence_boundary" if hit_punct else "max_tokens"
-            else:
-                raise ValueError(f"Unsupported checkpoint_mode: {checkpoint_mode}")
-            if seen_anchor and int(delay_tokens_after_first_think_end) <= 0:
-                break
-        else:
-            counter_after_anchor += 1
-            if counter_after_anchor >= delay_tokens_after_first_think_end:
-                break
+    if (
+        (not seen_first_think_end)
+        and int(first_think_budget_tokens) > 0
+        and len(generated_ids) >= int(first_think_budget_tokens)
+    ):
+        first_think_budget_triggered = True
+        first_think_budget_forced_close_applied = True
+        (
+            past_key_values,
+            logits,
+            forced_close_text,
+            recent_text_tail,
+            post_think_tail,
+        ) = _apply_first_think_budget_close(
+            model=model,
+            tokenizer=tokenizer,
+            device=device,
+            past_key_values=past_key_values,
+            logits=logits,
+            generated_ids=generated_ids,
+            generated_text_parts=generated_text_parts,
+            recent_text_tail=recent_text_tail,
+            regex_window_chars=regex_window_chars,
+            need_incremental_text=need_incremental_text,
+            need_regex_text=need_regex_text,
+            print_stream=print_stream,
+            checkpoint_mode=checkpoint_mode,
+            need_mid_final_text=need_mid_final_text,
+            first_think_early_stop_text=first_think_early_stop_text,
+        )
+        first_think_budget_forced_close_text = forced_close_text
+        seen_first_think_end = True
+        first_think_end_token_pos = len(generated_ids)
+        tokens_after_first_think = 0
 
     # Decode once at the end when stream/regex text is not required.
     if need_incremental_text:
@@ -401,6 +428,10 @@ def generate_until_checkpoint(
         "checkpoint_mid_early_stop_on_final": bool(mid_early_stop_on_final),
         "checkpoint_punct_stop_piece": punct_stop_piece,
         "checkpoint_punct_stop_kind": punct_stop_kind,
+        "first_think_budget_tokens": int(first_think_budget_tokens),
+        "first_think_budget_triggered": bool(first_think_budget_triggered),
+        "first_think_budget_forced_close_applied": bool(first_think_budget_forced_close_applied),
+        "first_think_budget_forced_close_text": first_think_budget_forced_close_text,
         "regex_window_chars": int(regex_window_chars),
     }
 
@@ -418,6 +449,7 @@ def generate_from_state(
     seed: int,
     min_tokens_before_eos: int = 0,
     return_meta: bool = False,
+    return_state: bool = False,
     print_stream: bool = False,
 ) -> Any:
     eos_id = tokenizer.eos_token_id
@@ -449,7 +481,11 @@ def generate_from_state(
         logits = out.logits[:, -1, :]
 
     if return_meta:
-        return {"generated_ids": generated_ids, "stop_reason": stop_reason}
+        out = {"generated_ids": generated_ids, "stop_reason": stop_reason}
+        if return_state:
+            out["past_key_values"] = past_key_values
+            out["logits"] = logits
+        return out
     return generated_ids
 
 

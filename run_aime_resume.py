@@ -52,6 +52,11 @@ def parse_args() -> argparse.Namespace:
         default=str(here / "prompts" / "inject_think_v3.txt"),
         help="Injected <think> text file.",
     )
+    p.add_argument(
+        "--first-think-early-stop-text-file",
+        default=str(here / "prompts" / "first_think_early_stop_v1.txt"),
+        help="Text inserted immediately before forced </think> when first-think budget is exhausted.",
+    )
 
     p.add_argument("--enable-first-think-max-words", action="store_true")
     p.add_argument("--first-think-max-words", type=int, default=120)
@@ -64,6 +69,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--checkpoint-mid-max-tokens", type=int, default=400)
 
     p.add_argument("--max-prefix-tokens", type=int, default=3500)
+    p.add_argument(
+        "--first-think-budget-tokens",
+        type=int,
+        default=None,
+        help="Optional explicit budget for the first native <think>. Defaults to max-prefix-tokens.",
+    )
     p.add_argument("--max-new-after", type=int, default=1200)
     p.add_argument("--temperature", type=float, default=0.4)
     p.add_argument("--top-p", type=float, default=0.9)
@@ -280,6 +291,12 @@ def main() -> None:
 
     system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8")
     inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
+    first_think_early_stop_text = Path(args.first_think_early_stop_text_file).read_text(encoding="utf-8")
+    first_think_budget_tokens = (
+        int(args.first_think_budget_tokens)
+        if args.first_think_budget_tokens is not None
+        else int(args.max_prefix_tokens)
+    )
     model_paths = [x.strip() for x in args.model_paths.split(",") if x.strip()]
 
     model_summaries: Dict[str, Dict[str, object]] = {}
@@ -354,6 +371,8 @@ def main() -> None:
                 first_think_max_words=args.first_think_max_words,
                 enable_first_think_smooth_close=bool(args.enable_first_think_smooth_close),
                 first_think_smooth_close_text=args.first_think_smooth_close_text,
+                first_think_budget_tokens=first_think_budget_tokens,
+                first_think_early_stop_text=first_think_early_stop_text,
                 math_step_user_guidance="",
                 task=task,
                 temperature=args.temperature,
@@ -371,7 +390,7 @@ def main() -> None:
                 max_new_after=args.max_new_after,
                 branch_mode="b",
                 min_b_tokens_before_eos=64,
-                b_retry_times=2,
+                b_retry_times=0,
                 auto_close_unclosed_think=False,
                 chunk_size=2048,
                 inject_text=inject_text,
