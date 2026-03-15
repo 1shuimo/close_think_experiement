@@ -371,6 +371,103 @@ def generate_until_checkpoint(
                 post_first_think_regex_tail = ""
             continue
 
+        next_token = top_p_sample(logits, temperature, top_p, gen)
+        tid = int(next_token.item())
+        if tid == eos_id:
+            break
+
+        out = model(next_token.to(device), past_key_values=past_key_values, use_cache=True)
+        past_key_values = out.past_key_values
+        logits = out.logits[:, -1, :]
+
+        generated_ids.append(tid)
+        piece = ""
+        if need_incremental_text:
+            piece = tokenizer.decode(next_token[0], skip_special_tokens=False)
+            generated_text_parts.append(piece)
+            if print_stream:
+                print(piece, end="", flush=True)
+            if need_regex_text:
+                recent_text_tail = (recent_text_tail + piece)[-regex_window_chars:]
+
+        just_seen_first_think_end = False
+        if (not seen_first_think_end) and _ends_with_subseq(generated_ids, think_end_ids):
+            seen_first_think_end = True
+            first_think_end_token_pos = len(generated_ids)
+            tokens_after_first_think = 0
+            just_seen_first_think_end = True
+            if checkpoint_mode == "think_end_then_regex":
+                # For think_end_then_regex, regex match should only consider text after first </think>.
+                post_first_think_regex_tail = ""
+            if need_mid_final_text:
+                # Build this once when the first </think> is observed.
+                full_text_now = "".join(generated_text_parts)
+                idx = full_text_now.find("</think>")
+                if idx >= 0:
+                    post_think_tail = full_text_now[idx + len("</think>") :]
+                else:
+                    post_think_tail = ""
+                post_think_tail = post_think_tail[-regex_window_chars:]
+
+        if need_mid_final_text and seen_first_think_end and (not just_seen_first_think_end):
+            # Track only the tail after first </think> for final-regex detection.
+            post_think_tail = (post_think_tail + piece)[-regex_window_chars:]
+        if (
+            checkpoint_mode == "think_end_then_regex"
+            and need_regex_text
+            and seen_first_think_end
+            and (not just_seen_first_think_end)
+        ):
+            post_first_think_regex_tail = (post_first_think_regex_tail + piece)[-regex_window_chars:]
+
+        if not seen_anchor:
+            if seen_first_think_end and first_think_end_token_pos >= 0:
+                tokens_after_first_think = len(generated_ids) - first_think_end_token_pos
+            if checkpoint_mode == "think_end":
+                if seen_first_think_end:
+                    seen_anchor = True
+                    counter_after_anchor = 0
+            elif checkpoint_mode == "regex":
+                if regex_obj and regex_obj.search(recent_text_tail):
+                    seen_anchor = True
+                    counter_after_anchor = 0
+            elif checkpoint_mode == "think_end_then_regex":
+                if seen_first_think_end and regex_obj and regex_obj.search(post_first_think_regex_tail):
+                    seen_anchor = True
+                    counter_after_anchor = 0
+            elif checkpoint_mode == "think_end_mid":
+                if seen_first_think_end:
+                    lo = max(0, int(checkpoint_mid_min_tokens))
+                    hi = max(lo, int(checkpoint_mid_max_tokens))
+                    if mid_target_tokens is None:
+                        mid_target_tokens = mid_rng.randint(lo, hi)
+                    hit_mid_target = tokens_after_first_think >= int(mid_target_tokens)
+                    hit_final = bool(mid_final_obj and mid_final_obj.search(post_think_tail))
+                    if hit_mid_target or hit_final:
+                        seen_anchor = True
+                        counter_after_anchor = 0
+                        if hit_final and not hit_mid_target:
+                            mid_early_stop_on_final = True
+            elif checkpoint_mode == "think_end_punct":
+                if seen_first_think_end:
+                    lo = max(0, int(checkpoint_mid_min_tokens))
+                    hi = max(lo, int(checkpoint_mid_max_tokens))
+                    hit_punct = tokens_after_first_think >= lo and _piece_hits_sentence_boundary(piece)
+                    hit_upper = tokens_after_first_think >= hi
+                    if hit_punct or hit_upper:
+                        seen_anchor = True
+                        counter_after_anchor = 0
+                        punct_stop_piece = piece if piece else None
+                        punct_stop_kind = "sentence_boundary" if hit_punct else "max_tokens"
+            else:
+                raise ValueError(f"Unsupported checkpoint_mode: {checkpoint_mode}")
+            if seen_anchor and int(delay_tokens_after_first_think_end) <= 0:
+                break
+        else:
+            counter_after_anchor += 1
+            if counter_after_anchor >= delay_tokens_after_first_think_end:
+                break
+
     if (
         (not seen_first_think_end)
         and int(first_think_budget_tokens) > 0
