@@ -86,6 +86,10 @@ def main() -> None:
         if args.first_think_budget_tokens is not None
         else int(args.max_prefix_tokens)
     )
+    effective_max_prefix_tokens = max(
+        int(args.max_prefix_tokens),
+        int(first_think_budget_tokens) + int(args.checkpoint_mid_max_tokens),
+    )
 
     cmd = [
         sys.executable,
@@ -126,7 +130,7 @@ def main() -> None:
         "--first-think-early-stop-text",
         first_think_early_stop_text,
         "--max-prefix-tokens",
-        str(args.max_prefix_tokens),
+        str(effective_max_prefix_tokens),
         "--max-new-after",
         str(args.max_new_after),
         "--corrupt-after-first-think",

@@ -297,6 +297,10 @@ def main() -> None:
         if args.first_think_budget_tokens is not None
         else int(args.max_prefix_tokens)
     )
+    effective_max_prefix_tokens = max(
+        int(args.max_prefix_tokens),
+        int(first_think_budget_tokens) + int(args.checkpoint_mid_max_tokens),
+    )
     model_paths = [x.strip() for x in args.model_paths.split(",") if x.strip()]
 
     model_summaries: Dict[str, Dict[str, object]] = {}
@@ -384,7 +388,7 @@ def main() -> None:
                 checkpoint_mid_min_tokens=args.checkpoint_mid_min_tokens,
                 checkpoint_mid_max_tokens=args.checkpoint_mid_max_tokens,
                 checkpoint_mid_avoid_final_regex=r"(?i)\bfinal\s*:|\bfinal answer\b",
-                max_prefix_tokens=args.max_prefix_tokens,
+                max_prefix_tokens=effective_max_prefix_tokens,
                 step_wait_extra_tokens=1200,
                 no_step_fallback_offset_tokens=300,
                 max_new_after=args.max_new_after,
