@@ -79,8 +79,8 @@ def main() -> None:
     args = parse_args()
     here = Path(__file__).resolve().parent
 
-    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
-    first_think_early_stop_text = Path(args.first_think_early_stop_text_file).read_text(encoding="utf-8")
+    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8").strip()
+    first_think_early_stop_text = Path(args.first_think_early_stop_text_file).read_text(encoding="utf-8").strip()
     first_think_budget_tokens = (
         int(args.first_think_budget_tokens)
         if args.first_think_budget_tokens is not None

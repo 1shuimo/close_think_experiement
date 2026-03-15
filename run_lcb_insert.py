@@ -52,8 +52,8 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     here = Path(__file__).resolve().parent
-    system_prompt_text = Path(args.system_prompt_file).read_text(encoding="utf-8")
-    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
+    system_prompt_text = Path(args.system_prompt_file).read_text(encoding="utf-8").strip()
+    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8").strip()
 
     print("[run_lcb_insert] system prompt file:", args.system_prompt_file)
     print("[run_lcb_insert] prompt mode:", args.prompt_mode)

@@ -97,7 +97,7 @@ def main() -> None:
     args = parse_args()
     here = Path(__file__).resolve().parent
 
-    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
+    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8").strip()
     prefix_tokens = int(args.max_prefix_tokens) if args.max_prefix_tokens is not None else int(args.inject_offset_tokens)
     fallback_tokens = (
         int(args.no_step_fallback_offset_tokens)

@@ -56,7 +56,7 @@ def main() -> None:
     args = parse_args()
     here = Path(__file__).resolve().parent
 
-    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
+    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8").strip()
 
     cmd = [
         sys.executable,

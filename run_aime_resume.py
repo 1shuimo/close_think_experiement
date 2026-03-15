@@ -289,9 +289,9 @@ def main() -> None:
     tasks = load_tasks_jsonl(tasks_path)
     tasks_by_id = {str(task.get("id") or ""): task for task in tasks}
 
-    system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8")
-    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8")
-    first_think_early_stop_text = Path(args.first_think_early_stop_text_file).read_text(encoding="utf-8")
+    system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8").strip()
+    inject_text = Path(args.inject_text_file).read_text(encoding="utf-8").strip()
+    first_think_early_stop_text = Path(args.first_think_early_stop_text_file).read_text(encoding="utf-8").strip()
     first_think_budget_tokens = (
         int(args.first_think_budget_tokens)
         if args.first_think_budget_tokens is not None
