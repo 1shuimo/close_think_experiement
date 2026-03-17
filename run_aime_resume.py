@@ -217,6 +217,12 @@ def _write_model_jsonl(jsonl_path: Path, records: List[Dict[str, object]]) -> No
 
 
 def _write_task_texts(task_dump_root: Path, rec: Dict[str, object]) -> None:
+    global build_concise_branch_meta
+    if build_concise_branch_meta is None:
+        from test_close_suite import build_concise_branch_meta as _build_concise_branch_meta
+
+        build_concise_branch_meta = _build_concise_branch_meta
+
     task_name = _safe_name(str(rec.get("task_id", "task")))
     task_dir = task_dump_root / task_name
     task_dir.mkdir(parents=True, exist_ok=True)
@@ -335,6 +341,10 @@ def main() -> None:
             print("[resume] next tasks:", ", ".join(str(t.get("id")) for t in remaining_tasks[:8]))
 
         ordered_existing = _ordered_records(tasks, records_by_task)
+        if args.save_task_texts and ordered_existing:
+            task_dump_root.mkdir(parents=True, exist_ok=True)
+            for rec in ordered_existing:
+                _write_task_texts(task_dump_root, rec)
         if recovered_records or (not jsonl_path.exists() and ordered_existing):
             _write_model_jsonl(jsonl_path, ordered_existing)
 
