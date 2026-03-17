@@ -1,0 +1,463 @@
+<think>
+Okay, so I need to find the number of eight-digit numbers using each digit from 1 to 8 exactly once that are divisible by 22. Then subtract 2025 from that number. Let me start by recalling the divisibility rules for 22. Since 22 is 2 times 11, the number must be divisible by both 2 and 11.
+
+First, divisibility by 2: the last digit must be even. The digits available are 1 through 8, so the even digits are 2, 4, 6, 8. So the last digit has to be one of these four. That gives me four choices for the last digit.
+
+Next, divisibility by 11. The rule for 11 is that the difference between the sum of the digits in the odd positions and the sum of the digits in the even positions must be a multiple of 11 (including zero). Since the number is eight digits long, positions 1, 3, 5, 7 are odd positions and positions 2, 4, 6, 8 are even positions. Wait, but the last digit is already fixed as even (for divisibility by 2), so position 8 is even. Let me confirm: positions are 1 to 8, so odd positions are 1,3,5,7 and even positions are 2,4,6,8. So the difference between the sum of digits in positions 1,3,5,7 and the sum in positions 2,4,6,8 must be divisible by 11.
+
+But since all digits from 1 to 8 are used exactly once, the total sum of all digits is 1+2+3+4+5+6+7+8 = 36. Let me check that: 1+8=9, 2+7=9, 3+6=9, 4+5=9, so total is 4*9=36. So the total sum is 36. Let me denote S_odd as the sum of the digits in the odd positions and S_even as the sum in the even positions. Then S_odd + S_even = 36, and S_odd - S_even must be divisible by 11. Let me write these two equations:
+
+S_odd + S_even = 36
+
+S_odd - S_even �� 0 mod 11
+
+Let me solve for S_odd and S_even. Adding the two equations:
+
+2*S_odd �� 36 mod 11
+
+But 36 mod 11 is 3 (since 11*3=33, 36-33=3). So 2*S_odd �� 3 mod 11. Wait, but 2*S_odd �� 3 mod 11. Let me solve for S_odd. Multiply both sides by the modular inverse of 2 mod 11. The inverse of 2 mod 11 is 6 because 2*6=12≡1 mod11. So S_odd �� 3*6 �� 18 �� 7 mod11. Therefore, S_odd ��7 mod11. Similarly, since S_odd + S_even =36, then S_even =36 - S_odd. Let me check the difference S_odd - S_even = 2*S_odd -36. This must be divisible by 11. So 2*S_odd -36 ��0 mod11. So 2*S_odd ��36 mod11. Which is the same as before. So S_odd ��7 mod11. Since S_odd is the sum of four digits (positions 1,3,5,7), each from 1 to 8, with no repetition. The possible values of S_odd can be calculated. Let me find the possible values of S_odd that satisfy S_odd ��7 mod11 and also that S_odd is the sum of four distinct digits from 1 to 8.
+
+First, the minimum possible sum of four digits is 1+2+3+4=10, and the maximum is 5+6+7+8=26. So S_odd is between 10 and 26. Now, which numbers in that range are congruent to 7 mod11? Let's see:
+
+Numbers between 10 and 26 that are ��7 mod11:
+
+11*1 +7=18, 11*2 +7=29 (too big). So only 18. Wait, 18 is 11*1 +7=18. Next would be 18 +11=29, which is beyond 26. So the only possible value for S_odd is 18. Therefore, S_odd must be 18, and S_even must be 36 -18=18. Therefore, the sum of the digits in the odd positions and the sum in the even positions must both be 18. So the problem reduces to counting the number of permutations of the digits 1-8 where the sum of the digits in the four odd positions is 18 and the sum in the four even positions is also 18, and the last digit (position 8, which is even) is even.
+
+Wait, but the last digit is in position 8, which is even. So in addition to the sum of the even positions being 18, the last digit (position 8) must be even. So the sum of the even positions is 18, and one of those digits (position 8) is even. So the approach is:
+
+1. Find all subsets of four digits from 1-8 that sum to 18. Each such subset can be assigned to the even positions (positions 2,4,6,8). However, we need to ensure that the digit in position 8 (the last digit) is even. So for each subset of four digits that sum to 18, we need to count how many of them contain at least one even digit (since position 8 must be even). Wait, no: actually, the subset assigned to the even positions (positions 2,4,6,8) must sum to 18, and the digit in position 8 (which is part of that subset) must be even. Therefore, for each subset of four digits that sum to 18, we need to count how many of those subsets have at least one even digit (so that we can assign one of the even digits to position 8). Wait, but actually, the subset assigned to the even positions must include the digit in position 8, which is even. Therefore, the subset of four digits assigned to the even positions must contain at least one even digit. Because position 8 must be even. Therefore, for each subset of four digits that sum to 18, if it contains at least one even digit, then we can assign one of those even digits to position 8, and permute the rest.
+
+Therefore, the steps are:
+
+a) Find all 4-element subsets of {1,2,3,4,5,6,7,8} that sum to 18.
+
+b) For each such subset, check if it contains at least one even digit. Since the even digits are 2,4,6,8.
+
+c) For each valid subset (with sum 18 and at least one even digit), compute the number of permutations where the four digits are assigned to the even positions (positions 2,4,6,8), with the last digit (position 8) being one of the even digits in the subset. Then the remaining three digits in the subset can be arranged in the other three even positions (positions 2,4,6). The four digits in the odd positions (positions 1,3,5,7) are the complement of the subset, and can be arranged in any order.
+
+So first, let's find all 4-element subsets of {1,...,8} that sum to 18.
+
+Let me list all possible 4-element combinations of digits 1-8 that add up to 18.
+
+First, the total sum of all digits is 36, so the sum of the even positions is 18, so the sum of the odd positions is also 18. So the problem is symmetric in a way.
+
+Let me find all 4-element subsets with sum 18.
+
+Possible approach: Let me think of the digits as numbers from 1 to 8. Let me list them in order.
+
+Start with the smallest possible numbers and see combinations.
+
+Possible combinations:
+
+Start with 1:
+
+1, 2, 7, 8: 1+2+7+8=18? 1+2=3, 7+8=15, total 18. Yes.
+
+1, 3, 6, 8: 1+3+6+8=18? 1+3=4, 6+8=14, total 18. Yes.
+
+1, 4, 5, 8: 1+4+5+8=18? 1+4=5, 5+8=13, total 18. Yes.
+
+1, 4, 6, 7: 1+4+6+7=18? 1+4=5, 6+7=13, total 18. Yes.
+
+1, 5, 6, 6: but duplicates not allowed. So invalid.
+
+Next, starting with 1, 2, 8, 7 already done. Next, 1, 2, 6, 9? No, 9 is not in the set. Next, 1, 2, 5, 10? No. So maybe next is 1, 3, 5, 9? No. Wait, maybe I need a better approach.
+
+Alternatively, perhaps list all possible 4-element subsets with sum 18.
+
+Let me think of the possible combinations.
+
+Let me consider that the average per number is 18/4=4.5. So numbers around 4 and 5.
+
+Possible combinations:
+
+Let me list them systematically.
+
+Start with 1:
+
+1, 2, 7, 8 (sum 18)
+
+1, 3, 6, 8 (sum 18)
+
+1, 4, 5, 8 (sum 18)
+
+1, 4, 6, 7 (sum 18)
+
+1, 5, 6, 6 (invalid)
+
+Now with 2:
+
+2, 3, 5, 8: 2+3+5+8=18? 2+3=5, 5+8=13, total 18. Yes.
+
+2, 3, 6, 7: 2+3+6+7=18. Yes.
+
+2, 4, 5, 7: 2+4+5+7=18. Yes.
+
+2, 4, 6, 6: invalid.
+
+2, 5, 5, 6: invalid.
+
+With 3:
+
+3, 4, 5, 6: 3+4+5+6=18. Yes.
+
+3, 4, 4, 7: invalid.
+
+So that's another combination.
+
+Now check if there are more.
+
+Check 1, 2, 8, 7 (already listed). What about 1, 5, 6, 6? No. 2, 3, 5, 8; 2, 3, 6, 7; 2, 4, 5, 7; 3,4,5,6. Are there others?
+
+Let me check:
+
+Is there a combination with 1, 2, 5, 10? No. How about 1, 3, 5, 9? No. 1, 2, 6, 9? No. 1, 3, 7, 7? No. 
+
+What about 2, 5, 6, 5? No. 
+
+Wait, maybe 3, 4, 5, 6 is the only one with 3,4,5,6. 
+
+Is there a combination with 2, 2, 7, 7? No. 
+
+Let me check if there are other combinations. For example, 1, 5, 6, 6 is invalid. How about 1, 2, 9, 6? No. 
+
+Wait, perhaps 2, 3, 4, 9? No. 
+
+Wait, let me check another approach. Let me think of all possible 4-element subsets and check their sums. But that might take time. Alternatively, maybe I can think of the possible combinations.
+
+Another way: Since the sum is 18, and the numbers are from 1 to 8, perhaps there are more combinations. Let me check:
+
+Is there a combination with 1, 2, 5, 10? No. How about 1, 2, 4, 11? No. 
+
+Wait, maybe 1, 3, 5, 9? No. 
+
+Wait, perhaps 2, 3, 4, 9? No. 
+
+Wait, perhaps 2, 3, 7, 6? That's already in the list (2,3,6,7). 
+
+Wait, maybe 2, 4, 5, 7? Yes, that's already listed. 
+
+What about 3, 4, 5, 6? Yes. 
+
+Is there a combination with 1, 4, 5, 8? Yes, already listed. 
+
+Is there a combination with 1, 2, 3, 12? No. 
+
+Wait, maybe 1, 2, 8, 7 (already listed). 
+
+Is there a combination with 1, 3, 7, 7? No. 
+
+What about 1, 5, 6, 6? No. 
+
+Wait, maybe 2, 5, 6, 5? No. 
+
+So perhaps the total number of 4-element subsets that sum to 18 is:
+
+1. {1,2,7,8}
+
+2. {1,3,6,8}
+
+3. {1,4,5,8}
+
+4. {1,4,6,7}
+
+5. {2,3,5,8}
+
+6. {2,3,6,7}
+
+7. {2,4,5,7}
+
+8. {3,4,5,6}
+
+So that's 8 subsets. Let me check if there are more.
+
+Wait, let me check if there's a combination with 1, 5, 6, 6? No. How about 2, 2, 7, 7? No. 
+
+What about {1, 2, 5, 10}? No. 
+
+Wait, maybe {1, 5, 6, 6}? No. 
+
+Is there a combination with 1, 2, 6, 9? No. 
+
+Wait, maybe {2, 3, 4, 9}? No. 
+
+Wait, perhaps {2, 4, 6, 6}? No. 
+
+I think that's all. Let me count again:
+
+1. {1,2,7,8}
+
+2. {1,3,6,8}
+
+3. {1,4,5,8}
+
+4. {1,4,6,7}
+
+5. {2,3,5,8}
+
+6. {2,3,6,7}
+
+7. {2,4,5,7}
+
+8. {3,4,5,6}
+
+Yes, 8 subsets. Let me verify each sum:
+
+1. 1+2+7+8=18 ✔️
+
+2. 1+3+6+8=18 ✔️
+
+3. 1+4+5+8=18 ✔️
+
+4. 1+4+6+7=18 ✔️
+
+5. 2+3+5+8=18 ✔️
+
+6. 2+3+6+7=18 ✔️
+
+7. 2+4+5+7=18 ✔️
+
+8. 3+4+5+6=18 ✔️
+
+Yes, all correct. So there are 8 subsets.
+
+Now, for each of these subsets, we need to check if they contain at least one even digit. Because the last digit (position 8) must be even. So if a subset has no even digits, then it's invalid because we can't assign an even digit to position 8. Let's check each subset:
+
+1. {1,2,7,8}: contains 2,8 (even digits) ✔️
+
+2. {1,3,6,8}: contains 6,8 ✔️
+
+3. {1,4,5,8}: contains 4,8 ✔️
+
+4. {1,4,6,7}: contains 4,6 ✔️
+
+5. {2,3,5,8}: contains 2,8 ✔️
+
+6. {2,3,6,7}: contains 2,6 ✔️
+
+7. {2,4,5,7}: contains 2,4 ✔️
+
+8. {3,4,5,6}: contains 4,6 ✔️
+
+All subsets have at least two even digits. So all 8 subsets are valid. Therefore, for each subset, we can assign one of the even digits to position 8, and arrange the rest.
+
+Now, for each subset, the number of valid permutations is:
+
+For each subset (which is assigned to the even positions: positions 2,4,6,8), we need to choose which even digit is in position 8 (the last digit). Let me denote the number of even digits in the subset as k. For each subset, since they all have at least two even digits, the number of choices for the last digit is equal to the number of even digits in the subset. Then, the remaining three digits in the subset can be arranged in the remaining three even positions (positions 2,4,6). The number of ways to arrange them is 3! (since three positions and three digits). Then, the four digits in the odd positions (the complement of the subset) can be arranged in the four odd positions (positions 1,3,5,7) in 4! ways.
+
+Therefore, for each subset, the number of valid permutations is (number of even digits in subset) * 3! * 4!.
+
+Wait, let me verify:
+
+For a given subset S (assigned to even positions), which has m even digits. The number of ways to assign the even digits to position 8 is m (since we choose one of the m even digits in S to be in position 8). Then, the remaining three digits (which include m-1 even digits and 4 - m odd digits?) Wait, no. The subset S has four digits, some even and some odd. Let me take an example. Take subset {1,2,7,8}. The even digits are 2 and 8. So m=2. So we can choose either 2 or 8 to be in position 8. Then, the remaining three digits (1,7, and the other even digit) are arranged in positions 2,4,6. The number of ways to arrange them is 3! (since three positions and three digits). Then, the four digits not in S (the odd positions) are arranged in 4! ways. So total for this subset is 2 * 3! * 4!.
+
+Similarly, for another subset, say {3,4,5,6}. The even digits are 4 and 6. So m=2. So same calculation: 2 * 3! * 4!.
+
+But wait, let me check if all subsets have exactly two even digits? Let's check each subset:
+
+1. {1,2,7,8}: 2 even digits (2,8)
+
+2. {1,3,6,8}: 2 even digits (6,8)
+
+3. {1,4,5,8}: 2 even digits (4,8)
+
+4. {1,4,6,7}: 2 even digits (4,6)
+
+5. {2,3,5,8}: 2 even digits (2,8)
+
+6. {2,3,6,7}: 2 even digits (2,6)
+
+7. {2,4,5,7}: 2 even digits (2,4)
+
+8. {3,4,5,6}: 2 even digits (4,6)
+
+Yes, all subsets have exactly two even digits. Therefore, for each subset, the number of valid permutations is 2 * 3! * 4!.
+
+Therefore, total number of valid permutations is 8 subsets * 2 * 3! * 4!.
+
+Let me compute that:
+
+First, 3! = 6, 4! = 24.
+
+So per subset: 2 * 6 * 24 = 2 * 144 = 288.
+
+Total for 8 subsets: 8 * 288 = 2304.
+
+Wait, but wait a second. Let me check if this is correct. Because for each subset, we have 2 choices for the last digit (position 8), then 3! ways to arrange the remaining three even digits in positions 2,4,6, and 4! ways to arrange the odd digits in positions 1,3,5,7. So yes, that seems correct.
+
+Therefore, total N = 8 * 2 * 3! * 4! = 8 * 2 * 6 * 24 = 8 * 2 * 144 = 8 * 288 = 2304.
+
+But wait, let me confirm the arithmetic:
+
+3! = 6, 4! = 24. 6 * 24 = 144. Multiply by 2: 288. Multiply by 8 subsets: 288 * 8 = 2304. Yes.
+
+So N = 2304.
+
+But the problem says to find the difference between N and 2025. So 2304 - 2025 = 279. Therefore, the answer is 279.
+
+Wait, but let me double-check my reasoning to make sure I didn't make a mistake.
+
+First, the key steps:
+
+- Divisibility by 2: last digit even. So we fix the last digit as even.
+
+- Divisibility by 11: sum of odd positions and even positions both equal 18.
+
+- Found 8 subsets of four digits that sum to 18, each with two even digits.
+
+- For each subset, number of permutations is 2 (choices for last digit) * 3! (arrangements of remaining even digits) * 4! (arrangements of odd digits).
+
+- Total N = 8 * 2 * 6 * 24 = 2304.
+
+But let me check if there's any overcounting or undercounting.
+
+Wait, for example, take subset {1,2,7,8}. The even digits are 2 and 8. Assigning 2 to position 8: then the remaining even digits are 8, and the other two digits in the subset are 1 and 7. Wait, no: the subset is {1,2,7,8}. If we assign 2 to position 8, then the remaining three digits in the even positions (positions 2,4,6) are 1,7,8. Wait, but 8 is even. So in this case, when we assign 2 to position 8, the remaining even digits in the subset are 8. But the other two digits (1 and 7) are odd. So when arranging the remaining three digits (positions 2,4,6), we have digits 1,7,8. The number of ways is 3! = 6. Similarly, if we assign 8 to position 8, the remaining digits are 1,2,7. So again, 3! ways. So yes, for each subset, regardless of which even digit is chosen for position 8, the remaining three digits (which include one even and two odd, or two even and one odd?) Wait, in the subset {1,2,7,8}, there are two even digits. If we assign one to position 8, the remaining three digits include one even and two odd. So when arranging them in positions 2,4,6, it's allowed because those positions can have any digits (even or odd), except that position 8 is already fixed. The key is that the entire even positions (positions 2,4,6,8) must sum to 18, and the last digit is even. The other even positions (2,4,6) can have even or odd digits? Wait no, the subset assigned to the even positions is fixed. The subset is four digits (some even, some odd) that sum to 18. So when we assign one of the even digits to position 8, the other three digits in the subset (which may include even or odd digits) are placed in positions 2,4,6. But since the subset is fixed, the digits in positions 2,4,6 are determined once we fix the subset and assign one digit to position 8. Therefore, the calculation is correct.
+
+Therefore, total N is 2304. Then N - 2025 = 2304 - 2025 = 279. Therefore, the answer is 279.
+
+But let me check if there are actually 8 subsets. Earlier, I listed 8 subsets. Let me count again:
+
+1. {1,2,7,8}
+
+2. {1,3,6,8}
+
+3. {1,4,5,8}
+
+4. {1,4,6,7}
+
+5. {2,3,5,8}
+
+6. {2,3,6,7}
+
+7. {2,4,5,7}
+
+8. {3,4,5,6}
+
+Yes, 8 subsets. So that's correct.
+
+Another check: total number of 4-element subsets of 8 digits is C(8,4)=70. So 8 subsets is a small fraction, which seems reasonable.
+
+Another check: For each subset, the number of permutations is 2*3!*4! = 2*6*24=288. 8*288=2304. So N=2304. Then 2304-2025=279. Therefore, the answer is 279.
+
+But let me check if there's a mistake in the calculation of the number of subsets. Let me think again. For example, is there a subset {2,5,6,5}? No, duplicates not allowed. How about {1,5,6,6}? No. What about {2,3,7,6}? That's already in the list as {2,3,6,7}. So no duplicates. So 8 subsets is correct.
+
+Alternatively, maybe there's another subset. Let me try to think if there's another combination. For example, {1,5,6,6} invalid. {2,2,7,7} invalid. {1,2, 5, 10} no. {3, 5, 6, 4} is same as {3,4,5,6}. So no. So I think 8 is correct.
+
+Therefore, the answer is 279.
+</think>
+
+To solve the problem, we need to determine how many eight-digit numbers using the digits $1$ through $8$ exactly once are divisible by $22$, and then compute the difference between this count and $2025$.
+
+---
+
+### Step 1: Divisibility by 22
+
+A number is divisible by $22$ if and only if it is divisible by both $2$ and $11$.
+
+- **Divisibility by 2**: The last digit must be even. The even digits among $1$ to $8$ are $2, 4, 6, 8$.
+- **Divisibility by 11**: The difference between the sum of the digits in the odd positions and the sum of the digits in the even positions must be divisible by $11$.
+
+Since all digits from $1$ to $8$ are used exactly once, the total sum of the digits is:
+
+$$
+1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 = 36
+$$
+
+Let $S_{\text{odd}}$ be the sum of the digits in the odd positions and $S_{\text{even}}$ be the sum of the digits in the even positions. Then:
+
+$$
+S_{\text{odd}} + S_{\text{even}} = 36
+$$
+$$
+S_{\text{odd}} - S_{\text{even}} \equiv 0 \pmod{11}
+I'm uncertain at this point. Let me think through it for a moment.
+<think>
+We solve the system of congruences:
+
+$$
+S_{\text{odd}} + S_{\text{even}} = 36
+$$
+$$
+S_{\text{odd}} - S_{\text{even}} \equiv 0 \pmod{11}
+$$
+
+Adding the two equations:
+
+$$
+2S_{\text{odd}} \equiv 36 \pmod{11}
+$$
+
+Since $36 \equiv 3 \pmod{11}$, we have:
+
+$$
+2S_{\text{odd}} \equiv 3 \pmod{11}
+$$
+
+Multiplying both sides by the modular inverse of $2$ modulo $11$, which is $6$ (since $2 \cdot 6 \equiv 1 \pmod{11}$):
+
+$$
+S_{\text{odd}} \equiv 3 \cdot 6 \equiv 18 \pmod{11}
+$$
+
+Thus, $S_{\text{odd}} \equiv 7 \pmod{11}$. The only value of $S_{\text{odd}}$ in the range $10$ to $26$ (since the smallest and largest possible sums of four distinct digits from $1$ to $8$ are $10$ and $26$) that satisfies this is:
+
+$$
+S_{\text{odd}} = 18
+$$
+
+Therefore, both $S_{\text{odd}}$ and $S_{\text{even}}$ must equal $18$.
+
+---
+
+### Step 2: Counting Valid Permutations
+
+We now find all 4-element subsets of $\{1, 2, 3, 4, 5, 6, 7, 8\}$ that sum to $18$. These subsets will represent the digits in the even positions (positions 2, 4, 6, 8), and the remaining digits will be in the odd positions (positions 1, 3, 5, 7).
+
+After listing all such subsets, we find the following 8 subsets:
+
+1. $\{1, 2, 7, 8\}$
+2. $\{1, 3, 6, 8\}$
+3. $\{1, 4, 5, 8\}$
+4. $\{1, 4, 6, 7\}$
+5. $\{2, 3, 5, 8\}$
+6. $\{2, 3, 6, 7\}$
+7. $\{2, 4, 5, 7\}$
+8. $\{3, 4, 5, 6\}$
+
+Each of these subsets contains exactly two even digits, so we can assign one of the even digits to the last position (position 8) to ensure divisibility by 2.
+
+For each subset:
+
+- There are 2 choices for the digit in position 8 (the even digits in the subset).
+- The remaining 3 digits in the subset can be arranged in the other 3 even positions in $3!$ ways.
+- The 4 digits not in the subset (the odd positions) can be arranged in $4!$ ways.
+
+Thus, the number of valid permutations for each subset is:
+
+$$
+2 \cdot 3! \cdot 4! = 2 \cdot 6 \cdot 24 = 288
+$$
+
+With 8 such subsets, the total number of valid permutations is:
+
+$$
+8 \cdot 288 = 2304
+$$
+
+---
+
+### Step 3: Final Calculation
+
+We are asked to find the difference between $N = 2304$ and $2025$:
+
+$$
+2304 - 2025 = 279
+$$
+
+---
+
+### Final Answer:
+
+$$
+\boxed{279}
+$$

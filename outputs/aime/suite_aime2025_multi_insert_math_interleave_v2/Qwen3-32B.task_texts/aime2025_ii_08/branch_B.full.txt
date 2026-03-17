@@ -1,0 +1,351 @@
+<think>
+Okay, let's try to figure out this problem. So, Silas is using the greedy algorithm to make change with 1-cent, 10-cent, and 25-cent coins. The question is asking how many values of N between 1 and 1000 inclusive the greedy algorithm actually gives the minimal number of coins. 
+
+First, I need to understand when the greedy algorithm might fail. The example given is 42 cents. The greedy approach takes 25 + 10 + 7*1 = 9 coins, but there's a better way with 4*10 + 2*1 = 6 coins. So, the greedy algorithm isn't always optimal here. The problem is to find all N where the greedy is actually optimal.
+
+So, I need to find all N in 1-1000 where the greedy method gives the minimal number of coins. How can I approach this?
+
+Let me think about the structure of the problem. The coins are 1, 10, 25. The greedy algorithm works by taking as many of the largest coin as possible, then the next, etc. For the greedy algorithm to be optimal, the system must be canonical. A canonical coin system is one where the greedy algorithm always produces the minimal number of coins. But in this case, since we have 1, 10, 25, I know that the US coin system (which includes 25, 10, 5, 1) is canonical. However, here we don't have 5-cent coins. Wait, but in the example given, 42 cents, the greedy algorithm fails. So, maybe the absence of 5-cent coins is causing some issues here.
+
+Wait, but in the problem statement, the coins are 1, 10, 25. So, the 5-cent coin is missing. So, perhaps the system isn't canonical. Therefore, there are some amounts where the greedy algorithm doesn't give the minimal number of coins. Our task is to find all N where it does.
+
+So, how can I determine for which N the greedy algorithm is optimal?
+
+First, perhaps I can find a way to characterize when the greedy algorithm is not optimal. For example, in the case of 42 cents, the greedy algorithm uses 25 + 10 + 7*1 = 9 coins, but a better way is 4*10 + 2*1 = 6 coins. The difference here is that using more 10s instead of a 25 and some 1s gives a better result.
+
+So, maybe the problem occurs when after taking the maximum number of 25s, the remaining amount can be optimized by using more 10s instead of 1s. But how can I generalize this?
+
+Let me think about the general approach. Let's denote that for a given N, the greedy algorithm would take as many 25s as possible, then as many 10s as possible, then 1s. Let's denote the number of coins as G(N). The minimal number of coins, M(N), is the minimal number of coins needed to make N with 1, 10, 25. The problem is to find all N where G(N) = M(N).
+
+So, perhaps I can find for each N, compute G(N) and M(N), and check if they are equal. But since N is up to 1000, doing this manually isn't feasible. So, I need a smarter approach.
+
+Alternatively, maybe there's a pattern or formula for when the greedy algorithm is optimal. Let's think about the conditions under which the greedy algorithm would fail. 
+
+In the case of the example, 42 cents: after taking one 25, the remaining is 17. Then, the greedy algorithm takes one 10, leaving 7, which is 7 ones. But if instead, we take 17 as 1*10 + 7*1 (total 8 coins) vs. maybe another combination. Wait, but 17 can be made with 1*10 + 7*1 (8 coins) or maybe other combinations? Since there's no 5-cent coin, the minimal coins for 17 is 8 (10+7*1). Wait, but in the example, the total was 42, which is 25 + 17. The minimal coins for 42 is 25 + 10 + 7*1 (9 coins) vs. 4*10 + 2*1 (6 coins). Wait, but 4*10 is 40, plus 2 is 42. So, that's 4+2=6 coins. So, the problem here is that instead of using a 25 and a 10, we can use four 10s. But how does that relate to the remaining amount after taking the 25?
+
+So, perhaps the issue arises when the remaining amount after taking the maximum number of 25s can be optimized by using more 10s instead of 1s. Let's formalize this.
+
+Suppose N = 25*a + r, where r is the remainder after taking a 25s. Then, the greedy algorithm would take as many 10s as possible from r, then 1s. Let's denote that for the remainder r, the greedy algorithm uses b 10s and c 1s, so total coins for remainder is b + c. However, maybe there's a better way to make r with fewer coins. For example, if r is 17, the greedy algorithm uses 1*10 + 7*1 = 8 coins, but there's no better way. Wait, but in the example of 42, the problem wasn't in the remainder 17, but in the total amount. Wait, perhaps the problem is that when you have multiple 25s, but maybe replacing some 25s with 10s would be better.
+
+Wait, let's take the example of 42. The greedy algorithm takes 1*25, then 1*10, then 7*1. Total coins: 1+1+7=9. But the optimal is 4*10 + 2*1 = 6 coins. So, here, instead of using a 25 and a 10, we use four 10s. So, the problem is that using a 25 and a 10 (total 35) gives 35, but using four 10s gives 40, which is more than 35. Wait, but how does that help? Because 42 - 40 = 2, which is 2*1. So, total coins is 4+2=6. But how does that compare to 25+10+7? Well, 25+10 is 35, and 4*10 is 40. So, the difference is 5 cents. But since we have to reach 42, using 40 and 2 is better. But how does that relate to the remainder after taking the 25?
+
+So, perhaps the key is that when the remainder after taking the maximum number of 25s is such that replacing some 25s with 10s would allow for a better total. For example, in 42, if instead of taking one 25, we take zero 25s and use four 10s. But how can we determine when that's possible?
+
+Alternatively, maybe there's a formula or condition that can be derived. Let me think about the general case.
+
+Suppose we have N cents. The greedy algorithm takes as many 25s as possible, then as many 10s as possible, then 1s. Let's denote:
+
+Let a = floor(N / 25)
+Then, the remainder after 25s is r1 = N - 25*a
+Then, b = floor(r1 / 10)
+Then, c = r1 - 10*b
+Total coins G(N) = a + b + c
+
+The minimal number of coins M(N) is the minimal number of coins to make N with 1, 10, 25. 
+
+We need to find when G(N) = M(N).
+
+To find M(N), we can think of it as minimizing the number of coins. Since 25 is the largest, we want to use as many 25s as possible, but sometimes using fewer 25s and more 10s might be better. For example, in the case of 42, using 1*25 + 1*10 + 7*1 = 9 coins vs. 0*25 + 4*10 + 2*1 = 6 coins. So, here, using fewer 25s (0 instead of 1) gives a better result.
+
+So, perhaps the key is to check for each N whether there exists a number of 25s less than the greedy's a (i.e., a-1, a-2, etc.) such that using that number of 25s and then using as many 10s as possible for the remainder gives a total number of coins less than G(N).
+
+But how can we formalize this?
+
+Let me think: For each N, the greedy algorithm uses a = floor(N/25). Let's check if using a-1 25s would allow for a better total. Let's compute the remainder if we use a-1 25s: r2 = N - 25*(a-1) = N -25a +25 = r1 +25. Then, for this remainder r2, we can use as many 10s as possible, then 1s. Let's compute the coins for this case: (a-1) + floor(r2/10) + (r2 - 10*floor(r2/10)).
+
+If this total is less than G(N), then the greedy algorithm is not optimal for N.
+
+Similarly, maybe we need to check for a-2, etc., but perhaps the worst case is a-1.
+
+But how can we find all N where this is the case?
+
+Alternatively, perhaps there's a pattern to the N where the greedy algorithm fails. Let's think about when replacing a 25 with some 10s and 1s gives a better result.
+
+Suppose that after taking a 25, the remainder is r. If r is such that replacing the 25 with some 10s and 1s gives a better total. But how?
+
+Wait, if we have a remainder r after taking a 25, then the coins used are b + c, where b is floor(r/10), c is r -10b. The total coins for the remainder is b + c. Alternatively, if we don't take that 25, we have r +25, and then take as many 10s as possible. Let's compute the coins for that case.
+
+Let me take an example. Let's take N = 25 + r, where r is between 0 and 24. Suppose we take one 25, then the remainder is r. The coins for remainder is b + c. Alternatively, if we don't take the 25, the remainder is r +25. Let's compute the coins for that.
+
+For example, take r = 17. Then, if we take the 25, remainder is 17, which requires 1*10 +7*1 = 8 coins. If we don't take the 25, the remainder is 42. Wait, but N is 25 +17 =42. If we don't take the 25, then we have to make 42 with 10s and 1s. The optimal way is 4*10 + 2*1 = 6 coins. So, in this case, not taking the 25 gives a better result. So, the problem arises when the remainder after taking the 25 (r) is such that replacing the 25 with some 10s and 1s gives a better total.
+
+But how can we characterize this?
+
+Let me think. For a given N, if after taking the maximum number of 25s (a), the remainder r is such that replacing one 25 with some combination of 10s and 1s gives a better total. Let's formalize this.
+
+Let’s suppose that N = 25a + r, where 0 ≤ r <25. The greedy algorithm uses a 25s, then for the remainder r, uses b = floor(r/10) 10s and c = r -10b 1s. Total coins: a + b + c.
+
+If instead, we use (a-1) 25s, then the remainder is r +25. Let’s compute the coins for this case: (a-1) + floor((r +25)/10) + ((r +25) -10*floor((r +25)/10)).
+
+We need to check if this total is less than a + b + c.
+
+So, the difference between the two approaches is:
+
+[(a-1) + floor((r +25)/10) + ((r +25) -10*floor((r +25)/10))] - [a + b + c] 
+
+Simplify:
+
+(a-1) - a + [floor((r +25)/10) + (r +25 -10*floor((r +25)/10))] - [b + c]
+
+Which simplifies to:
+
+-1 + [ (r +25) - 10*floor((r +25)/10) + floor((r +25)/10) ] - [b + c]
+
+But (r +25) - 10*floor((r +25)/10) is the remainder when (r +25) is divided by 10, which is (r +25) mod 10. Let's denote that as d. Then, floor((r +25)/10) is q, so q*10 + d = r +25. Therefore, the expression becomes:
+
+-1 + [q + d] - [b + c]
+
+But q + d = floor((r +25)/10) + (r +25 mod 10) = floor((r +25)/10) + (r +25 -10*floor((r +25)/10)) = r +25. Wait, no, that's not right. Wait, q*10 + d = r +25, so q + d is not equal to r +25. Wait, perhaps I need to think differently.
+
+Wait, the total coins when using (a-1) 25s is (a-1) + q + d, where q is floor((r +25)/10) and d is (r +25) -10q. So, the total coins is (a-1) + q + d. The original coins is a + b + c. The difference is (a-1 + q + d) - (a + b + c) = -1 + q + d - b - c. 
+
+We need this difference to be negative, i.e., -1 + q + d - b - c < 0 → q + d - b - c < 1. 
+
+But since q + d = r +25 (since q*10 + d = r +25), and b + c is the number of coins for remainder r when using the greedy approach. Wait, but b is floor(r/10), c is r -10b. So, b + c = floor(r/10) + (r -10*floor(r/10)) = r -9*floor(r/10). Wait, no: if b = floor(r/10), then c = r -10b. So, b + c = floor(r/10) + (r -10*floor(r/10)) = r -9*floor(r/10). 
+
+But q + d = r +25. So, substituting into the inequality:
+
+(r +25) - [r -9*floor(r/10)] < 1 → 25 +9*floor(r/10) < 1 → 9*floor(r/10) < -24. Which is impossible since floor(r/10) is non-negative (since r ≥0). Wait, this can't be right. There must be a mistake in my algebra.
+
+Wait, let me re-express the difference:
+
+The difference between the two approaches is:
+
+[(a-1) + q + d] - [a + b + c] = -1 + q + d - b - c.
+
+But q + d = r +25 (since q*10 + d = r +25). And b + c = floor(r/10) + (r -10*floor(r/10)) = r -9*floor(r/10). 
+
+So substituting:
+
+-1 + (r +25) - [r -9*floor(r/10)] = -1 +25 +9*floor(r/10) = 24 +9*floor(r/10).
+
+So the difference is 24 +9*floor(r/10). For the alternative approach (using a-1 25s) to be better, this difference must be negative. But 24 +9*floor(r/10) is always positive because floor(r/10) is at least 0 (since r ≥0). Therefore, this suggests that using a-1 25s is never better, which contradicts the example of N=42. So, clearly, there's a mistake in my reasoning.
+
+Wait, what's wrong here? Let's take N=42. In this case, a = floor(42/25) = 1. So, r = 42 -25*1 =17. Then, using a-1=0 25s, the remainder is 42. Then, q = floor(42/10)=4, d=42-40=2. So, total coins is 0 +4 +2=6. The original coins is 1 + floor(17/10)=1 +1=2, plus c=17-10=7, so total 1+1+7=9. The difference is 6-9 = -3. But according to my previous formula, the difference was 24 +9*floor(r/10) =24 +9*1=33, which is positive. But in reality, the difference is -3. So, clearly, my algebra was wrong. Where did I go wrong?
+
+Ah, I think I messed up the substitution. Let me re-express the difference:
+
+The difference between the two approaches is:
+
+Alternative approach coins - Greedy coins = [ (a-1) + q + d ] - [a + b + c ] = -1 + q + d - b - c.
+
+But q + d = r +25 (since q*10 + d = r +25). And b + c = floor(r/10) + (r -10*floor(r/10)) = r -9*floor(r/10). 
+
+So substituting:
+
+-1 + (r +25) - (r -9*floor(r/10)) = -1 +25 +9*floor(r/10) = 24 +9*floor(r/10).
+
+But in the example, this gives 24 +9*floor(17/10) =24 +9*1=33. But the actual difference is -3. So, there's a contradiction here. Therefore, my algebra must be wrong. 
+
+Wait, perhaps I confused the difference. The difference is Alternative coins - Greedy coins. In the example, it's 6 -9 = -3. But according to my formula, it's 24 +9*floor(r/10) =33. So, clearly, there's a mistake in the derivation. Let me re-express the difference correctly.
+
+Let me re-derive:
+
+Alternative approach coins: (a-1) + q + d, where q = floor((r +25)/10), d = (r +25) -10q.
+
+Greedy coins: a + b + c, where b = floor(r/10), c = r -10b.
+
+Difference = [(a-1) + q + d] - [a + b + c] = -1 + q + d - b - c.
+
+But q + d = r +25, as before. And b + c = floor(r/10) + (r -10*floor(r/10)) = r -9*floor(r/10). 
+
+Therefore, substituting:
+
+Difference = -1 + (r +25) - (r -9*floor(r/10)) = -1 +25 +9*floor(r/10) = 24 +9*floor(r/10).
+
+But in the example, this gives 24 +9*1=33, but the actual difference is -3. So, clearly, this is incorrect. Therefore, my mistake must be in the substitution. Wait, perhaps I have the difference backwards. Maybe I should compute Greedy coins - Alternative coins instead?
+
+Let me recalculate the example. For N=42, Greedy coins is 9, Alternative coins is 6. So, Greedy - Alternative = 3. According to the formula, 24 +9*floor(r/10) =24 +9*1=33. But 3 ≠33. So, clearly, my formula is wrong. 
+
+What's the correct way to compute the difference? Let me do it step by step for the example.
+
+For N=42, a=1, r=17.
+
+Alternative approach: a-1=0, remainder is 42. q = floor(42/10)=4, d=42-40=2. So, coins: 0 +4 +2=6.
+
+Greedy coins: a=1, b=1, c=7. Total 1+1+7=9.
+
+Difference (Greedy - Alternative) =9-6=3. According to the formula, it should be 24 +9*floor(r/10)=24+9*1=33. But actual difference is 3. So, my formula is wrong. Where is the mistake?
+
+Ah! Wait, in the formula, I substituted q + d = r +25. But in reality, q*10 + d = r +25. So, q + d is not equal to r +25. For example, in the case of r=17, q=4, d=2. q*10 +d=42=17+25. But q +d=4+2=6, which is not equal to 17+25=42. So, my mistake was in the substitution. 
+
+Let me correct that. The correct expression for q + d is not r +25, but q*10 + d = r +25. Therefore, the difference is:
+
+-1 + [q + d] - [b + c] 
+
+But q + d is not directly related to r +25. So, how can I express this?
+
+Let me think again. The difference is:
+
+-1 + [q + d] - [b + c]
+
+But q = floor((r +25)/10), d = (r +25) -10q.
+
+So, q + d = floor((r +25)/10) + (r +25 -10*floor((r +25)/10)) 
+
+Let me denote k = floor((r +25)/10). Then, d = (r +25) -10k. So, q + d = k + (r +25 -10k) = r +25 -9k.
+
+Therefore, the difference becomes:
+
+-1 + [r +25 -9k] - [b + c] 
+
+= -1 + r +25 -9k - b - c 
+
+= 24 + r -9k - b - c 
+
+But b = floor(r/10), c = r -10b. So, b + c = floor(r/10) + r -10*floor(r/10) = r -9*floor(r/10). 
+
+Let me denote m = floor(r/10). Then, b + c = r -9m. 
+
+So, substituting back:
+
+Difference = 24 + r -9k - (r -9m) = 24 -9k +9m = 24 +9(m -k).
+
+So, the difference is 24 +9(m -k). 
+
+For the alternative approach to be better, we need this difference to be negative. So:
+
+24 +9(m -k) < 0 → 9(m -k) < -24 → m -k < -24/9 �� -2.666...
+
+Since m and k are integers, m -k ≤ -3.
+
+So, m -k ≤ -3 → k ≥ m +3.
+
+But k = floor((r +25)/10). Let's see what k is in terms of m and r.
+
+Since m = floor(r/10), we have m ≤ r/10 < m +1 → 10m ≤ r <10(m +1).
+
+Then, r +25 is between 10m +25 and 10(m +1) +25 -1 =10m +34.
+
+So, floor((r +25)/10) = floor((10m +25 + (r -10m))/10) = floor( (10m +25 + delta)/10 ), where 0 ≤ delta <10(m +1) -10m =10.
+
+So, 10m +25 + delta is between 10m +25 and 10m +34 + delta? Wait, delta is r -10m, which is between 0 and 10 (since r <10(m+1)).
+
+Wait, r is between 10m and 10m +10 (exclusive). So, r +25 is between 10m +25 and 10m +35 (exclusive). Therefore, floor((r +25)/10) is:
+
+For r +25 in [10m +25, 10m +30): floor is m +2.
+
+For r +25 in [10m +30, 10m +35): floor is m +3.
+
+So, k is either m +2 or m +3, depending on r.
+
+Therefore, k can be m +2 or m +3. 
+
+So, m -k is either -2 or -3. 
+
+Therefore, the difference 24 +9(m -k) is either 24 +9*(-2)=24-18=6 or 24 +9*(-3)=24-27=-3.
+
+So, the difference is either 6 or -3. 
+
+Therefore, when k = m +3, the difference is -3, which is negative. This means that the alternative approach (using a-1 25s) gives 3 fewer coins than the greedy approach. 
+
+So, when does k = m +3? This happens when r +25 ≥ 10(m +3), i.e., r +25 ≥10m +30 → r ≥10m +5.
+
+But since r is in [10m, 10m +10), then r ≥10m +5 implies that r is in [10m +5, 10m +10). 
+
+So, for r in [10m +5, 10m +10), we have k = m +3, and the difference is -3. Therefore, the alternative approach is better by 3 coins. 
+
+Therefore, the condition for the greedy algorithm to fail is when r is in [10m +5, 10m +10) for some m. 
+
+But m is floor(r/10). Since r is between 0 and 24 (because r = N -25a, and a is floor(N/25)), m can be 0,1,2.
+
+Let me check for m=0,1,2.
+
+For m=0: r ∈ [0,10). The condition is r ≥10*0 +5=5. So, r ∈ [5,10). For these r, the alternative approach is better. 
+
+For m=1: r ∈ [10,20). The condition is r ≥10*1 +5=15. So, r ∈ [15,20). 
+
+For m=2: r ∈ [20,24]. The condition is r ≥10*2 +5=25. But r is at most 24, so no r in this case satisfies the condition. 
+
+Therefore, the values of r where the greedy algorithm fails are:
+
+- For m=0: r ∈ [5,10) → r=5,6,7,8,9
+
+- For m=1: r ∈ [15,20) → r=15,16,17,18,19
+
+So, total of 5 +5=10 values of r where the greedy algorithm fails. 
+
+For each such r, when N is of the form 25a + r, the greedy algorithm will not give the minimal number of coins. 
+
+Therefore, for each a ≥0, and for each r in {5,6,7,8,9,15,16,17,18,19}, the value N=25a +r will be a value where the greedy algorithm fails. 
+
+Therefore, to find the number of N between 1 and 1000 where the greedy algorithm succeeds, we need to subtract the number of such N from the total 1000.
+
+But first, let's confirm this with the example. For N=42, which is 25*1 +17. Here, r=17, which is in the range [15,20), so it's one of the bad r's. Hence, the greedy algorithm fails here. Correct.
+
+Another example: N=25*0 +5=5. Greedy would take 5*1=5 coins. But the optimal is 0*25 +0*10 +5*1=5 coins. Wait, but maybe there's a better way? No, since there's no 5-cent coin. So, for N=5, the minimal is 5 coins. The greedy algorithm gives 5 coins. Wait, but according to our earlier analysis, r=5 is in the bad range. What's happening here?
+
+Wait, let's compute for N=5. Greedy algorithm would take 0*25, 0*10, 5*1. Total coins=5. The alternative approach would be to use a-1=-1 25s, which isn't possible. So, perhaps my earlier analysis is missing something. 
+
+Wait, the formula was for when a ≥1. Because when a=0, then a-1=-1, which is invalid. So, perhaps the condition applies only when a ≥1. 
+
+Let me re-examine. For N=25a +r, where a ≥0 and 0 ≤r <25. For the case when a=0, then r=N. In this case, the greedy algorithm would take 0*25, then floor(r/10) 10s, then the rest in 1s. The alternative approach would be to use a-1=-1 25s, which is invalid. So, for a=0, there's no alternative approach. Therefore, the condition where the greedy algorithm fails is only when a ≥1 and r is in the bad ranges. 
+
+So, for N=5, a=0, so no problem. The greedy algorithm is optimal. 
+
+So, the bad N are those where a ≥1 and r ∈ {5,6,7,8,9,15,16,17,18,19}. 
+
+Therefore, for each a ≥1, we can compute how many r's are in the bad ranges. For each a, there are 10 such r's (5 in [5,10) and 5 in [15,20)). However, we need to ensure that N=25a +r ≤1000. 
+
+So, our task is to count all N=25a +r where a ≥1, r ∈ {5,6,7,8,9,15,16,17,18,19}, and N ≤1000. 
+
+Let me compute how many such N there are. 
+
+First, for each a ≥1, the maximum possible N is 25a +24. We need 25a +24 ≤1000 → 25a ≤976 → a ≤976/25=39.04. So, a can be from 1 to 39. 
+
+But for a=39, 25*39=975. Then, r can be up to 24. 975 +24=999 ≤1000. For a=40, 25*40=1000. Then, r must be 0. But since r is in {5,...,19}, which are all ≥5, N=1000 +r would exceed 1000. So, a can be from 1 to 39. 
+
+For each a from 1 to 39, there are 10 values of r (as above). So, total bad N would be 39*10=390. However, we need to check if for a=39, 25*39 +r ≤1000. 
+
+For a=39, 25*39=975. The maximum r is 19 (since r can be up to 19). 975 +19=994 ≤1000. So, yes, all 10 r's are valid for a=39. 
+
+But wait, when a=39, 25a=975. The maximum N for a=39 is 975 +24=999. So, all r from 0 to24 are allowed. Therefore, for a=39, the 10 r's are valid. 
+
+So, total bad N is 39*10=390. 
+
+But wait, what about a=40? 25*40=1000. Then, r=0. But since r must be in the bad ranges, which are ≥5, there are no such r for a=40. Hence, no bad N for a=40. 
+
+Therefore, total bad N is 39*10=390. 
+
+But wait, let's check for a=1. For a=1, N ranges from 25*1 +5=30 up to 25*1 +19=44. These are valid N between 30 and 44. 
+
+But we need to ensure that for each a from 1 to 39, the N=25a +r is between 1 and 1000. Since a starts at 1, the smallest N is 25*1 +5=30. 
+
+But what about N values less than 30? For example, N=5, which is in the bad r range for a=0, but since a=0 is not considered (as explained
+I have done enough reasoning here, so I will close this think block and continue with the visible solution.
+</think>
+To determine the number of values of $ N $ between 1 and 1000 for which the greedy algorithm succeeds, we analyze when the greedy algorithm fails. The greedy algorithm for the coin system {1, 10, 25} fails when replacing a 25-cent coin with more 10-cent coins and 1-cent coins results in fewer total coins. This occurs for specific remainders $ r $ after dividing $ N $ by 25.
+
+---
+
+### **Key Insight**
+The greedy algorithm fails for values of $ N = 25a + r $, where:
+- $ a \geq 1 $,
+- $ r \in \{5, 6, 7, 8, 9, 15, 16, 17, 18, 19\} $.
+
+These 10 values of $ r $ correspond to cases where using fewer 25-cent coins and more 10-cent coins reduces the total number of coins.
+
+---
+
+### **Counting the Failing Values**
+For each valid $ a $, the corresponding $ N = 25a + r $ must satisfy $ N \leq 1000 $. Solving $ 25a + r \leq 1000 $ with $ r \leq 19 $, we find:
+$$
+25a \leq 1000 - r \leq 1000 - 5 = 995 \Rightarrow a \leq \left\lfloor \frac{995}{25} \right\rfloor = 39.
+I'm uncertain at this point. Let me think through it for a moment.
+<think>
+So, $ a $ ranges from 1 to 39, and for each $ a $, there are 10 such values of $ r $. This gives $ 39 \times 10 = 390 $ failing values of $ N $.
+
+Now, the total number of values of $ N $ from 1 to 1000 is 1000. Subtracting the 390 failing values gives the number of values where the greedy algorithm succeeds.
+</think>
+
+Thus, the number of values of $ N $ where the greedy algorithm succeeds is:
+$$
+1000 - 390 = 610.
+$$
+
+---
+
+### **Final Answer**
+$$
+\boxed{610}
+$$
