@@ -77,6 +77,17 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Disable native model thinking in apply_chat_template.",
     )
+    p.add_argument(
+        "--first-think-budget-tokens",
+        type=int,
+        default=None,
+        help="Optional Qwen-style budget for the first native <think>. If reached before </think>, force-close it.",
+    )
+    p.add_argument(
+        "--first-think-early-stop-text-file",
+        default=str(here / "prompts" / "first_think_early_stop_v1.txt"),
+        help="Text inserted immediately before forced </think> when first-think budget is exhausted.",
+    )
 
     p.add_argument("--max-new-tokens", type=int, default=20000)
     p.add_argument("--temperature", type=float, default=0.4)
@@ -99,9 +110,12 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
     expected_flags: List[bool] = []
     expected_raw_flags: List[bool] = []
     new_tokens: List[int] = []
+    budget_triggered: List[bool] = []
+    budget_forced_close: List[bool] = []
 
     for rec in records:
         metrics = rec.get("metrics", {}) or {}
+        checkpoint_meta = rec.get("checkpoint_meta", {}) or {}
         think_ok.append(bool(metrics.get("think_balanced", False)))
         hit = metrics.get("expected_hit")
         if hit is not None:
@@ -110,6 +124,9 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
         if hit_raw is not None:
             expected_raw_flags.append(bool(hit_raw))
         new_tokens.append(int(rec.get("new_tokens", 0)))
+        if "first_think_budget_triggered" in checkpoint_meta:
+            budget_triggered.append(bool(checkpoint_meta.get("first_think_budget_triggered", False)))
+            budget_forced_close.append(bool(checkpoint_meta.get("first_think_budget_forced_close_applied", False)))
 
     return {
         "n_tasks": len(records),
@@ -117,6 +134,8 @@ def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
         "expected_hit_rate": _rate(expected_flags) if expected_flags else None,
         "expected_hit_raw_rate": _rate(expected_raw_flags) if expected_raw_flags else None,
         "avg_new_tokens": (sum(new_tokens) / len(new_tokens)) if new_tokens else None,
+        "first_think_budget_triggered_rate": _rate(budget_triggered) if budget_triggered else None,
+        "first_think_budget_forced_close_rate": _rate(budget_forced_close) if budget_forced_close else None,
     }
 
 
@@ -124,6 +143,7 @@ def main() -> None:
     args = parse_args()
     import torch
     from think_branch_common import (
+        generate_until_checkpoint,
         generate_from_state,
         load_model,
         load_tasks_jsonl,
@@ -143,6 +163,9 @@ def main() -> None:
     system_prompt = ""
     if args.system_prompt_file:
         system_prompt = Path(args.system_prompt_file).read_text(encoding="utf-8")
+    first_think_early_stop_text = ""
+    if args.first_think_early_stop_text_file:
+        first_think_early_stop_text = Path(args.first_think_early_stop_text_file).read_text(encoding="utf-8")
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -178,22 +201,86 @@ def main() -> None:
                 device=device,
                 enable_thinking=not bool(args.disable_model_thinking),
             )
-            past, logits = prefill_kv(model, prompt_ids, chunk_size=args.chunk_size)
-            gen_out = generate_from_state(
-                model=model,
-                tokenizer=tokenizer,
-                past_key_values=past,
-                logits=logits,
-                max_new_tokens=args.max_new_tokens,
-                temperature=args.temperature,
-                top_p=args.top_p,
-                seed=args.seed + 1000 * i,
-                return_meta=True,
-                print_stream=False,
-            )
-
-            generated_ids = gen_out["generated_ids"]
-            full_text = tokenizer.decode(generated_ids, skip_special_tokens=False)
+            past = None
+            logits = None
+            checkpoint_meta: Dict[str, object]
+            if bool(args.disable_model_thinking) or not args.first_think_budget_tokens:
+                past, logits = prefill_kv(model, prompt_ids, chunk_size=args.chunk_size)
+                gen_out = generate_from_state(
+                    model=model,
+                    tokenizer=tokenizer,
+                    past_key_values=past,
+                    logits=logits,
+                    max_new_tokens=args.max_new_tokens,
+                    temperature=args.temperature,
+                    top_p=args.top_p,
+                    seed=args.seed + 1000 * i,
+                    return_meta=True,
+                    print_stream=False,
+                )
+                generated_ids = gen_out["generated_ids"]
+                full_text = tokenizer.decode(generated_ids, skip_special_tokens=False)
+                checkpoint_meta = {
+                    "first_think_budget_tokens": 0,
+                    "first_think_budget_triggered": False,
+                    "first_think_budget_forced_close_applied": False,
+                    "first_think_budget_forced_close_text": None,
+                    "prefix_tokens_before_plain_continuation": 0,
+                }
+            else:
+                ckpt = generate_until_checkpoint(
+                    model=model,
+                    tokenizer=tokenizer,
+                    prompt_ids=prompt_ids,
+                    delay_tokens_after_first_think_end=0,
+                    max_new_tokens=args.max_new_tokens,
+                    temperature=args.temperature,
+                    top_p=args.top_p,
+                    seed=args.seed + 1000 * i,
+                    checkpoint_mode="think_end",
+                    checkpoint_regex=None,
+                    first_think_budget_tokens=int(args.first_think_budget_tokens),
+                    first_think_early_stop_text=first_think_early_stop_text,
+                    chunk_size=args.chunk_size,
+                    print_stream=False,
+                )
+                prefix_ids = list(ckpt.get("generated_ids") or [])
+                prefix_text = ckpt.get("generated_text") or tokenizer.decode(prefix_ids, skip_special_tokens=False)
+                remaining_tokens = max(0, int(args.max_new_tokens) - len(prefix_ids))
+                if remaining_tokens > 0:
+                    prefix_ids_t = torch.tensor([prefix_ids], dtype=torch.long, device=device)
+                    full_ids = torch.cat([prompt_ids, prefix_ids_t], dim=1)
+                    past, logits = prefill_kv(model, full_ids, chunk_size=args.chunk_size)
+                    gen_out = generate_from_state(
+                        model=model,
+                        tokenizer=tokenizer,
+                        past_key_values=past,
+                        logits=logits,
+                        max_new_tokens=remaining_tokens,
+                        temperature=args.temperature,
+                        top_p=args.top_p,
+                        seed=args.seed + 1000 * i + 1,
+                        return_meta=True,
+                        print_stream=False,
+                    )
+                    continuation_ids = list(gen_out["generated_ids"])
+                    full_text = prefix_text + tokenizer.decode(continuation_ids, skip_special_tokens=False)
+                    generated_ids = prefix_ids + continuation_ids
+                    del prefix_ids_t
+                    del full_ids
+                else:
+                    full_text = prefix_text
+                    generated_ids = prefix_ids
+                    gen_out = {"stop_reason": "max_new_tokens"}
+                checkpoint_meta = {
+                    "first_think_budget_tokens": int(ckpt.get("first_think_budget_tokens", 0) or 0),
+                    "first_think_budget_triggered": bool(ckpt.get("first_think_budget_triggered", False)),
+                    "first_think_budget_forced_close_applied": bool(
+                        ckpt.get("first_think_budget_forced_close_applied", False)
+                    ),
+                    "first_think_budget_forced_close_text": ckpt.get("first_think_budget_forced_close_text"),
+                    "prefix_tokens_before_plain_continuation": len(prefix_ids),
+                }
             stripped_text = strip_think_blocks(full_text)
             metrics = {
                 "think_balanced": think_balance_ok(full_text),
@@ -208,6 +295,7 @@ def main() -> None:
                 "reference_output": task.get("reference_output"),
                 "system_prompt_file": args.system_prompt_file,
                 "disable_model_thinking": bool(args.disable_model_thinking),
+                "checkpoint_meta": checkpoint_meta,
                 "full_text": full_text,
                 "stripped_text": stripped_text,
                 "new_tokens": len(generated_ids),
@@ -238,6 +326,7 @@ def main() -> None:
                             "expected_regex": expected_regex,
                             "stop_reason": rec["stop_reason"],
                             "new_tokens": rec["new_tokens"],
+                            "checkpoint_meta": checkpoint_meta,
                             "metrics": metrics,
                         },
                         ensure_ascii=False,
@@ -247,8 +336,10 @@ def main() -> None:
                 )
 
             del prompt_ids
-            del past
-            del logits
+            if past is not None:
+                del past
+            if logits is not None:
+                del logits
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
@@ -265,6 +356,8 @@ def main() -> None:
         model_summary["config"] = {
             "system_prompt_file": args.system_prompt_file,
             "disable_model_thinking": bool(args.disable_model_thinking),
+            "first_think_budget_tokens": int(args.first_think_budget_tokens or 0),
+            "first_think_early_stop_text_file": args.first_think_early_stop_text_file,
             "max_new_tokens": args.max_new_tokens,
             "temperature": args.temperature,
             "top_p": args.top_p,

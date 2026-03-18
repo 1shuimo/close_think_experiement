@@ -367,6 +367,10 @@ def generate_until_checkpoint(
             seen_first_think_end = True
             first_think_end_token_pos = len(generated_ids)
             tokens_after_first_think = 0
+            if checkpoint_mode == "think_end" and int(delay_tokens_after_first_think_end) <= 0:
+                seen_anchor = True
+                counter_after_anchor = 0
+                break
             if checkpoint_mode == "think_end_then_regex":
                 post_first_think_regex_tail = ""
             continue
