@@ -14,6 +14,7 @@ from __future__ import annotations
 import argparse
 import gc
 import json
+import re
 from pathlib import Path
 from typing import Dict, List
 
@@ -236,6 +237,74 @@ def append_inject_text_to_state(
     }
 
 
+def _collect_inserted_think_token_stats(tokenizer, continuation_text: str) -> Dict[str, object]:
+    closed_blocks: List[Dict[str, object]] = []
+    for idx, m in enumerate(re.finditer(r"<think>.*?</think>", continuation_text, flags=re.DOTALL), start=1):
+        block_text = m.group(0)
+        content_text = block_text[len("<think>") : -len("</think>")]
+        closed_blocks.append(
+            {
+                "think_index": idx,
+                "block_tokens": len(tokenizer.encode(block_text, add_special_tokens=False)),
+                "content_tokens": len(tokenizer.encode(content_text, add_special_tokens=False)),
+            }
+        )
+
+    total_post_inject_tokens = len(tokenizer.encode(continuation_text, add_special_tokens=False))
+    total_block_tokens = sum(int(x["block_tokens"]) for x in closed_blocks)
+    total_content_tokens = sum(int(x["content_tokens"]) for x in closed_blocks)
+    omitted_unclosed_blocks = max(0, continuation_text.count("<think>") - continuation_text.count("</think>"))
+
+    return {
+        "closed_think_count": len(closed_blocks),
+        "closed_think_block_tokens_total": total_block_tokens,
+        "closed_think_content_tokens_total": total_content_tokens,
+        "post_inject_non_think_tokens_total": max(0, total_post_inject_tokens - total_block_tokens),
+        "omitted_unclosed_blocks": omitted_unclosed_blocks,
+        "blocks": closed_blocks,
+    }
+
+
+def _augment_summary_with_inserted_think_stats(
+    summary: Dict[str, object], records: List[Dict[str, object]]
+) -> Dict[str, object]:
+    tasks_with_closed_blocks = 0
+    total_closed_blocks = 0
+    total_block_tokens = 0
+    total_content_tokens = 0
+    total_non_think_tokens = 0
+    total_omitted_unclosed_blocks = 0
+
+    for rec in records:
+        branch_b = rec.get("branch_B", {}) or {}
+        multi_insert_info = branch_b.get("multi_insert_info", {}) or {}
+        stats = multi_insert_info.get("inserted_think_token_stats", {}) or {}
+        closed_count = int(stats.get("closed_think_count", 0) or 0)
+        if closed_count > 0:
+            tasks_with_closed_blocks += 1
+        total_closed_blocks += closed_count
+        total_block_tokens += int(stats.get("closed_think_block_tokens_total", 0) or 0)
+        total_content_tokens += int(stats.get("closed_think_content_tokens_total", 0) or 0)
+        total_non_think_tokens += int(stats.get("post_inject_non_think_tokens_total", 0) or 0)
+        total_omitted_unclosed_blocks += int(stats.get("omitted_unclosed_blocks", 0) or 0)
+
+    summary["inserted_think_token_stats"] = {
+        "tasks_with_closed_inserted_think": tasks_with_closed_blocks,
+        "closed_inserted_think_blocks_total": total_closed_blocks,
+        "closed_think_block_tokens_total": total_block_tokens,
+        "closed_think_content_tokens_total": total_content_tokens,
+        "post_inject_non_think_tokens_total": total_non_think_tokens,
+        "omitted_unclosed_blocks_total": total_omitted_unclosed_blocks,
+        "avg_closed_think_block_tokens_per_block": (
+            float(total_block_tokens) / float(total_closed_blocks) if total_closed_blocks > 0 else 0.0
+        ),
+        "avg_closed_think_block_tokens_per_task": (
+            float(total_block_tokens) / float(len(records)) if records else 0.0
+        ),
+    }
+    return summary
+
+
 def run_task_multi_insert(
     *,
     model,
@@ -411,8 +480,15 @@ def run_task_multi_insert(
         )
 
     cont_b_raw = "".join(continuation_parts)
+    inserted_think_token_stats = _collect_inserted_think_token_stats(tokenizer, cont_b_raw)
     full_b = branch_b_prefix_text + cont_b_raw
     eval_b = evaluate_branch(branch_b_prefix_text, cont_b_raw, full_b, expected_regex)
+    multi_insert_info = {
+        "total_insertions": len(insertion_events),
+        "remaining_budget_tokens": int(remaining_budget),
+        "events": insertion_events,
+        "inserted_think_token_stats": inserted_think_token_stats,
+    }
 
     return {
         "task_id": task.get("id", ""),
@@ -453,6 +529,7 @@ def run_task_multi_insert(
             "max_reinserts": int(max_reinserts),
             "remaining_budget_tokens": int(remaining_budget),
             "events": insertion_events,
+            "inserted_think_token_stats": inserted_think_token_stats,
         },
         "branch_mode": "b",
         "branch_A": {"skipped": True, "reason": "multi_insert_runner"},
@@ -469,11 +546,7 @@ def run_task_multi_insert(
                 "retry_reasons": [],
                 "forced_close_think": 0,
             },
-            "multi_insert_info": {
-                "total_insertions": len(insertion_events),
-                "remaining_budget_tokens": int(remaining_budget),
-                "events": insertion_events,
-            },
+            "multi_insert_info": multi_insert_info,
             "match_cover": {"mode": "disabled", "trimmed_chars": 0},
             "cross_think_cover": {"mode": "disabled", "trimmed_chars": 0},
             "metrics": eval_b,
@@ -591,7 +664,7 @@ def main() -> None:
             for r in model_records:
                 f.write(json.dumps(r, ensure_ascii=False) + "\n")
 
-        model_summary = summarize(model_records)
+        model_summary = _augment_summary_with_inserted_think_stats(summarize(model_records), model_records)
         summary_path.write_text(
             json.dumps(model_summary, ensure_ascii=False, indent=2),
             encoding="utf-8",

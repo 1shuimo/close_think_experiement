@@ -241,6 +241,8 @@ def _write_task_texts(task_dump_root: Path, rec: Dict[str, object]) -> None:
     }
     if isinstance(branch_b, dict):
         meta_payload["branch_B"] = build_concise_branch_meta(branch_b)
+        if branch_b.get("multi_insert_info") is not None:
+            meta_payload["multi_insert_info"] = branch_b.get("multi_insert_info")
     if isinstance(branch_a, dict) and branch_a.get("full_text") is not None:
         meta_payload["branch_A"] = build_concise_branch_meta(branch_a)
     (task_dir / "meta.json").write_text(

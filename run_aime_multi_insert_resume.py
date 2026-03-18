@@ -19,6 +19,7 @@ from typing import Dict
 torch = None
 build_concise_branch_meta = None
 run_task_multi_insert = None
+_augment_summary_with_inserted_think_stats = None
 summarize = None
 load_model = None
 load_tasks_jsonl = None
@@ -97,7 +98,8 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    global torch, build_concise_branch_meta, run_task_multi_insert, summarize, load_model
+    global torch, build_concise_branch_meta, run_task_multi_insert, _augment_summary_with_inserted_think_stats
+    global summarize, load_model
     global load_tasks_jsonl, model_label, _read_existing_records, _recover_records_from_task_texts
     global _ordered_records, _write_model_jsonl, _write_task_texts, _write_summaries
 
@@ -108,6 +110,7 @@ def main() -> None:
     from think_branch_common import load_model as _load_model
     from think_branch_common import load_tasks_jsonl as _load_tasks_jsonl
     from think_branch_common import model_label as _model_label
+    from run_aime_multi_insert import _augment_summary_with_inserted_think_stats as __augment_summary
     from run_aime_multi_insert import run_task_multi_insert as _run_task_multi_insert
     from run_aime_resume import (
         _ordered_records as __ordered_records,
@@ -121,6 +124,7 @@ def main() -> None:
     torch = _torch
     build_concise_branch_meta = _build_concise_branch_meta
     run_task_multi_insert = _run_task_multi_insert
+    _augment_summary_with_inserted_think_stats = __augment_summary
     summarize = _summarize
     load_model = _load_model
     load_tasks_jsonl = _load_tasks_jsonl
@@ -192,7 +196,7 @@ def main() -> None:
         if recovered_records or (not jsonl_path.exists() and ordered_existing):
             _write_model_jsonl(jsonl_path, ordered_existing)
 
-        model_summary = summarize(ordered_existing)
+        model_summary = _augment_summary_with_inserted_think_stats(summarize(ordered_existing), ordered_existing)
         summary_path.write_text(json.dumps(model_summary, ensure_ascii=False, indent=2), encoding="utf-8")
         model_summaries[model_path] = model_summary
         _write_summaries(
@@ -250,7 +254,7 @@ def main() -> None:
                 _write_task_texts(task_dump_root, rec)
 
             ordered_now = _ordered_records(tasks, records_by_task)
-            model_summary = summarize(ordered_now)
+            model_summary = _augment_summary_with_inserted_think_stats(summarize(ordered_now), ordered_now)
             summary_path.write_text(json.dumps(model_summary, ensure_ascii=False, indent=2), encoding="utf-8")
             model_summaries[model_path] = model_summary
             _write_summaries(
