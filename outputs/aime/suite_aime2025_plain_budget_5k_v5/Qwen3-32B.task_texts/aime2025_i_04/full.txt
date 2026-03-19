@@ -1,0 +1,259 @@
+<think>
+Okay, let's try to solve this problem. We need to find the number of ordered pairs (x, y) where both x and y are integers between -100 and 100 inclusive, such that 12x² - xy - 6y² = 0. Hmm, okay. Let me start by understanding the equation.
+
+First, maybe I can rearrange the equation to make it easier to handle. Let me write it down again: 12x² - xy - 6y² = 0. Maybe I can factor this equation? Factoring quadratic equations often helps. Let me see if that's possible here.
+
+Looking at the equation, it's a quadratic in terms of x and y. Let me think of it as a quadratic in x. So, if I treat y as a constant, then the equation is 12x² - (y)x - 6y² = 0. Let me try to factor this quadratic in x. The standard form is ax² + bx + c = 0, so here a = 12, b = -y, c = -6y². To factor this, I need two numbers that multiply to a*c = 12*(-6y²) = -72y² and add up to b = -y. Hmm, that seems complicated because of the y² term. Maybe factoring isn't straightforward here.
+
+Alternatively, maybe I can solve for x in terms of y or vice versa. Let's try solving for x. Using the quadratic formula for x: x = [y ± sqrt(y² + 4*12*6y²)] / (2*12). Let me compute the discriminant first. The discriminant D is y² + 4*12*6y². Let me calculate that:
+
+D = y² + 4*12*6y² = y² + 288y² = 289y². Oh, that's nice! The square root of 289y² is 17|y|. Since we're dealing with integers, y is an integer, so sqrt(D) is 17|y|. Therefore, x = [y ± 17|y|]/24.
+
+Wait, but y can be positive or negative. Let me consider cases based on the sign of y. Let's split into cases where y is positive, negative, or zero.
+
+Case 1: y = 0. Then the original equation becomes 12x² = 0, so x must be 0. So (0, 0) is a solution. Let me check that. Plugging in x=0, y=0: 12*0 - 0 -6*0 = 0. Yes, that works. So (0,0) is one solution.
+
+Case 2: y > 0. Then |y| = y, so x = [y ± 17y]/24. Let's compute both possibilities:
+
+First, x = [y + 17y]/24 = 18y/24 = 3y/4. Second, x = [y - 17y]/24 = (-16y)/24 = -2y/3.
+
+So for y positive, x must be either 3y/4 or -2y/3. But x has to be an integer. Therefore, 3y/4 must be integer and -2y/3 must be integer. Let me note that.
+
+So for x = 3y/4 to be integer, y must be divisible by 4. Let me write that as y = 4k, where k is a positive integer (since y > 0). Then x = 3*(4k)/4 = 3k. Similarly, for x = -2y/3 to be integer, y must be divisible by 3. Let me write y = 3m, where m is a positive integer. Then x = -2*(3m)/3 = -2m.
+
+Therefore, for positive y, the solutions are pairs (3k, 4k) and (-2m, 3m), where k and m are positive integers such that y = 4k and y = 3m respectively. But since y is between 1 and 100 (since y is positive and between -100 and 100 inclusive), we need to find all k and m such that 4k ≤ 100 and 3m ≤ 100.
+
+Similarly, for Case 3: y < 0. Then |y| = -y. So x = [y ± 17*(-y)] / 24. Let me compute that:
+
+First, x = [y + (-17y)] / 24 = (-16y)/24 = (-2y)/3. Second, x = [y - (-17y)] / 24 = (18y)/24 = 3y/4.
+
+But since y is negative, let me substitute y = -n where n is a positive integer. Then:
+
+For the first solution, x = (-2*(-n))/3 = 2n/3. For the second solution, x = 3*(-n)/4 = -3n/4.
+
+So for y negative, x must be 2n/3 or -3n/4. Again, x must be integer. Therefore, for x = 2n/3, n must be divisible by 3. Let n = 3p, so y = -3p, and x = 2*(3p)/3 = 2p. For x = -3n/4, n must be divisible by 4. Let n = 4q, so y = -4q, and x = -3*(4q)/4 = -3q.
+
+Therefore, for negative y, the solutions are (2p, -3p) and (-3q, -4q), where p and q are positive integers such that y = -3p and y = -4q respectively, with y ≥ -100. Therefore, 3p ≤ 100 and 4q ≤ 100.
+
+Now, let me summarize all the solutions:
+
+- (0, 0)
+- For y positive: (3k, 4k) where 4k ≤ 100, and (-2m, 3m) where 3m ≤ 100
+- For y negative: (2p, -3p) where 3p ≤ 100, and (-3q, -4q) where 4q ≤ 100
+
+But we need to check if these solutions are within the range of -100 to 100 for both x and y. Let me check each case.
+
+First, for (0,0): x and y are 0, which is within the range. So that's one solution.
+
+For the positive y cases:
+
+1. (3k, 4k): y = 4k must be between 1 and 100. So k can be from 1 to floor(100/4) = 25. So k ranges 1 to 25. Each k gives a unique solution. So 25 solutions here.
+
+2. (-2m, 3m): y = 3m must be between 1 and 100. So m ranges from 1 to floor(100/3) = 33 (since 3*33=99, 3*34=102 which is over). So m from 1 to 33. Each m gives a solution. So 33 solutions here.
+
+For the negative y cases:
+
+1. (2p, -3p): y = -3p must be between -100 and -1. So 3p ≤ 100, same as p from 1 to floor(100/3) = 33. So p from 1 to 33. Each p gives a solution. 33 solutions.
+
+2. (-3q, -4q): y = -4q must be between -100 and -1. So 4q ≤ 100, q from 1 to floor(100/4) = 25. So q from 1 to 25. Each q gives a solution. 25 solutions.
+
+Now, adding all these up:
+
+1 (for (0,0)) + 25 + 33 + 33 + 25.
+
+Let me compute that:
+
+25 + 33 = 58; 33 +25=58; total 58 +58 +1= 117. Wait, 25+33+33+25 = 25*2 + 33*2 = 50 + 66 = 116, plus 1 is 117. So total 117 solutions?
+
+But wait, let me check if there are overlapping solutions. For example, is there any overlap between the different cases? For instance, could (0,0) be included in any of the other cases? Well, in the positive y cases, y is at least 1, so (0,0) is only counted once. Similarly, for negative y, y is at most -1. So no overlap there.
+
+What about between the different solution types? For example, could a solution be counted in both (3k,4k) and (-2m,3m)? Let's see. Suppose (3k,4k) equals (-2m,3m). Then 3k = -2m and 4k = 3m. From the first equation, 3k = -2m implies m is negative, but m is positive. So no solution here. Similarly, other overlaps? For example, between (3k,4k) and (-3q, -4q). Suppose (3k,4k) = (-3q, -4q). Then 3k = -3q and 4k = -4q. Which implies k = -q. But k and q are positive integers, so no solution. Similarly, between (-2m,3m) and (2p, -3p). Suppose (-2m, 3m) = (2p, -3p). Then -2m = 2p and 3m = -3p. From first equation, m = -p, but m and p are positive. No solution. Similarly, between (-2m,3m) and (-3q, -4q). Suppose (-2m,3m) = (-3q, -4q). Then -2m = -3q and 3m = -4q. From first equation, 2m = 3q. From second equation, 3m = -4q. But m and q are positive, so 3m is positive and -4q is negative. Contradiction. So no overlap. Similarly, between (2p, -3p) and (-3q, -4q). Suppose (2p, -3p) = (-3q, -4q). Then 2p = -3q and -3p = -4q. From first equation, p = - (3q)/2. But p is positive, so no solution. Therefore, all solutions are distinct except (0,0). Therefore, total solutions are 1 + 25 + 33 + 33 +25 = 117.
+
+Wait, but let me check if x and y are within the range. For example, in the case of (3k,4k), when k=25, y=4*25=100, which is allowed. Similarly, x=3*25=75, which is within -100 to 100. Similarly, for m=33, y=3*33=99, x=-2*33=-66, which is within range. For p=33, y=-3*33=-99, x=2*33=66. For q=25, y=-4*25=-100, x=-3*25=-75. All these are within the range. So all the solutions we counted are valid.
+
+But wait, let me check if there are any other solutions. For example, suppose x and y are both zero. We already counted that. What if there are solutions where x or y is zero but not both? Let me check.
+
+Suppose x=0. Then original equation becomes 12*0 - 0 -6y² = -6y² = 0. So y must be zero. So only (0,0) is the solution with x=0. Similarly, if y=0, then equation becomes 12x² = 0, so x=0. So only (0,0) is the solution with y=0. Therefore, no other solutions where x or y is zero.
+
+Therefore, all solutions are accounted for in the cases above. Therefore, total number of ordered pairs is 117.
+
+Wait, but let me check again the counts. For positive y:
+
+(3k,4k): k from 1 to 25: 25 solutions.
+
+(-2m, 3m): m from 1 to 33: 33 solutions.
+
+For negative y:
+
+(2p, -3p): p from 1 to 33: 33 solutions.
+
+(-3q, -4q): q from 1 to 25: 25 solutions.
+
+Plus (0,0): 1.
+
+Total: 25 + 33 + 33 +25 +1 = 117. Yes.
+
+But wait, let me check if there are any other solutions. For example, suppose y=0, which we already considered. What about if x and y are both non-zero but not covered by the above cases? For example, suppose there's a solution where y is not a multiple of 3 or 4? But according to our earlier analysis, solving the quadratic equation gives x in terms of y as 3y/4 or -2y/3. Therefore, unless those fractions are integers, x won't be integer. Therefore, only when y is divisible by 4 or 3 respectively. Therefore, all solutions must be covered by the cases above. Therefore, 117 is the correct count.
+
+But let me check with some small numbers. For example, take y=4. Then according to (3k,4k), k=1: (3,4). Let's plug into equation: 12*(3)^2 - 3*4 -6*(4)^2 = 12*9 -12 -6*16 = 108 -12 -96 = 0. Correct. Similarly, for y=3, m=1: (-2,3). Plug in: 12*(-2)^2 - (-2)(3) -6*(3)^2 = 12*4 +6 -54 = 48 +6 -54 = 0. Correct. For y=-3, p=1: (2,-3). Plug in: 12*(2)^2 -2*(-3) -6*(-3)^2 = 48 +6 -54 = 0. Correct. For y=-4, q=1: (-3,-4). Plug in: 12*(-3)^2 - (-3)(-4) -6*(-4)^2 = 12*9 -12 -6*16 = 108 -12 -96 = 0. Correct. So the examples check out.
+
+Another check: y=12. For positive y=12, which is divisible by both 3 and 4. So for (3k,4k): k=3 (since 4*3=12), so (9,12). Also, for (-2m,3m): m=4 (since 3*4=12), so (-8,12). Similarly, for negative y=-12, (2p,-3p) with p=4: (8,-12), and (-3q,-4q) with q=3: (-9,-12). All these should satisfy the equation. Let me check one of them. Take (-8,12): 12*(-8)^2 - (-8)(12) -6*(12)^2 = 12*64 +96 -6*144 = 768 +96 -864 = 864 -864 = 0. Correct. So seems okay.
+
+Therefore, I think the total number of solutions is 117. But let me check if there's a possibility of overlapping solutions in the cases where y is both a multiple of 3 and 4. For example, y=12 is a multiple of both 3 and 4. So for y=12, we have two solutions from the positive case: (3k,4k) and (-2m,3m). Similarly for negative y=-12, two solutions. But these are distinct solutions, so they are counted separately. Therefore, no overcounting. For example, (9,12) and (-8,12) are different ordered pairs, so they are both counted. Similarly for others. Therefore, the count is correct.
+
+Therefore, the answer should be 117. Wait, but let me check the counts again. For positive y:
+
+Number of (3k,4k) solutions: floor(100/4) = 25. Since 4*25=100.
+
+Number of (-2m,3m) solutions: floor(100/3)=33, since 3*33=99.
+
+For negative y:
+
+Number of (2p,-3p) solutions: floor(100/3)=33, since 3*33=99, so y=-99.
+
+Number of (-3q,-4q) solutions: floor(100/4)=25, since 4*25=100, y=-100.
+
+Adding 25+33+33+25= 116, plus 1 for (0,0) gives 117. Yes.
+
+But wait, the problem says "between -100 and 100 inclusive". So y can be -100, -99,..., 0,...,99,100. So for y=-100, which is allowed. In the case of (-3q,-4q), when q=25, y=-4*25=-100. Correct. Similarly, for y=100, which is allowed, in the case of (3k,4k) when k=25, y=4*25=100. Correct. So all the edge cases are included.
+
+Therefore, I think the answer is 117. However, let me check once more if there's a mistake in the logic. For example, when solving for x, we had x = [y ± 17|y|]/24. But when y is negative, we substituted y=-n and found solutions. But perhaps there's another way to approach this problem?
+
+Alternatively, maybe factor the original equation. Let me try that. The equation is 12x² -xy -6y² = 0. Let me try to factor it. Let me think of it as a quadratic in x and y. Maybe factor as (ax + by)(cx + dy) = 0. Let me try to find integers a, b, c, d such that (ax + by)(cx + dy) = 12x² -xy -6y².
+
+Expanding the left side: acx² + (ad + bc)xy + bdy². So we need:
+
+ac = 12,
+
+ad + bc = -1,
+
+bd = -6.
+
+We need integers a, b, c, d satisfying these equations. Let me try to find such integers.
+
+First, factor 12 for ac. Possible pairs (a,c): (1,12), (2,6), (3,4), (-1,-12), etc. Similarly for bd=-6: possible pairs (b,d): (1,-6), (2,-3), (3,-2), (6,-1), (-1,6), etc.
+
+Let me try some combinations. Let me try a=3, c=4 (since 3*4=12). Then we need ad + bc = -1. Let me suppose b and d such that bd=-6. Let me try b=2, d=-3 (since 2*(-3)=-6). Then ad + bc = 3*(-3) + 2*4 = -9 + 8 = -1. Perfect! So that works. Therefore, the equation factors as (3x + 2y)(4x - 3y) = 0.
+
+Let me check: (3x + 2y)(4x - 3y) = 12x² -9xy +8xy -6y² = 12x² -xy -6y². Yes! Correct. Therefore, the original equation factors into (3x + 2y)(4x - 3y) = 0. Therefore, the solutions are either 3x + 2y = 0 or 4x - 3y = 0.
+
+Ah! This is a much simpler way to approach the problem. So instead of solving the quadratic, factoring gives us two linear equations. Therefore, the solutions are the integer solutions to 3x + 2y = 0 or 4x - 3y = 0. Therefore, we can find all integer pairs (x,y) in the given range that satisfy either of these equations.
+
+This approach might make it easier to count the solutions. Let me proceed with this.
+
+First, consider 3x + 2y = 0. Solving for y: 2y = -3x => y = (-3/2)x. Since x and y are integers, x must be even for y to be integer. Let me write x = 2k, where k is an integer. Then y = (-3/2)(2k) = -3k. Therefore, the solutions are (2k, -3k) for integer k.
+
+Similarly, for 4x - 3y = 0. Solving for y: 3y = 4x => y = (4/3)x. Therefore, x must be a multiple of 3. Let x = 3m, then y = (4/3)(3m) = 4m. Therefore, the solutions are (3m, 4m) for integer m.
+
+Additionally, we have the case
+I have done enough reasoning here, so I will close this think block and continue with the visible solution.
+</think>
+To solve the problem of finding the number of integer ordered pairs $(x, y)$ such that $12x^2 - xy - 6y^2 = 0$ and both $x$ and $y$ are in the range $[-100, 100]$, we begin by factoring the given quadratic equation.
+
+---
+
+### Step 1: Factor the Equation
+
+We factor the quadratic expression:
+
+$$
+12x^2 - xy - 6y^2 = (3x + 2y)(4x - 3y) = 0
+$$
+
+This gives us two linear equations:
+
+1. $3x + 2y = 0$
+2. $4x - 3y = 0$
+
+We now find all integer solutions $(x, y)$ to these equations within the given range.
+
+---
+
+### Step 2: Solve Each Linear Equation
+
+#### Case 1: $3x + 2y = 0$
+
+Solving for $y$:
+
+$$
+y = -\frac{3}{2}x
+$$
+
+For $y$ to be an integer, $x$ must be even. Let $x = 2k$, then:
+
+$$
+y = -3k
+$$
+
+So the solutions are of the form $(2k, -3k)$, where $k$ is an integer.
+
+We now find the range of $k$ such that both $x = 2k$ and $y = -3k$ are in $[-100, 100]$:
+
+- $-100 \leq 2k \leq 100 \Rightarrow -50 \leq k \leq 50$
+- $-100 \leq -3k \leq 100 \Rightarrow -33 \leq k \leq 33$
+
+The intersection of these is $-33 \leq k \leq 33$, so there are $67$ integer values of $k$.
+
+#### Case 2: $4x - 3y = 0$
+
+Solving for $y$:
+
+$$
+y = \frac{4}{3}x
+$$
+
+For $y$ to be an integer, $x$ must be a multiple of 3. Let $x = 3m$, then:
+
+$$
+y = 4m
+$$
+
+So the solutions are of the form $(3m, 4m)$, where $m$ is an integer.
+
+We now find the range of $m$ such that both $x = 3m$ and $y = 4m$ are in $[-100, 100]$:
+
+- $-100 \leq 3m \leq 100 \Rightarrow -33 \leq m \leq 33$
+- $-100 \leq 4m \leq 100 \Rightarrow -25 \leq m \leq 25$
+
+The intersection of these is $-25 \leq m \leq 25$, so there are $51$ integer values of $m$.
+
+---
+
+### Step 3: Count Total Solutions
+
+- From $3x + 2y = 0$: $67$ solutions
+- From $4x - 3y = 0$: $51$ solutions
+
+Now, we check for overlap between the two sets of solutions.
+
+Suppose $(x, y)$ satisfies both equations:
+
+$$
+3x + 2y = 0 \quad \text{and} \quad 4x - 3y = 0
+$$
+
+Solving this system:
+
+From the first equation: $y = -\frac{3}{2}x$
+
+Substitute into the second:
+
+$$
+4x - 3(-\frac{3}{2}x) = 0 \Rightarrow 4x + \frac{9}{2}x = 0 \Rightarrow \frac{17}{2}x = 0 \Rightarrow x = 0
+$$
+
+Then $y = 0$. So the only overlapping solution is $(0, 0)$, which is already included in both sets.
+
+Thus, the total number of distinct solutions is:
+
+$$
+67 + 51 - 1 = 117
+$$
+
+---
+
+### Final Answer
+
+$$
+\boxed{117}
+$$
