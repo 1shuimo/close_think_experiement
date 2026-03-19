@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 from __future__ import annotations
+
 """
-Direct AIME evaluation without mid-generation insertion or corruption.
+Resume-capable plain AIME runner.
 
 Purpose:
-- test the model's plain AIME ability
-- keep native model thinking on by default
-- generate one direct completion per task and score by expected_regex
+- continue an interrupted `run_aime_plain.py` experiment without rerunning finished tasks
+- recover completed task ids from existing `results.jsonl` and/or saved `task_texts`
+- persist outputs after each task so future interruptions do not lose all progress
 """
 
 import argparse
@@ -14,48 +15,121 @@ import gc
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Dict, List
 
 
 def _safe_name(s: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]", "_", s or "task")
 
 
-def _expected_hit(text: str, expected_regex: Optional[str]) -> Optional[bool]:
-    if not expected_regex:
-        return None
-    return re.search(expected_regex, text, re.IGNORECASE | re.DOTALL) is not None
+def _read_existing_records(jsonl_path: Path) -> Dict[str, Dict[str, object]]:
+    records: Dict[str, Dict[str, object]] = {}
+    if not jsonl_path.exists():
+        return records
+    with jsonl_path.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            obj = json.loads(line)
+            task_id = str(obj.get("task_id") or "").strip()
+            if task_id:
+                records[task_id] = obj
+    return records
 
 
-def _build_prompt_ids(
-    tokenizer,
+def _recover_records_from_task_texts(
     *,
-    system_prompt: str,
-    user_prompt: str,
-    device: Any,
-    enable_thinking: bool,
-) -> torch.Tensor:
-    from think_branch_common import ensure_input_ids_tensor
+    task_dump_root: Path,
+    tasks_by_id: Dict[str, Dict[str, object]],
+    model_path: str,
+) -> Dict[str, Dict[str, object]]:
+    recovered: Dict[str, Dict[str, object]] = {}
+    if not task_dump_root.exists():
+        return recovered
 
-    messages = []
-    if system_prompt.strip():
-        messages.append({"role": "system", "content": system_prompt})
-    messages.append({"role": "user", "content": user_prompt})
-    x = tokenizer.apply_chat_template(
-        messages,
-        add_generation_prompt=True,
-        return_tensors="pt",
-        enable_thinking=enable_thinking,
+    for task_dir in sorted(task_dump_root.iterdir()):
+        if not task_dir.is_dir():
+            continue
+        task_id = task_dir.name
+        if task_id not in tasks_by_id:
+            continue
+
+        full_path = task_dir / "full.txt"
+        meta_path = task_dir / "meta.json"
+        if not full_path.exists():
+            continue
+
+        full_text = full_path.read_text(encoding="utf-8")
+        meta_obj: Dict[str, object] = {}
+        if meta_path.exists():
+            try:
+                meta_obj = json.loads(meta_path.read_text(encoding="utf-8"))
+            except Exception:
+                meta_obj = {}
+
+        task = tasks_by_id[task_id]
+        recovered[task_id] = {
+            "task_id": task_id,
+            "user_prompt": task.get("user_prompt"),
+            "expected_regex": meta_obj.get("expected_regex", task.get("expected_regex")),
+            "reference_output": task.get("reference_output"),
+            "system_prompt_file": None,
+            "disable_model_thinking": None,
+            "checkpoint_meta": meta_obj.get("checkpoint_meta", {"recovered_from": "task_texts"}),
+            "full_text": full_text,
+            "stripped_text": None,
+            "new_tokens": meta_obj.get("new_tokens"),
+            "stop_reason": meta_obj.get("stop_reason"),
+            "metrics": meta_obj.get("metrics", {}),
+            "model_path": model_path,
+        }
+    return recovered
+
+
+def _ordered_records(tasks: List[Dict[str, object]], records_by_task: Dict[str, Dict[str, object]]) -> List[Dict[str, object]]:
+    ordered: List[Dict[str, object]] = []
+    for task in tasks:
+        task_id = str(task.get("id") or "")
+        rec = records_by_task.get(task_id)
+        if rec is not None:
+            ordered.append(rec)
+    return ordered
+
+
+def _write_model_jsonl(jsonl_path: Path, records: List[Dict[str, object]]) -> None:
+    with jsonl_path.open("w", encoding="utf-8") as f:
+        for rec in records:
+            f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+
+def _write_task_texts(task_dump_root: Path, rec: Dict[str, object]) -> None:
+    task_dir = task_dump_root / _safe_name(str(rec.get("task_id", "task")))
+    task_dir.mkdir(parents=True, exist_ok=True)
+    (task_dir / "full.txt").write_text(str(rec.get("full_text") or ""), encoding="utf-8")
+    (task_dir / "meta.json").write_text(
+        json.dumps(
+            {
+                "task_id": rec.get("task_id"),
+                "user_prompt": rec.get("user_prompt"),
+                "expected_regex": rec.get("expected_regex"),
+                "stop_reason": rec.get("stop_reason"),
+                "new_tokens": rec.get("new_tokens"),
+                "checkpoint_meta": rec.get("checkpoint_meta", {}),
+                "metrics": rec.get("metrics", {}),
+            },
+            ensure_ascii=False,
+            indent=2,
+        ),
+        encoding="utf-8",
     )
-    return ensure_input_ids_tensor(x, device=device)
 
 
 def parse_args() -> argparse.Namespace:
     here = Path(__file__).resolve().parent
-    p = argparse.ArgumentParser(description="Run direct AIME evaluation without insertion.")
+    p = argparse.ArgumentParser(description="Resume an interrupted plain AIME run.")
     p.add_argument("--model-paths", required=True, help="Comma-separated local model paths.")
     p.add_argument("--dtype", default="bf16", choices=["bf16", "fp16", "fp32"])
-
     p.add_argument(
         "--tasks-file",
         default=str(here / "data" / "tasks_aime2025.jsonl"),
@@ -63,10 +137,9 @@ def parse_args() -> argparse.Namespace:
     )
     p.add_argument(
         "--output-dir",
-        default=str(here / "outputs" / "aime" / "suite_aime2025_plain"),
-        help="Output directory for results and summary.",
+        required=True,
+        help="Existing output directory of the interrupted plain run.",
     )
-
     p.add_argument(
         "--system-prompt-file",
         default=None,
@@ -88,60 +161,21 @@ def parse_args() -> argparse.Namespace:
         default=str(here / "prompts" / "first_think_early_stop_v1.txt"),
         help="Text inserted immediately before forced </think> when first-think budget is exhausted.",
     )
-
     p.add_argument("--max-new-tokens", type=int, default=20000)
     p.add_argument("--temperature", type=float, default=0.6)
     p.add_argument("--top-p", type=float, default=0.95)
     p.add_argument("--seed", type=int, default=1234)
     p.add_argument("--chunk-size", type=int, default=2048)
-
     p.add_argument("--save-task-texts", action="store_true")
     p.add_argument("--print-full-output", action="store_true")
+    p.add_argument("--dry-run", action="store_true")
     return p.parse_args()
-
-
-def summarize(records: List[Dict[str, object]]) -> Dict[str, object]:
-    def _rate(vals: List[bool]) -> Optional[float]:
-        if not vals:
-            return None
-        return sum(1 for v in vals if v) / len(vals)
-
-    think_ok: List[bool] = []
-    expected_flags: List[bool] = []
-    expected_raw_flags: List[bool] = []
-    new_tokens: List[int] = []
-    budget_triggered: List[bool] = []
-    budget_forced_close: List[bool] = []
-
-    for rec in records:
-        metrics = rec.get("metrics", {}) or {}
-        checkpoint_meta = rec.get("checkpoint_meta", {}) or {}
-        think_ok.append(bool(metrics.get("think_balanced", False)))
-        hit = metrics.get("expected_hit")
-        if hit is not None:
-            expected_flags.append(bool(hit))
-        hit_raw = metrics.get("expected_hit_raw")
-        if hit_raw is not None:
-            expected_raw_flags.append(bool(hit_raw))
-        new_tokens.append(int(rec.get("new_tokens", 0)))
-        if "first_think_budget_triggered" in checkpoint_meta:
-            budget_triggered.append(bool(checkpoint_meta.get("first_think_budget_triggered", False)))
-            budget_forced_close.append(bool(checkpoint_meta.get("first_think_budget_forced_close_applied", False)))
-
-    return {
-        "n_tasks": len(records),
-        "think_balanced_rate": _rate(think_ok),
-        "expected_hit_rate": _rate(expected_flags) if expected_flags else None,
-        "expected_hit_raw_rate": _rate(expected_raw_flags) if expected_raw_flags else None,
-        "avg_new_tokens": (sum(new_tokens) / len(new_tokens)) if new_tokens else None,
-        "first_think_budget_triggered_rate": _rate(budget_triggered) if budget_triggered else None,
-        "first_think_budget_forced_close_rate": _rate(budget_forced_close) if budget_forced_close else None,
-    }
 
 
 def main() -> None:
     args = parse_args()
     import torch
+    from run_aime_plain import _build_prompt_ids, _expected_hit, summarize
     from think_branch_common import (
         generate_until_checkpoint,
         generate_from_state,
@@ -159,6 +193,7 @@ def main() -> None:
         if alt.exists():
             tasks_path = alt
     tasks = load_tasks_jsonl(tasks_path)
+    tasks_by_id = {str(task.get("id") or ""): task for task in tasks}
 
     system_prompt = ""
     if args.system_prompt_file:
@@ -169,8 +204,8 @@ def main() -> None:
 
     output_dir = Path(args.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-
     model_paths = [x.strip() for x in args.model_paths.split(",") if x.strip()]
+
     global_summary: Dict[str, object] = {
         "task_source": f"jsonl:{tasks_path.resolve()}",
         "n_tasks": len(tasks),
@@ -178,19 +213,71 @@ def main() -> None:
     }
 
     for model_path in model_paths:
-        print(f"\n===== Running model: {model_path} =====")
+        print(f"\n===== Resuming model: {model_path} =====")
+        model_tag = model_label(model_path)
+        jsonl_path = output_dir / f"{model_tag}.results.jsonl"
+        summary_path = output_dir / f"{model_tag}.summary.json"
+        task_dump_root = output_dir / f"{model_tag}.task_texts"
+
+        existing_records = _read_existing_records(jsonl_path)
+        recovered_records = _recover_records_from_task_texts(
+            task_dump_root=task_dump_root,
+            tasks_by_id=tasks_by_id,
+            model_path=model_path,
+        )
+        records_by_task: Dict[str, Dict[str, object]] = {}
+        records_by_task.update(recovered_records)
+        records_by_task.update(existing_records)
+
+        completed_ids = {task_id for task_id in tasks_by_id if task_id in records_by_task}
+        remaining_tasks = [task for task in tasks if str(task.get("id") or "") not in completed_ids]
+
+        print(
+            f"[resume] completed={len(completed_ids)} "
+            f"(jsonl={len(existing_records)}, task_texts_only={max(0, len(recovered_records) - len(existing_records))}) "
+            f"remaining={len(remaining_tasks)}"
+        )
+        if remaining_tasks:
+            print("[resume] next tasks:", ", ".join(str(t.get("id")) for t in remaining_tasks[:8]))
+
+        ordered_existing = _ordered_records(tasks, records_by_task)
+        if args.save_task_texts and ordered_existing:
+            task_dump_root.mkdir(parents=True, exist_ok=True)
+            for rec in ordered_existing:
+                _write_task_texts(task_dump_root, rec)
+        if recovered_records or (not jsonl_path.exists() and ordered_existing):
+            _write_model_jsonl(jsonl_path, ordered_existing)
+
+        model_summary = summarize(ordered_existing)
+        model_summary["config"] = {
+            "system_prompt_file": args.system_prompt_file,
+            "disable_model_thinking": bool(args.disable_model_thinking),
+            "first_think_budget_tokens": int(args.first_think_budget_tokens or 0),
+            "first_think_early_stop_text_file": args.first_think_early_stop_text_file,
+            "max_new_tokens": args.max_new_tokens,
+            "temperature": args.temperature,
+            "top_p": args.top_p,
+        }
+        summary_path.write_text(json.dumps(model_summary, ensure_ascii=False, indent=2), encoding="utf-8")
+        global_summary["models"][model_path] = model_summary
+        (output_dir / "summary_all_models.json").write_text(
+            json.dumps(global_summary, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+
+        if args.dry_run or not remaining_tasks:
+            continue
+
         loaded = load_model(model_path, dtype_name=args.dtype)
         tokenizer, model, device = loaded.tokenizer, loaded.model, loaded.device
-
-        model_records: List[Dict[str, object]] = []
-        model_tag = model_label(model_path)
-        task_dump_root = output_dir / f"{model_tag}.task_texts"
         if args.save_task_texts:
             task_dump_root.mkdir(parents=True, exist_ok=True)
 
         for i, task in enumerate(tasks, start=1):
             task_id = str(task.get("id", f"task_{i}"))
-            print(f"[{i}/{len(tasks)}] {task_id}")
+            if task_id in records_by_task:
+                continue
+
+            print(f"[resume {i}/{len(tasks)}] {task_id}")
             user_prompt = str(task["user_prompt"])
             expected_regex = task.get("expected_regex")
 
@@ -281,6 +368,7 @@ def main() -> None:
                     "first_think_budget_forced_close_text": ckpt.get("first_think_budget_forced_close_text"),
                     "prefix_tokens_before_plain_continuation": len(prefix_ids),
                 }
+
             stripped_text = strip_think_blocks(full_text)
             metrics = {
                 "think_balanced": think_balance_ok(full_text),
@@ -303,7 +391,30 @@ def main() -> None:
                 "metrics": metrics,
                 "model_path": model_path,
             }
-            model_records.append(rec)
+            records_by_task[task_id] = rec
+
+            with jsonl_path.open("a", encoding="utf-8") as f:
+                f.write(json.dumps(rec, ensure_ascii=False) + "\n")
+
+            if args.save_task_texts:
+                _write_task_texts(task_dump_root, rec)
+
+            ordered_now = _ordered_records(tasks, records_by_task)
+            model_summary = summarize(ordered_now)
+            model_summary["config"] = {
+                "system_prompt_file": args.system_prompt_file,
+                "disable_model_thinking": bool(args.disable_model_thinking),
+                "first_think_budget_tokens": int(args.first_think_budget_tokens or 0),
+                "first_think_early_stop_text_file": args.first_think_early_stop_text_file,
+                "max_new_tokens": args.max_new_tokens,
+                "temperature": args.temperature,
+                "top_p": args.top_p,
+            }
+            summary_path.write_text(json.dumps(model_summary, ensure_ascii=False, indent=2), encoding="utf-8")
+            global_summary["models"][model_path] = model_summary
+            (output_dir / "summary_all_models.json").write_text(
+                json.dumps(global_summary, ensure_ascii=False, indent=2), encoding="utf-8"
+            )
 
             if args.print_full_output:
                 print("\n---------------- FULL OUTPUT ----------------")
@@ -314,27 +425,6 @@ def main() -> None:
                 print(full_text)
                 print("\n---------------------------------------------\n")
 
-            if args.save_task_texts:
-                task_dir = task_dump_root / _safe_name(task_id)
-                task_dir.mkdir(parents=True, exist_ok=True)
-                (task_dir / "full.txt").write_text(full_text, encoding="utf-8")
-                (task_dir / "meta.json").write_text(
-                    json.dumps(
-                        {
-                            "task_id": task_id,
-                            "user_prompt": user_prompt,
-                            "expected_regex": expected_regex,
-                            "stop_reason": rec["stop_reason"],
-                            "new_tokens": rec["new_tokens"],
-                            "checkpoint_meta": checkpoint_meta,
-                            "metrics": metrics,
-                        },
-                        ensure_ascii=False,
-                        indent=2,
-                    ),
-                    encoding="utf-8",
-                )
-
             del prompt_ids
             if past is not None:
                 del past
@@ -344,38 +434,13 @@ def main() -> None:
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()
 
-        safe_name = model_tag
-        jsonl_path = output_dir / f"{safe_name}.results.jsonl"
-        summary_path = output_dir / f"{safe_name}.summary.json"
-
-        with jsonl_path.open("w", encoding="utf-8") as f:
-            for r in model_records:
-                f.write(json.dumps(r, ensure_ascii=False) + "\n")
-
-        model_summary = summarize(model_records)
-        model_summary["config"] = {
-            "system_prompt_file": args.system_prompt_file,
-            "disable_model_thinking": bool(args.disable_model_thinking),
-            "first_think_budget_tokens": int(args.first_think_budget_tokens or 0),
-            "first_think_early_stop_text_file": args.first_think_early_stop_text_file,
-            "max_new_tokens": args.max_new_tokens,
-            "temperature": args.temperature,
-            "top_p": args.top_p,
-        }
-        summary_path.write_text(
-            json.dumps(model_summary, ensure_ascii=False, indent=2),
-            encoding="utf-8",
-        )
-        global_summary["models"][model_path] = model_summary
-        print(f"Saved:\n- {jsonl_path}\n- {summary_path}")
-
         del model
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
-    global_path = output_dir / "summary_all_models.json"
-    global_path.write_text(json.dumps(global_summary, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(f"\nAll done. Global summary: {global_path}")
+        print(f"[resume] saved:\n- {jsonl_path}\n- {summary_path}")
+
+    print(f"\n[resume] done: {output_dir / 'summary_all_models.json'}")
 
 
 if __name__ == "__main__":
