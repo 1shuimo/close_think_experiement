@@ -1,0 +1,228 @@
+<think>
+Okay, let's try to tackle this problem step by step. First, I need to visualize the triangle ABC with the given points on sides AB and AC. The points D, E are on AB, and F, G are on AC. The lengths are given as AD=4, DE=16, EB=8, so AB must be AD + DE + EB = 4 + 16 + 8 = 28. Similarly, AF=13, FG=52, GC=26, so AC is AF + FG + GC = 13 + 52 + 26 = 91. 
+
+Now, M is the reflection of D through F. Hmm, reflection through a point usually means that F is the midpoint between D and M. So if I can find coordinates for D and F, then I can find M. Similarly, N is the reflection of G through E, so E is the midpoint between G and N. 
+
+Quadrilateral DEGF has an area of 288. I need to find the area of the heptagon AFNBCEM. To do this, maybe I should assign coordinates to the triangle ABC and compute all the necessary points. Let me try coordinate geometry.
+
+Let me place point A at the origin (0,0). Let me assume AB is along the x-axis and AC is along the y-axis? Wait, but then ABC would be a right triangle. However, the problem doesn't specify that ABC is a right triangle. Hmm, maybe I need to assign coordinates more generally. Alternatively, perhaps I can use vectors or coordinate geometry with AB and AC as axes. Wait, maybe using coordinates is still feasible if I assign coordinates to A, B, and C appropriately.
+
+Let me set point A at (0,0). Let me let AB be along the x-axis, so point B is at (28, 0). For AC, since AC is 91 units long, but I don't know the coordinates of C yet. However, since we need to compute areas involving points on AB and AC, maybe I can assign coordinates such that AC is along another axis or arbitrary. Alternatively, maybe I can use barycentric coordinates or something else. Wait, maybe using coordinates with A at (0,0), B at (28,0), and C at (0,91)? But then ABC would be a right triangle, but the problem doesn't specify that. However, since the area of quadrilateral DEGF is given, maybe the actual coordinates of C can be determined based on that? Wait, but how?
+
+Alternatively, maybe I can use vectors. Let me think. Let me assign coordinates as follows: Let me take A as (0,0), B as (28,0), and C as (0,c) for some c. Then AC is from (0,0) to (0,c), so AC has length c. But according to the problem, AC is 91, so c=91. Therefore, point C is at (0,91). Wait, but then ABC is a right triangle with legs AB=28 and AC=91. But then BC would be the hypotenuse. However, the problem doesn't state that ABC is a right triangle. But maybe for simplicity, I can assume it's a right triangle? Wait, but if I do that, then the area of quadrilateral DEGF can be calculated, and since it's given as 288, maybe this assumption is valid? Or maybe not. Wait, but if I assume ABC is a right triangle, then I can compute coordinates for all points and check if the area of DEGF is 288. If not, then my assumption is wrong. Let me try.
+
+So, let me proceed with A(0,0), B(28,0), C(0,91). Then, points D and E are on AB. AD=4, so D is at (4,0). Then DE=16, so E is at (4 + 16, 0) = (20, 0). Then EB=8, so from E at 20 to B at 28 is 8 units, which checks out. Similarly, points F and G are on AC. AF=13, so since AC is vertical from (0,0) to (0,91), F is at (0,13). FG=52, so G is at (0,13 + 52) = (0,65). Then GC=26, from 65 to 91 is 26, which is correct.
+
+Now, quadrilateral DEGF. Let me find the coordinates of D, E, G, F. D is (4,0), E is (20,0), G is (0,65), F is (0,13). Wait, but how is quadrilateral DEGF connected? The points D, E, G, F. So connecting D to E to G to F to D? Let me plot these points. D is on AB at (4,0), E is further along AB at (20,0). G is on AC at (0,65), and F is on AC at (0,13). So connecting D(4,0) to E(20,0) to G(0,65) to F(0,13) and back to D. To find the area of this quadrilateral. Hmm. How can I compute that?
+
+One way is to use the shoelace formula. Let me list the coordinates in order. Let me take D(4,0), E(20,0), G(0,65), F(0,13), back to D(4,0). Applying shoelace formula:
+
+Area = 1/2 |sum_{i=1 to n} (x_i y_{i+1} - x_{i+1} y_i)|
+
+So compute:
+
+x1=4, y1=0
+
+x2=20, y2=0
+
+x3=0, y3=65
+
+x4=0, y4=13
+
+x5=4, y5=0
+
+Compute terms:
+
+x1 y2 - x2 y1 = 4*0 - 20*0 = 0
+
+x2 y3 - x3 y2 = 20*65 - 0*0 = 1300
+
+x3 y4 - x4 y3 = 0*13 - 0*65 = 0
+
+x4 y5 - x5 y4 = 0*0 - 4*13 = -52
+
+Sum these: 0 + 1300 + 0 -52 = 1248
+
+Take absolute value and multiply by 1/2: 1/2 * 1248 = 624. But the problem says the area is 288. Hmm, that's a problem. My assumption that ABC is a right triangle must be wrong. Therefore, my coordinate system is incorrect. 
+
+So, my mistake was assuming ABC is a right triangle. Since the area of DEGF in my coordinate system is 624, but the problem states it's 288, which is exactly half of 624. Maybe there's a scaling factor involved? Wait, perhaps the actual triangle ABC is not right-angled, and I need to assign coordinates differently. Let me think again.
+
+Let me try a different approach. Let me assign coordinates more generally. Let me take A at (0,0), B at (28,0), and C at (0, c) where c is unknown. Then AC is from (0,0) to (0,c). Then points D(4,0), E(20,0), F(0,13), G(0,65). Then quadrilateral DEGF. Let me compute its area again with this general c. Wait, but in this case, points D, E are on AB, and F, G are on AC. The quadrilateral DEGF is a quadrilateral with vertices at D(4,0), E(20,0), G(0,65), F(0,13). Wait, but how does the area depend on c? In my previous calculation, I assumed C was at (0,91), but here c is arbitrary. However, in the calculation of the area of DEGF, since all points are either on AB or AC, which are the x-axis and y-axis, then the area calculation would still be the same as before, because coordinates of D, E, F, G don't depend on c? Wait, no. Wait, point G is at (0,65) only if AC is length 91. But if AC is length something else, then the coordinates of F and G would change. Wait, no. Wait, AF=13, FG=52, GC=26. The total AC is 13 + 52 + 26 = 91. Therefore, regardless of the actual coordinates of C, the positions of F and G are determined proportionally. Wait, but if I take AC as a line from A(0,0) to C(0,c), then AF is 13 units along AC. Since AC has length 91, then AF is 13/91 = 1/7 of AC. Therefore, if AC is from (0,0) to (0,c), then F is at (0, c/7). Similarly, G is at (0, (13 + 52)/91 * c) = (0, 65/91 c) = (0, 5/7 c). Wait, but in my previous assumption, c was 91, so F was at (0,13) and G at (0,65). But if c is different, then F and G would be scaled accordingly. Therefore, if I let c be arbitrary, then F is at (0, (13/91)c) = (0, c/7), and G is at (0, (65/91)c) = (0, 5c/7). Therefore, in my previous calculation, I fixed c=91, but if c is different, then coordinates of F and G change. However, in my calculation of the area of DEGF, I used coordinates where c=91. Therefore, if the actual c is different, the area would scale accordingly. 
+
+Wait, so if I let c be variable, then the coordinates of F and G are (0, c/7) and (0, 5c/7). Then, quadrilateral DEGF has coordinates D(4,0), E(20,0), G(0,5c/7), F(0,c/7). Let me recalculate the area with general c. Using shoelace formula:
+
+Coordinates in order: D(4,0), E(20,0), G(0,5c/7), F(0,c/7), back to D(4,0).
+
+Compute terms:
+
+First term: x1 y2 - x2 y1 = 4*0 - 20*0 = 0
+
+Second term: x2 y3 - x3 y2 = 20*(5c/7) - 0*0 = 100c/7
+
+Third term: x3 y4 - x4 y3 = 0*(c/7) - 0*(5c/7) = 0
+
+Fourth term: x4 y5 - x5 y4 = 0*0 - 4*(c/7) = -4c/7
+
+Sum: 0 + 100c/7 + 0 - 4c/7 = 96c/7
+
+Area is 1/2 * |96c/7| = 48c/7. According to the problem, this area is 288. Therefore:
+
+48c/7 = 288 => c = (288 * 7)/48 = (6 * 7) = 42. Wait, 288 divided by 48 is 6, so 6*7=42. Therefore, c=42. Therefore, the coordinates of point C are (0,42). Wait, but earlier I thought AC was length 91? Wait, no. Wait, AF + FG + GC = 13 + 52 + 26 = 91. But in this coordinate system, AC is from (0,0) to (0,c), so its length is c. Therefore, c must be 91? But according to the area calculation, c is 42. Contradiction. Therefore, my assumption that AC is vertical is conflicting with the given lengths. 
+
+Wait, here's the problem. If I assume AC is a vertical line of length c, then AF is 13 units along AC. But the total length of AC is supposed to be 91. Therefore, c must be 91. However, according to the area calculation, c is 42. Therefore, there's a contradiction. This suggests that my coordinate system is wrong. 
+
+What's the issue here? Maybe my assumption that AB is horizontal and AC is vertical is incorrect because in reality, AC is not vertical. So perhaps I need to assign coordinates more generally without assuming AC is vertical. Let me try again.
+
+Let me assign coordinates with A at (0,0), B at (28,0), and C at some point (p, q). Then AC has length 91, so sqrt(p² + q²) = 91. Points D(4,0), E(20,0) on AB. Points F and G on AC. Since AF=13, FG=52, GC=26, the entire AC is divided into three parts with ratios 13:52:26 = 1:4:2. Therefore, the coordinates of F and G can be determined by dividing AC in those ratios. 
+
+Parametrize AC. Let me use vectors. Vector AC is from A(0,0) to C(p, q). The point F divides AC such that AF:FC = 13:(52+26) = 13:78 = 1:6. Wait, no. Wait, AF is 13, FG is 52, GC is 26. So from A to F is 13, then from F to G is 52, then from G to C is 26. Therefore, the entire AC is 13 + 52 + 26 = 91. Therefore, AF is 1/7 of AC, FG is 4/7 of AC, and GC is 2/7 of AC. Therefore, coordinates of F can be found by moving 1/7 from A to C. Similarly, G is 5/7 from A to C (since 1/7 + 4/7 = 5/7). 
+
+Therefore, coordinates of F are ( (1/7)p, (1/7)q ). Coordinates of G are ( (5/7)p, (5/7)q ). 
+
+Now, quadrilateral DEGF has vertices D(4,0), E(20,0), G(5p/7, 5q/7), F(p/7, q/7). Let me apply the shoelace formula here. 
+
+Coordinates in order: D(4,0), E(20,0), G(5p/7, 5q/7), F(p/7, q/7), back to D(4,0).
+
+Compute the shoelace sum:
+
+Term1: x_D * y_E - x_E * y_D = 4*0 - 20*0 = 0
+
+Term2: x_E * y_G - x_G * y_E = 20*(5q/7) - (5p/7)*0 = 100q/7
+
+Term3: x_G * y_F - x_F * y_G = (5p/7)*(q/7) - (p/7)*(5q/7) = (5pq/49) - (5pq/49) = 0
+
+Term4: x_F * y_D - x_D * y_F = (p/7)*0 - 4*(q/7) = -4q/7
+
+Total sum: 0 + 100q/7 + 0 - 4q/7 = 96q/7
+
+Area is 1/2 * |96q/7| = 48|q|/7. According to the problem, this area is 288. Therefore:
+
+48|q|/7 = 288 => |q| = (288 * 7)/48 = 6*7 = 42. Therefore, q = 42 or -42. Since we can assume the triangle is oriented so that q is positive, so q=42. 
+
+Now, since AC has length 91, which is sqrt(p² + q²) = 91. We know q=42, so sqrt(p² + 42²) = 91 => p² + 1764 = 8281 => p² = 8281 - 1764 = 6517. Let me compute that: 8281 - 1764. 8281 - 1000 = 7281, minus 764 is 7281 - 764 = 6517. So p = sqrt(6517). Hmm, not sure if it simplifies, but maybe we don't need the exact value of p. 
+
+But for coordinate calculations, we might need p. However, maybe we can find relations without knowing p. Let me see. 
+
+Now, with q=42, we can find coordinates of F and G. F is (p/7, 42/7) = (p/7, 6). G is (5p/7, 5*42/7) = (5p/7, 30). 
+
+Now, we need to find the area of heptagon AFNBCEM. First, let's find points M and N. 
+
+M is the reflection of D through F. To find M, since F is the midpoint between D and M. Let me recall that if F is the midpoint, then coordinates of F = [(D + M)/2]. Therefore, M = 2F - D. 
+
+Coordinates of D are (4,0). Coordinates of F are (p/7, 6). Therefore, coordinates of M are (2*(p/7) - 4, 2*6 - 0) = (2p/7 - 4, 12). 
+
+Similarly, N is the reflection of G through E. E is at (20,0). So E is the midpoint between G and N. Therefore, N = 2E - G. Coordinates of G are (5p/7, 30). Coordinates of E are (20,0). Therefore, coordinates of N are (2*20 - 5p/7, 2*0 - 30) = (40 - 5p/7, -30). 
+
+Now, we need to find the area of heptagon AFNBCEM. Let me list the vertices of the heptagon in order. The heptagon is AFNBCEM. Let me confirm the order: A, F, N, B, C, E, M, and back to A? Wait, the problem says "heptagon AFNBCEM". Let me check the order: A, F, N, B, C, E, M. So the vertices are A, F, N, B, C, E, M. Let me confirm if this makes sense. Starting at A, going to F (on AC), then to N (which is the reflection of G through E), then to B, then to C, then to E (on AB), then to M (reflection of D through F), and back to A. 
+
+To compute the area of this heptagon, one approach is to use the shoelace formula. For that, I need the coordinates of all the vertices. Let me list them:
+
+A: (0,0)
+
+F: (p/7, 6)
+
+N: (40 - 5p/7, -30)
+
+B: (28, 0)
+
+C: (p, 42)
+
+E: (20, 0)
+
+M: (2p/7 - 4, 12)
+
+Now, to apply the shoelace formula, I need to list these points in order, either clockwise or counter-clockwise. Let me check the order. Starting at A(0,0), then F(p/7,6), then N(40 - 5p/7, -30), then B(28,0), then C(p,42), then E(20,0), then M(2p/7 -4, 12), back to A. 
+
+I need to ensure that the order is correct, without crossing lines. Assuming the points are ordered correctly, let's proceed. 
+
+However, since p is unknown, but we might need to find relations or maybe p cancels out. Alternatively, maybe we can find p from earlier. Recall that sqrt(p² + 42²) = 91, so p² = 91² - 42². Let me compute that. 
+
+91² = (90 + 1)^2 = 8100 + 180 + 1 = 8281. 42² = 1764. Therefore, p² = 8281 - 1764 = 6517. So p = sqrt(6517). Let me see if this simplifies. Let me check if 6517 factors. Let me try dividing by small primes. 6517 ÷ 7 = 931. 931 ÷ 7 = 133. 133 ÷ 7 = 19. So 6517 = 7³ * 19. Therefore, sqrt(6517) = 7*sqrt(133). Wait, 7³ is 343, 343*19 = 6517. So p = 7*sqrt(133). But maybe I don't need the exact value. 
+
+Alternatively, maybe there's a way to express the area without knowing p. Let me try applying the shoelace formula with coordinates expressed in terms of p. 
+
+Let me denote the coordinates:
+
+A: (0, 0)
+
+F: (p
+I have done enough reasoning here, so I will close this think block and continue with the visible solution.
+</think>
+To solve the problem, we begin by assigning coordinates to the triangle $ \triangle ABC $ and computing the necessary points based on the given lengths and relationships.
+
+---
+
+### Step 1: Assign Coordinates and Determine Unknowns
+
+Let:
+- $ A = (0, 0) $
+- $ B = (28, 0) $ since $ AB = 28 $
+- $ C = (p, 42) $, with $ AC = 91 $, so $ \sqrt{p^2 + 42^2} = 91 \Rightarrow p^2 = 91^2 - 42^2 = 6517 \Rightarrow p = \sqrt{6517} $
+
+Points on $ AB $:
+- $ D = (4, 0) $ since $ AD = 4 $
+- $ E = (20, 0) $ since $ DE = 16 $
+
+Points on $ AC $, divided in the ratio $ 13:52:26 = 1:4:2 $:
+- $ F = \left( \frac{p}{7}, 6 \right) $
+- $ G = \left( \frac{5p}{7}, 30 \right) $
+
+---
+
+### Step 2: Reflect Points to Find $ M $ and $ N $
+
+- $ M $ is the reflection of $ D $ through $ F $:  
+  $$
+  M = 2F - D = \left( 2 \cdot \frac{p}{7} - 4, 2 \cdot 6 - 0 \right) = \left( \frac{2p}{7} - 4, 12 \right)
+  $$
+
+- $ N $ is the reflection of $ G $ through $ E $:  
+  $$
+  N = 2E - G = \left( 2 \cdot 20 - \frac{5p}{7}, 2 \cdot 0 - 30 \right) = \left( 40 - \frac{5p}{7}, -30 \right)
+  $$
+
+---
+
+### Step 3: Use Shoelace Formula to Find Area of Heptagon $ AFNBCEM $
+
+Vertices in order:  
+- $ A = (0, 0) $  
+- $ F = \left( \frac{p}{7}, 6 \right) $  
+- $ N = \left( 40 - \frac{5p}{7}, -30 \right) $  
+- $ B = (28, 0) $  
+- $ C = (p, 42) $  
+- $ E = (20, 0) $  
+- $ M = \left( \frac{2p}{7} - 4, 12 \right) $
+
+Using the **shoelace formula**:
+$$
+\text{Area} = \frac{1}{2} \left| \sum_{i=1}^{n} (x_i y_{i+1} - x_{i+1} y_i) \right|
+$$
+
+Compute the terms step by step:
+
+1. $ x_A y_F - x_F y_A = 0 \cdot 6 - \frac{p}{7} \cdot 0 = 0 $
+2. $ x_F y_N - x_N y_F = \frac{p}{7} \cdot (-30) - \left(40 - \frac{5p}{7}\right) \cdot 6 = -\frac{30p}{7} - 240 + \frac{30p}{7} = -240 $
+3. $ x_N y_B - x_B y_N = \left(40 - \frac{5p}{7}\right) \cdot 0 - 28 \cdot (-30) = 840 $
+4. $ x_B y_C - x_C y_B = 28 \cdot 42 - p \cdot 0 = 1176 $
+5. $ x_C y_E - x_E y_C = p \cdot 0 - 20 \cdot 42 = -840 $
+6. $ x_E y_M - x_M y_E = 20 \cdot 12 - \left(\frac{2p}{7} - 4\right) \cdot 0 = 240 $
+7. $ x_M y_A - x_A y_M = \left(\frac{2p}{7} - 4\right) \cdot 0 - 0 \cdot 12 = 0 $
+
+Sum:  
+$$
+0 - 240 + 840 + 1176 - 840 + 240 + 0 = 1416
+$$
+
+Area:
+$$
+\frac{1}{2} \cdot 1416 = 708
+$$
+
+---
+
+### Final Answer:
+
+$$
+\boxed{708}
+$$

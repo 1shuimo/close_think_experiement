@@ -1,0 +1,277 @@
+<think>
+Okay, so I need to find the number of eight-digit numbers using digits 1 through 8 exactly once that are divisible by 22. Then subtract 2025 from that number. Let me start by recalling what divisibility by 22 requires. Since 22 is 2 times 11, the number must be divisible by both 2 and 11. 
+
+First, let's handle the divisibility by 2. For a number to be divisible by 2, its last digit must be even. The digits we have are 1 through 8, so the even digits available are 2, 4, 6, and 8. That means the last digit has to be one of these four. So, for each permutation, the last digit is fixed as one of these four, and the remaining seven digits can be arranged in any order. However, we also need to consider divisibility by 11, which complicates things.
+
+Divisibility by 11 requires that the difference between the sum of the digits in the odd positions and the sum of the digits in the even positions is a multiple of 11 (including zero). Let me denote the positions as positions 1 to 8. Let me think about how to compute this difference.
+
+First, let's calculate the total sum of all digits from 1 to 8. The sum is 1+2+3+4+5+6+7+8 = 36. Let me check that again: 1+8=9, 2+7=9, 3+6=9, 4+5=9. So four pairs of 9, total 36. Correct.
+
+Now, for divisibility by 11, let me denote S_odd as the sum of digits in odd positions (positions 1,3,5,7) and S_even as the sum of digits in even positions (positions 2,4,6,8). The condition is S_odd - S_even must be divisible by 11. Also, since the total sum S_odd + S_even = 36, we can write S_odd - S_even = 11k for some integer k. Let me express S_odd and S_even in terms of the total sum.
+
+Let me denote S_odd - S_even = 11k. Also, S_odd + S_even = 36. Adding these two equations: 2S_odd = 36 + 11k => S_odd = (36 + 11k)/2. Similarly, subtracting gives 2S_even = 36 - 11k => S_even = (36 - 11k)/2. Since S_odd and S_even must be integers (as they are sums of integers), (36 + 11k) must be even. Since 11k is odd if k is odd and even if k is even. 36 is even. So 36 + 11k is even if 11k is even. Therefore, k must be even. Let me check that again. 11k is even only if k is even because 11 is odd. So yes, k must be even. Let me denote k = 2m. Then S_odd - S_even = 22m. So substituting back into the equations:
+
+S_odd = (36 + 22m)/2 = 18 + 11m
+
+S_even = (36 - 22m)/2 = 18 - 11m
+
+Since S_odd and S_even are sums of four digits each (positions 1,3,5,7 and 2,4,6,8 respectively), each of these sums must be between the minimum and maximum possible values. Let me find the possible values of m.
+
+What is the minimum and maximum possible value for S_odd? The minimum sum occurs when the four smallest digits are in the odd positions: 1+2+3+4=10. The maximum sum is when the four largest digits are there: 5+6+7+8=26. Similarly for S_even. Therefore, S_odd can range from 10 to 26. Similarly for S_even. 
+
+Given that S_odd = 18 + 11m and S_even = 18 - 11m, we need 10 ≤ 18 + 11m ≤ 26 and 10 ≤ 18 - 11m ≤ 26. Let me solve for m in both inequalities.
+
+First inequality: 10 ≤ 18 + 11m ≤ 26.
+
+Subtract 18: -8 ≤ 11m ≤ 8.
+
+Divide by 11: -8/11 ≤ m ≤ 8/11. Since m is an integer (because k=2m and k must be integer), m can be -0.727... to 0.727..., so m must be 0. Because m is integer. Similarly for the second inequality:
+
+10 ≤ 18 - 11m ≤ 26.
+
+Subtract 18: -8 ≤ -11m ≤ 8.
+
+Multiply by -1 (and reverse inequalities): -8 ≥ 11m ≥ 8 → which is 8 ≥ 11m ≥ -8. Wait, maybe better to split into two parts:
+
+First part: 18 - 11m ≥ 10 → -11m ≥ -8 → 11m ≤ 8 → m ≤ 8/11 ≈ 0.727.
+
+Second part: 18 - 11m ≤ 26 → -11m ≤ 8 → 11m ≥ -8 → m ≥ -8/11 ≈ -0.727.
+
+Again, m must be integer, so m=0. Therefore, the only possible value is m=0. Therefore, S_odd = 18 + 0 = 18, and S_even = 18 - 0 = 18. Therefore, the difference S_odd - S_even is 0, which is divisible by 11. Therefore, the condition for divisibility by 11 is that the sum of the digits in the odd positions equals the sum of the digits in the even positions, both being 18.
+
+So, in summary, for a permutation of digits 1-8 to be divisible by 11, the sum of digits in positions 1,3,5,7 must be 18, and same for positions 2,4,6,8. 
+
+Now, combining this with the divisibility by 2 condition. The number must end with an even digit (position 8 must be 2,4,6,8). Therefore, the last digit (position 8) is even. Since position 8 is part of the even positions (positions 2,4,6,8), the sum of the even positions must be 18. Therefore, when we fix the last digit (position 8) as an even digit, the remaining three even positions (positions 2,4,6) must sum to 18 minus the last digit. Let me formalize this.
+
+Let me denote the last digit (position 8) as d, which is in {2,4,6,8}. Then the sum of positions 2,4,6 must be 18 - d. Also, since the digits in positions 2,4,6,8 are all distinct and part of the digits 1-8, with d being one of them. 
+
+Therefore, for each possible d in {2,4,6,8}, we need to count the number of ways to choose three distinct digits from the remaining seven digits (excluding d) such that their sum is 18 - d. Then, for each such selection, the positions 2,4,6 can be arranged in 3! ways, and the positions 1,3,5,7 can be arranged in 4! ways (since once the even positions are fixed, the odd positions are determined as the remaining digits). However, we also need to ensure that the digits in the odd positions sum to 18. But since the total sum is 36, and the even positions sum to 18, the odd positions will automatically sum to 18. Therefore, once we fix the even positions to sum to 18, the odd positions will also sum to 18. Therefore, our main task is to compute, for each even digit d, the number of triplets (positions 2,4,6) such that their sum plus d equals 18, i.e., sum of triplet is 18 - d. 
+
+So let me proceed step by step. Let me consider each possible d in {2,4,6,8} and compute the number of valid triplets.
+
+First, let's handle d=2. Then the sum of positions 2,4,6 must be 18 - 2 = 16. So we need to choose three distinct digits from the remaining digits {1,3,4,5,6,7,8} (since d=2 is already used in position 8) that add up to 16. Let me find all such triplets.
+
+Similarly for d=4: sum needed is 18 - 4 = 14. The remaining digits are {1,2,3,5,6,7,8}.
+
+For d=6: sum needed is 18 - 6 = 12. Remaining digits: {1,2,3,4,5,7,8}.
+
+For d=8: sum needed is 18 - 8 = 10. Remaining digits: {1,2,3,4,5,6,7}.
+
+So for each case, we need to find the number of triplets in the respective sets that add up to the required sum. Let me handle each case one by one.
+
+Starting with d=2, sum=16. The available digits are {1,3,4,5,6,7,8}. Let me find all combinations of three distinct numbers from this set that add up to 16.
+
+Let me list them systematically. Let me consider the smallest number first.
+
+Start with 1:
+
+Then the other two numbers need to add up to 15. The remaining numbers are 3,4,5,6,7,8. Let's find pairs in these that add to 15.
+
+Possible pairs:
+
+3 + 12 (not possible), 4 + 11 (no), 5 + 10 (no), 6 + 9 (no), 7 + 8 = 15. So only (7,8). Therefore, triplet (1,7,8).
+
+Next, starting with 3:
+
+Then the other two numbers need to add up to 16 - 3 = 13. The remaining numbers are 1,4,5,6,7,8 (but since we already considered starting with 1, but here we start with 3, so numbers available are 4,5,6,7,8 (excluding 1 and 3? Wait, no. Wait, the available digits are {1,3,4,5,6,7,8}. When starting with 3, the other two numbers must be from the remaining digits, which are 1,4,5,6,7,8. But since we need to avoid duplicates, and we already have 3. Wait, but the triplet is (3, x, y) where x and y are from the set excluding 3. So x and y can include 1. So possible pairs adding to 13:
+
+Looking for pairs in {1,4,5,6,7,8} that add to 13.
+
+Possible pairs:
+
+1 + 12 (no), 4 + 9 (no), 5 + 8 =13, 6 +7=13. So two pairs: (5,8) and (6,7). Therefore, triplets (3,5,8) and (3,6,7).
+
+Next, starting with 4:
+
+The other two numbers need to add up to 16 -4=12. The remaining digits are {1,3,5,6,7,8} (excluding 4). Let's find pairs adding to 12.
+
+Possible pairs:
+
+1 + 11 (no), 3 +9 (no), 5 +7=12, 6 +6 (invalid). So only (5,7). Therefore, triplet (4,5,7).
+
+Next, starting with 5:
+
+Other two numbers need to add up to 16 -5=11. The remaining digits are {1,3,4,6,7,8} (excluding 5). Let's find pairs adding to 11.
+
+Possible pairs:
+
+1 +10 (no), 3 +8=11, 4 +7=11, 6 +5 (but 5 is already used). So (3,8) and (4,7). Therefore, triplets (5,3,8) and (5,4,7). However, note that (5,3,8) is same as (3,5,8) which we already counted when starting with 3. Similarly (5,4,7) is same as (4,5,7) which was already counted. So we need to avoid duplicates. Since we are generating triplets by starting with the smallest element, perhaps we should only consider triplets where the numbers are in increasing order. Therefore, starting with 5, but since 5 is larger than 3 and 4, which we already considered, these triplets would have been already counted. Therefore, to avoid overcounting, maybe we should only consider triplets where the numbers are in ascending order, so that each triplet is counted once. Therefore, perhaps my approach of starting with the smallest element and then proceeding is okay, as long as I don't go back. Therefore, in this case, starting with 5, but since 5 is larger than previous numbers, the triplets would have already been considered. Therefore, perhaps we can stop here. Let me check if there are more triplets.
+
+Starting with 6: the other two numbers need to add up to 16 -6=10. The remaining digits are {1,3,4,5,7,8} (excluding 6). Let's find pairs adding to 10. Possible pairs: 1+9 (no), 3+7=10, 4+6 (but 6 is already used), 5+5 (invalid). So only (3,7). Therefore, triplet (6,3,7). But again, this is same as (3,6,7) which was already counted when starting with 3. So again, duplicate. Therefore, no new triplet here.
+
+Similarly, starting with 7: sum needed is 16 -7=9. The remaining digits are {1,3,4,5,6,8}. The pairs adding to 9: 1+8, 3+6, 4+5. So triplets (7,1,8), (7,3,6), (7,4,5). But (7,1,8) is same as (1,7,8) already counted. (7,3,6) is same as (3,6,7). (7,4,5) is same as (4,5,7). So again duplicates. Therefore, no new triplets here.
+
+Same with starting with 8: sum needed is 16 -8=8. The remaining digits are {1,3,4,5,6,7}. Pairs adding to 8: 1+7, 3+5. So triplets (8,1,7) and (8,3,5). Again duplicates. Therefore, total unique triplets for d=2 are:
+
+(1,7,8), (3,5,8), (3,6,7), (4,5,7). So 4 triplets.
+
+Wait, let me recount:
+
+From starting with 1: 1 triplet.
+
+From starting with 3: 2 triplets.
+
+From starting with 4: 1 triplet.
+
+Total 4 triplets. Correct.
+
+Therefore, for d=2, there are 4 triplets. Each triplet can be arranged in 3! ways in positions 2,4,6. Then the remaining four digits (positions 1,3,5,7) can be arranged in 4! ways. Therefore, total permutations for d=2 is 4 * 3! * 4! = 4 * 6 * 24 = 4 * 144 = 576? Wait, 3! is 6, 4! is 24. 6*24=144. Multiply by 4: 144*4=576. Yes.
+
+Now moving on to d=4. The required sum for positions 2,4,6 is 18 - 4 = 14. The available digits are {1,2,3,5,6,7,8} (since d=4 is used in position 8). Let me find all triplets in this set that add up to 14.
+
+Again, let's proceed systematically.
+
+Start with the smallest number:
+
+Starting with 1:
+
+Other two numbers need to add up to 14 -1 =13. The remaining digits are {2,3,5,6,7,8}. Find pairs adding to 13.
+
+Possible pairs:
+
+2 + 11 (no), 3 +10 (no), 5 +8=13, 6 +7=13. So two pairs: (5,8) and (6,7). Therefore, triplets (1,5,8) and (1,6,7).
+
+Starting with 2:
+
+Other two numbers need to add up to 14 -2=12. Remaining digits are {1,3,5,6,7,8} (excluding 2). Find pairs adding to 12.
+
+Possible pairs:
+
+1 +11 (no), 3 +9 (no), 5 +7=12, 6 +6 (invalid). So only (5,7). Therefore, triplet (2,5,7).
+
+Starting with 3:
+
+Other two numbers need to add up to 14 -3=11. Remaining digits are {1,2,5,6,7,8} (excluding 3). Find pairs adding to 11.
+
+Possible pairs:
+
+1 +10 (no), 2 +9 (no), 5 +6=11, 7 +4 (but 4 is already used as d=4?), no, digits available are {1,2,5,6,7,8}. So 5+6=11, 2+9 (no), 1+10 (no). So only (5,6). Therefore, triplet (3,5,6).
+
+Starting with 5:
+
+Other two numbers need to add up to 14 -5=9. Remaining digits are {1,2,3,6,7,8} (excluding 5). Find pairs adding to 9. Possible pairs: 1+8, 2+7, 3+6. Therefore, triplets (5,1,8), (5,2,7), (5,3,6). However, (5,1,8) is same as (1,5,8) already counted. (5,2,7) is same as (2,5,7). (5,3,6) is same as (3,5,6). So duplicates.
+
+Starting with 6:
+
+Other two numbers need to add up to 14 -6=8. Remaining digits are {1,2,3,5,7,8} (excluding 6). Pairs adding to 8: 1+7, 2+6 (but 6 is excluded?), 3+5. So (1,7) and (3,5). Therefore, triplets (6,1,7) and (6,3,5). Again duplicates.
+
+Similarly, starting with 7 or 8 would lead to triplets already counted. Therefore, total unique triplets for d=4 are:
+
+(1,5,8), (1,6,7), (2,5,7), (3,5,6). Total of 4 triplets. Therefore, same as for d=2. Therefore, number of permutations for d=4 is 4 * 3! * 4! = 4 * 6 * 24 = 576.
+
+Now moving on to d=6. The required sum for positions 2,4,6 is 18 -6=12. The available digits are {1,2,3,4,5,7,8} (since d=6 is in position 8). Let me find all triplets in this set that add up to 12.
+
+Starting with 1:
+
+Other two numbers need to add up to 12 -1=11. Remaining digits: {2,3,4,5,7,8}. Find pairs adding to 11.
+
+Possible pairs: 2+9 (no), 3+8=11, 4+7=11, 5+6 (but 6 is already used). So (3,8) and (4,7). Therefore, triplets (1,3,8) and (1,4,7).
+
+Starting with 2:
+
+Other two numbers need to add up to 12 -2=10. Remaining digits: {1,3,4,5,7,8}. Find pairs adding to 10.
+
+Possible pairs: 1+9 (no), 3+7=10, 4+6 (but 6 is used), 5+5 (invalid). So (3,7). Therefore, triplet (2,3,7).
+
+Starting with 3:
+
+Other two numbers need to add up to 12 -3=9. Remaining digits: {1,2,4,5,7,8}. Find pairs adding to 9.
+
+Possible pairs: 1+8, 2+7, 4+5. Therefore, triplets (3,1,8), (3,2,7), (3,4,5). However, (3,1,8) is same as (1,3,8), already counted. (3,2,7) is same as (2,3,7). (3,4,5) is new. So triplet (3,4,5).
+
+Starting with 4:
+
+Other two numbers need to add up to 12 -4=8. Remaining digits: {1,2,3,5,7,8}. Find pairs adding to 8. Possible pairs: 1+7, 
+I have done enough reasoning here, so I will close this think block and continue with the visible solution.
+</think>
+To solve the problem, we analyze the conditions for divisibility by 22. A number is divisible by 22 if it is divisible by both 2 and 11. For an 8-digit number using digits 1 through 8 exactly once:
+
+---
+
+### **Step 1: Divisibility by 2**
+The number must end in an even digit. The even digits available are $ \{2, 4, 6, 8\} $. So, the last digit (position 8) must be one of these four.
+
+---
+
+### **Step 2: Divisibility by 11**
+A number is divisible by 11 if the difference between the sum of digits in odd positions and the sum of digits in even positions is a multiple of 11. For an 8-digit number, the odd positions are $ \{1, 3, 5, 7\} $, and the even positions are $ \{2, 4, 6, 8\} $.
+
+Let the sum of digits in odd positions be $ S_{\text{odd}} $, and the sum in even positions be $ S_{\text{even}} $. The total sum of digits from 1 to 8 is:
+$$
+1 + 2 + 3 + 4 + 5 + 6 + 7 + 8 = 36
+$$
+So, $ S_{\text{odd}} + S_{\text{even}} = 36 $. The condition for divisibility by 11 is:
+$$
+S_{\text{odd}} - S_{\text{even}} \equiv 0 \pmod{11}
+$$
+This implies $ S_{\text{odd}} = S_{\text{even}} = 18 $.
+
+---
+
+### **Step 3: Counting Valid Permutations**
+We now count the number of permutations where the sum of digits in even positions is 18, and the last digit (position 8) is even.
+
+Let $ d $ be the digit in position 8 (i.e., the last digit). Since the sum of all even-position digits is 18, the sum of the remaining three even-position digits (positions 2, 4, 6) must be $ 18 - d $.
+
+We analyze each possible value of $ d \in \{2, 4, 6, 8\} $ and count the number of valid triplets of digits (from the remaining 7 digits) that sum to $ 18 - d $.
+
+#### **Case 1: $ d = 2 $**
+Remaining digits: $ \{1, 3, 4, 5, 6, 7, 8\} $  
+Required sum for positions 2, 4, 6: $ 18 - 2 = 16 $  
+Valid triplets: $ (1, 7, 8), (3, 5, 8), (3, 6, 7), (4, 5, 7) $ → 4 triplets  
+Each triplet can be arranged in $ 3! = 6 $ ways in positions 2, 4, 6.  
+The remaining 4 digits can be arranged in $ 4! = 24 $ ways in positions 1, 3, 5, 7.  
+Total permutations for $ d = 2 $:  
+$$
+4 \times 6 \times 24 = 576
+$$
+
+#### **Case 2: $ d = 4 $**
+Remaining digits: $ \{1, 2, 3, 5, 6, 7, 8\} $  
+Required sum for positions 2, 4, 6: $ 18 - 4 = 14 $  
+Valid triplets: $ (1, 5, 8), (1, 6, 7), (2, 5, 7), (3, 5, 6) $ → 4 triplets  
+Total permutations for $ d = 4 $:  
+$$
+4 \times 6 \times 24 = 576
+$$
+
+#### **Case 3: $ d = 6 $**
+Remaining digits: $ \{1, 2, 3, 4, 5, 7, 8\} $  
+Required sum for positions 2, 4, 6: $ 18 - 6 = 12 $  
+Valid triplets: $ (1, 3, 8), (1, 4, 7), (2, 3, 7), (3, 4, 5) $ → 4 triplets  
+Total permutations for $ d = 6 $:  
+$$
+4 \times 6 \times 24 = 576
+$$
+
+#### **Case 4: $ d = 8 $**
+Remaining digits: $ \{1, 2, 3, 4, 5, 6, 7\} $  
+Required sum for positions 2, 4, 6: $ 18 - 8 = 10 $  
+Valid triplets: $ (1, 2, 7), (1, 3, 6), (1, 4, 5), (2, 3, 5) $ → 4 triplets  
+Total permutations for $ d = 8 $:  
+$$
+4 \times 6 \times 24 = 576
+$$
+
+---
+
+### **Step 4: Total Valid Permutations**
+Summing all valid permutations:
+$$
+576 + 576 + 576 + 576 = 2304
+$$
+
+---
+
+### **Step 5: Final Answer**
+We are asked to find the difference between $ N = 2304 $ and 2025:
+$$
+2304 - 2025 = 279
+$$
+
+---
+
+### **Final Answer:**
+$$
+\boxed{279}
+$$
